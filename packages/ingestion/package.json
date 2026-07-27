@@ -6,6 +6,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.109.0"
+    "@supabase/supabase-js": "^2.109.0",
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
   }
 }

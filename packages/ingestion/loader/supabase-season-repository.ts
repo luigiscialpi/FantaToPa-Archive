@@ -159,7 +159,7 @@ export class SupabaseSeasonRepository implements SeasonRepository {
     }
   }
 
-  private async ensurePlayerAliases(playerId: string, aliases: string[]): Promise<void> {
+  async ensurePlayerAliases(playerId: string, aliases: string[]): Promise<void> {
     const rows = aliases
       .map((a) => normalizeName(a))
       .filter(Boolean)

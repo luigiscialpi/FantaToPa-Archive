@@ -3,9 +3,10 @@
 // Client Supabase con service role key, da usare SOLO negli script di ingestion
 // server-side (AGENTS.md: mai nel bundle browser).
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 import type { Database } from '@fantatopa/shared-types/database.js';
 
-export function createIngestionClient(): ReturnType<typeof createClient<Database>> {
+export function createIngestionClient() {
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -19,6 +20,9 @@ export function createIngestionClient(): ReturnType<typeof createClient<Database
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+    realtime: {
+      transport: ws as never,
     },
   });
 }

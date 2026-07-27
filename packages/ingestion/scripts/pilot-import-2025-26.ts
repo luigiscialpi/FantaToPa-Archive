@@ -9,8 +9,9 @@ import { XlsxStandingsAdapter } from '../adapters/xlsx/standings.js';
 import { XlsxCalendarAdapter } from '../adapters/xlsx/calendar.js';
 import { XlsxLineupAdapter } from '../adapters/xlsx/lineup.js';
 import { fileURLToPath } from 'node:url';
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { normalizeName } from '../lib/normalize-name.js';
 
 const SEASON_SLUG = '2025-26';
 const SEASON_LABEL = 'Stagione 2025/2026';
@@ -27,15 +28,15 @@ const FILES = {
   coppa: {
     gironeA: {
       standings: path.join(ROOT, 'Coppa', 'Gruppo A', 'Classifica_COPPA-LELLE-GIR.-A.xlsx'),
-      lineups: path.join(ROOT, 'Coppa', 'Gruppo A', 'Formazioni'),
+      lineups: path.join(ROOT, 'Coppa', 'Gruppo A'),
     },
     gironeB: {
       standings: path.join(ROOT, 'Coppa', 'Gruppo B', 'Classifica_COPPA-LELLE-GIR.-B.xlsx'),
-      lineups: path.join(ROOT, 'Coppa', 'Gruppo B', 'Formazioni'),
+      lineups: path.join(ROOT, 'Coppa', 'Gruppo B'),
     },
     faseFinale: {
       calendar: path.join(ROOT, 'Coppa', 'Fase Finale', 'Calendario_COPPA-LELLE-FASE-FINALE.xlsx'),
-      lineups: path.join(ROOT, 'Coppa', 'Fase Finale', 'Formazioni'),
+      lineups: path.join(ROOT, 'Coppa', 'Fase Finale'),
     },
   },
 };
@@ -141,6 +142,150 @@ async function seedTeamsAndPlayersFromRoster(): Promise<void> {
   console.log(`Seed: ${teamNames.size} squadre, ${playerNames.size} giocatori`);
 }
 
+// Nel dataset, un giocatore compare con un'iniziale finale ("Ordonez C.") solo
+// quando serve a distinguerlo da un omonimo. stripInitial toglie quella parte
+// per confrontare il "nome base"; initialLetter la estrae per disambiguare
+// quando esistono più candidati con lo stesso nome base.
+function stripInitial(name: string): string {
+  return name.replace(/\s+[A-Z]\.?$/i, '').trim();
+}
+
+function initialLetter(name: string): string | undefined {
+  const m = /\s+([A-Z])\.?$/i.exec(name.trim());
+  return m ? m[1]!.toUpperCase() : undefined;
+}
+
+const ALIAS_OVERRIDES_FILE = path.join(ROOT, 'player-alias-overrides.json');
+
+async function loadAliasOverrides(): Promise<Record<string, string>> {
+  try {
+    const raw = await readFile(ALIAS_OVERRIDES_FILE, 'utf-8');
+    return JSON.parse(raw) as Record<string, string>;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw err;
+  }
+}
+
+async function seedPlayersFromLineups(): Promise<void> {
+  const lineupFolders = [
+    FILES.campionato.lineups,
+    FILES.coppa.gironeA.lineups,
+    FILES.coppa.gironeB.lineups,
+    FILES.coppa.faseFinale.lineups,
+  ];
+
+  const lineupNames = new Set<string>();
+  for (const folder of lineupFolders) {
+    const files = (await readdir(folder))
+      .filter((f) => f.toLowerCase().startsWith('formazioni') && f.toLowerCase().endsWith('.xlsx'));
+    for (const file of files) {
+      const adapter = new XlsxLineupAdapter(SEASON_SLUG, 'x');
+      const lineup = await adapter.parse(path.join(folder, file));
+      for (const match of lineup.matches) {
+        for (const side of [match.home, match.away]) {
+          for (const pl of side.players) lineupNames.add(pl.playerName.trim());
+        }
+      }
+    }
+  }
+
+  const { data: allPlayers, error: playersError } = await client
+    .from('players')
+    .select('id, canonical_name, player_aliases(alias_normalized)');
+  if (playersError || !allPlayers) {
+    throw new Error(`Errore caricamento giocatori per seed formazioni: ${playersError?.message ?? 'dati assenti'}`);
+  }
+
+  const knownExact = new Set<string>();
+  const byBaseName = new Map<string, { id: string; canonicalName: string }[]>();
+  for (const p of allPlayers) {
+    knownExact.add(normalizeName(p.canonical_name));
+    for (const a of (p.player_aliases as { alias_normalized: string }[] | null) ?? []) {
+      knownExact.add(a.alias_normalized);
+    }
+    const base = normalizeName(stripInitial(p.canonical_name));
+    byBaseName.set(base, [...(byBaseName.get(base) ?? []), { id: p.id, canonicalName: p.canonical_name }]);
+  }
+
+  const overrides = await loadAliasOverrides();
+
+  const aliasesToAdd = new Map<string, string[]>();
+  const newPlayerNames = new Set<string>();
+  const unresolved = new Map<string, string[]>();
+
+  for (const name of lineupNames) {
+    const key = normalizeName(name);
+    if (knownExact.has(key)) continue;
+
+    const overrideTarget = overrides[name];
+    if (overrideTarget) {
+      const targetKey = normalizeName(overrideTarget);
+      const targetPlayer = allPlayers.find((p) => normalizeName(p.canonical_name) === targetKey);
+      if (targetPlayer) {
+        const arr = aliasesToAdd.get(targetPlayer.id) ?? [];
+        if (!arr.includes(key)) arr.push(key);
+        aliasesToAdd.set(targetPlayer.id, arr);
+        knownExact.add(key);
+        continue;
+      }
+    }
+
+    const base = normalizeName(stripInitial(name));
+    const candidates = byBaseName.get(base) ?? [];
+
+    if (candidates.length === 1) {
+      const playerId = candidates[0]!.id;
+      const arr = aliasesToAdd.get(playerId) ?? [];
+      if (!arr.includes(key)) arr.push(key);
+      aliasesToAdd.set(playerId, arr);
+      knownExact.add(key);
+      continue;
+    }
+
+    if (candidates.length > 1) {
+      const initial = initialLetter(name);
+      const byInitial = initial ? candidates.filter((c) => initialLetter(c.canonicalName) === initial) : [];
+      if (byInitial.length === 1) {
+        const playerId = byInitial[0]!.id;
+        const arr = aliasesToAdd.get(playerId) ?? [];
+        if (!arr.includes(key)) arr.push(key);
+        aliasesToAdd.set(playerId, arr);
+        knownExact.add(key);
+        continue;
+      }
+      unresolved.set(name, candidates.map((c) => c.canonicalName));
+      continue;
+    }
+
+    // Nessun candidato con lo stesso nome base: giocatore genuinamente nuovo
+    // (non in rosa d'asta, es. preso a stagione in corso).
+    newPlayerNames.add(name);
+  }
+
+  if (unresolved.size > 0) {
+    const merged: Record<string, string | null> = { ...overrides };
+    for (const [name, candidates] of unresolved) {
+      merged[name] = merged[name] ?? (candidates.length === 1 ? (candidates[0] ?? null) : null);
+    }
+    await writeFile(ALIAS_OVERRIDES_FILE, `${JSON.stringify(merged, null, 2)}\n`, 'utf-8');
+
+    console.error(`\n${unresolved.size} nomi ambigui nelle formazioni, serve conferma manuale.`);
+    console.error(`Apri ${ALIAS_OVERRIDES_FILE}, per ogni voce imposta il nome canonico corretto tra i candidati, poi rilancia lo script.\n`);
+    for (const [name, candidates] of unresolved) {
+      console.error(`  "${name}" -> candidati: ${candidates.join(' | ')}`);
+    }
+    process.exit(1);
+  }
+
+  for (const [playerId, aliases] of aliasesToAdd) {
+    await repo.ensurePlayerAliases(playerId, aliases);
+  }
+  await repo.upsertPlayers([...newPlayerNames].map((name) => ({ name })));
+
+  console.log(`Formazioni: ${aliasesToAdd.size} alias risolti, ${newPlayerNames.size} nuovi giocatori`);
+}
+
 async function importRoster(): Promise<void> {
   const adapter = new XlsxRosterAdapter(SEASON_SLUG);
   const roster = await adapter.parse(FILES.roster);
@@ -174,7 +319,7 @@ async function importCalendars(): Promise<void> {
 
 async function importLineups(folder: string, competitionSlug: string): Promise<void> {
   const files = (await readdir(folder))
-    .filter((f) => f.toLowerCase().endsWith('.xlsx'))
+    .filter((f) => f.toLowerCase().startsWith('formazioni') && f.toLowerCase().endsWith('.xlsx'))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
   for (const file of files) {
@@ -198,6 +343,7 @@ async function main(): Promise<void> {
   await ensureCompetitions(seasonId);
 
   await seedTeamsAndPlayersFromRoster();
+  await seedPlayersFromLineups();
   await importRoster();
   await importStandings();
   await importCalendars();
