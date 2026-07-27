@@ -1,0 +1,9 @@
+{
+  "name": "@fantatopa/web",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "next dev"
+  }
+}

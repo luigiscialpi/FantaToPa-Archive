@@ -1,0 +1,8 @@
+{
+  "name": "@fantatopa/shared-types",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,0 +1,71 @@
+# AGENTS.md — Archivio Storico FantaTopa
+
+File letto nativamente da Claude Code e Google Antigravity. GitHub Copilot ha il suo
+`.github/copilot-instructions.md`, che rimanda qui invece di duplicare — stessa fonte di
+verità, non due documenti da tenere allineati a mano.
+
+Tenuto volutamente corto: questo file è sempre in contesto a ogni sessione, quindi ogni
+riga ha un costo fisso ripetuto. Il piano di sviluppo completo vive in
+`piano-sviluppo-fantatopa-archive.md`; per non caricarlo tutto ogni volta, usa la skill
+`fantatopa-dev` (`.agents/skills/fantatopa-dev/SKILL.md`) che indica quale sezione leggere
+in base al task.
+
+## Cos'è
+
+Sito che archivia le stagioni passate di una lega fantacalcio privata. Next.js/React/TS,
+Supabase (Postgres+Auth+Storage), Netlify. Archivio riservato ai membri approvati — non
+pubblico.
+
+## Pattern non ovvi (il motivo per cui esistono, non solo il "cosa")
+
+- **`standings` non si ricalcola mai automaticamente**: è sempre lo snapshot importato.
+  Il confronto con `matches` è un controllo di qualità in fase di import, non un dato
+  gemello salvato — due "fonti di verità" nella stessa tabella creano solo ambiguità.
+- **`lineup_players` ha solo `voto`/`fantavoto`, niente bonus/malus granulari** (gol,
+  assist, cartellini): la fonte dati (xlsx) non li riporta. Non aggiungere quei campi
+  finché non esiste una fonte reale da cui popolarli.
+- **Lookup table (`competition_kinds`, `import_source_types`...) solo dove c'è
+  variabilità già osservata nei dati**, non ovunque per principio — altrove restano
+  `check` semplici. Estendibilità mirata, non generalizzata a caso.
+- **Niente generazione statica (SSG) per le pagine di stagione**: l'archivio è riservato,
+  una pagina pre-renderizzata in build aggirerebbe la RLS. Rendering server-side con la
+  sessione utente, sempre.
+- **Ingestion: adapter → schema Zod per concern → `SeasonRepository`**: mai scrivere su
+  Supabase direttamente da un parser. Un `SeasonRepository` finto in memoria deve poter
+  sostituire quello reale nei test, senza rete.
+- **Funzioni Postgres usate in policy RLS: sempre `plpgsql`, mai `sql`** — una funzione
+  `sql security definer` può venire inlined dal query planner e perdere il privilegio
+  elevato, riportando la ricorsione che dovrebbe evitare.
+
+## Come scrivere codice qui
+
+Skill `ponytail` (`.agents/skills/ponytail/`): non scrivere codice nuovo se riuso, stdlib,
+piattaforma o una dipendenza già installata bastano; bug fix sulla causa comune, non sul
+sintomo; niente astrazioni non richieste — eccetto quelle già decise in questo file
+(`SeasonRepository`, adapter, lookup table mirate); semplificazioni intenzionali marcate
+con commento `ponytail:` che nomina il limite e il percorso di upgrade.
+
+## Convenzioni
+
+- TypeScript `strict: true`. Mai `any` (ESLint `@typescript-eslint/no-explicit-any: error`).
+  Tipo sconosciuto per davvero → `unknown` + narrowing, non `any`. I tipi vengono da
+  `z.infer<...>` (Zod) o da `supabase gen types typescript`, non si scrivono a mano.
+- Un componente = un file. ~200-250 righe è una soglia di attenzione da rivedere in
+  review, non un limite imposto meccanicamente. Cartelle per dominio
+  (`components/classifica/`, non un `components/` piatto).
+- Migrazioni Supabase sempre in `supabase/migrations/`, mai modifiche a mano da Studio
+  senza poi catturarle con `supabase db pull`.
+
+## Sicurezza — non negoziabile
+
+- `SUPABASE_SERVICE_ROLE_KEY` solo negli script di ingestion server-side, mai nel client/
+  bundle browser.
+- Push su Supabase **prod** solo da CI (GitHub Action su merge a `main`), mai a mano dal
+  laptop — il collegamento locale resta su staging.
+- Mai committare segreti reali, nemmeno in file di esempio.
+
+## Comandi utili
+
+- `npm run typecheck` / `npm run lint` / `npm run test` — da far girare prima di
+  proporre una modifica come conclusa.
+- `supabase db reset` — riapplica le migrazioni in locale, pulito.

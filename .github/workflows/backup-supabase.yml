@@ -1,0 +1,30 @@
+name: Backup Supabase
+
+# Il piano free Supabase non ha backup automatici né PITR (sezione 14 del piano,
+# confermato dalla documentazione ufficiale). Dump settimanale committato in un
+# repo PRIVATO separato da questo — mai nello stesso repo pubblico/condiviso.
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'   # ogni domenica notte
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Dump schema + dati
+        run: |
+          supabase db dump --db-url "${{ secrets.SUPABASE_DB_URL }}" -f backup.sql
+      - name: Carica come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_id }}
+          path: backup.sql
+          retention-days: 90
+      # TODO Fase 0: sostituire l'upload artifact (90 giorni, dentro GitHub)
+      # con un push a uno storage esterno più duraturo, se si vuole una
+      # retention più lunga di 3 mesi.
