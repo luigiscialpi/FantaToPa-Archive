@@ -34,12 +34,14 @@ export const StandingsImportSchema = z.object({
     z.object({
       teamName: z.string().min(1),
       position: z.number().int().positive(),
-      played: z.number().int().nonnegative(),
-      won: z.number().int().nonnegative(),
-      drawn: z.number().int().nonnegative(),
-      lost: z.number().int().nonnegative(),
-      goalsFor: z.number().int().nonnegative(),
-      goalsAgainst: z.number().int().nonnegative(),
+      // Le classifiche di Coppa contengono solo G, Pt, Pt. Totali — i campi
+      // V/N/P/Gf/Gs sono assenti. Sono opzionali nello schema canonico.
+      played: z.number().int().nonnegative().optional(),
+      won: z.number().int().nonnegative().optional(),
+      drawn: z.number().int().nonnegative().optional(),
+      lost: z.number().int().nonnegative().optional(),
+      goalsFor: z.number().int().nonnegative().optional(),
+      goalsAgainst: z.number().int().nonnegative().optional(),
       points: z.number().int().nonnegative(),
       totalFantapoints: z.number(),
     }),

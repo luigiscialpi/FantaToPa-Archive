@@ -5,11 +5,43 @@ import type { SourceAdapter } from '../types.js';
 
 // Layout osservato nei file reali (sezione 2 del piano): titolo, url lega,
 // riga vuota, intestazioni, poi i dati — sempre da riga 4 in poi (indice 0).
-// ponytail: assume questo layout fisso per tutte le stagioni 2023-24 -> 2025-26,
-// non gestisce varianti xlsx non ancora osservate. Se una stagione futura
-// cambia formato, questo adapter va esteso o affiancato da uno nuovo — non
-// riscritto per "provare a indovinare" layout diversi.
+// Esistono due varianti:
+//   - Campionato: Pos, Squadra, ?, G, V, N, P, Gf, Gs, Dr, Pt, Pt. Totali
+//   - Coppa:      Pos, Squadra, ?, G, Pt, Pt. Totali
+// ponytail: supportiamo solo queste due varianti già osservate; un formato
+// futuro diverso richiede un adapter esteso, non euristiche più complesse.
 const HEADER_ROW_COUNT = 4;
+
+function isNumberLike(v: unknown): boolean {
+  if (v === null || v === undefined) return false;
+  return Number.isFinite(Number(v));
+}
+
+function parseStandingRow(r: unknown[]): StandingsImport['rows'][number] {
+  const fullLayout = isNumberLike(r[11]);
+  if (fullLayout) {
+    return {
+      teamName: String(r[1]).trim(),
+      position: Number(r[0]),
+      played: Number(r[3]),
+      won: Number(r[4]),
+      drawn: Number(r[5]),
+      lost: Number(r[6]),
+      goalsFor: Number(r[7]),
+      goalsAgainst: Number(r[8]),
+      points: Number(r[10]),
+      totalFantapoints: Number(r[11]),
+    };
+  }
+  // Layout ridotto (Coppa): solo G, Pt, Pt. Totali.
+  return {
+    teamName: String(r[1]).trim(),
+    position: Number(r[0]),
+    played: Number(r[3]),
+    points: Number(r[4]),
+    totalFantapoints: Number(r[5]),
+  };
+}
 
 export class XlsxStandingsAdapter implements SourceAdapter<StandingsImport> {
   constructor(
@@ -41,21 +73,7 @@ export class XlsxStandingsAdapter implements SourceAdapter<StandingsImport> {
     const candidate = {
       seasonSlug: this.seasonSlug,
       competitionSlug: this.competitionSlug,
-      rows: rows.map((r) => ({
-        // .trim(): "Prozalpi S.F. " con spazio finale è un dato reale visto
-        // nei file (sezione 2) — normalizzato qui, l'alias vero e proprio lo
-        // risolve il loader (sezione 7), qui solo pulizia di base.
-        teamName: String(r[1]).trim(),
-        position: Number(r[0]),
-        played: Number(r[3]),
-        won: Number(r[4]),
-        drawn: Number(r[5]),
-        lost: Number(r[6]),
-        goalsFor: Number(r[7]),
-        goalsAgainst: Number(r[8]),
-        points: Number(r[10]),
-        totalFantapoints: Number(r[11]),
-      })),
+      rows: rows.map(parseStandingRow),
     };
 
     // Fallisce rumorosamente se qualcosa non torna, invece di scrivere dati

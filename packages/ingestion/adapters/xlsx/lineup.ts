@@ -17,7 +17,6 @@ import type { SourceAdapter } from '../types.js';
 //   - riga vuota
 const HOME_START = 0;
 const AWAY_START = 6;
-const SCORE_COL = 5;
 
 function parseNumberOrNull(raw: unknown): number | null {
   if (raw === null || raw === undefined) return null;
@@ -36,12 +35,24 @@ function parseRoles(raw: unknown): string[] {
     .filter(Boolean);
 }
 
-function looksLikeScore(raw: unknown): boolean {
-  return typeof raw === 'string' && /^\d+\s*-\s*\d+$/.test(raw.trim());
+function looksLikeTeamName(raw: unknown): boolean {
+  if (typeof raw !== 'string') return false;
+  const s = raw.trim();
+  if (s.length <= 2) return false;
+  if (s.includes('Formazioni')) return false;
+  // Esclude le formazioni tipo "3-4-3", "4-3-3" o "3412 (343 dopo le sostituzioni)".
+  if (/^\d+(?:-\d+)*\s*(?:\(|$)/.test(s)) return false;
+  // I ruoli giocatore sono brevi token separati da ; (es. "Ds;Dc", "M;C", "Por").
+  if (/^[A-Z][a-z]*(?:;[A-Z][a-z]*)*$/.test(s)) return false;
+  return true;
 }
 
-function looksLikeTeamName(raw: unknown): boolean {
-  return typeof raw === 'string' && raw.trim().length > 2 && !raw.includes('Formazioni');
+function looksLikeMatchStart(row: unknown[]): boolean {
+  // Alcuni file (Coppa) non riportano il punteggio tra le due squadre;
+  // basta che ci siano due nomi squadra nelle colonne fisse.
+  const home = row[HOME_START];
+  const away = row[AWAY_START];
+  return looksLikeTeamName(home) && looksLikeTeamName(away);
 }
 
 function parseTotal(raw: unknown): number | undefined {
@@ -102,7 +113,7 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
 
     while (r < raw.length) {
       const row = raw[r];
-      if (!Array.isArray(row) || !looksLikeTeamName(row[HOME_START]) || !looksLikeScore(row[SCORE_COL]) || !looksLikeTeamName(row[AWAY_START])) {
+      if (!Array.isArray(row) || !looksLikeMatchStart(row)) {
         r++;
         continue;
       }
@@ -128,7 +139,8 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
         const homeCell0 = dataRow[HOME_START];
         const awayCell0 = dataRow[AWAY_START];
 
-        if (typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('panchina')) {
+        // Panchina può apparire solo nella colonna away in alcuni file Coppa.
+        if (typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('panchina')) {
           slot = 'panchina';
           continue;
         }
@@ -136,6 +148,8 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
         if (typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('modificatore')) {
           home.defenseModifier = parseNumberOrNull(dataRow[HOME_START + 4]) ?? undefined;
           away.defenseModifier = parseNumberOrNull(dataRow[AWAY_START + 4]) ?? undefined;
+          // In Coppa il totale away può trovarsi sulla stessa riga del modificatore.
+          if (away.total === undefined) away.total = parseTotal(dataRow[AWAY_START]);
           continue;
         }
 
@@ -146,7 +160,7 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
         }
 
         // Se la riga home è un nuovo nome squadra, la partita corrente è finita.
-        if (looksLikeTeamName(homeCell0) && looksLikeScore(dataRow[SCORE_COL]) && looksLikeTeamName(awayCell0)) {
+        if (looksLikeMatchStart(dataRow)) {
           break;
         }
 

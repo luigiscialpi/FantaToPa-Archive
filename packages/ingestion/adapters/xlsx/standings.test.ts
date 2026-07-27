@@ -33,7 +33,9 @@ describe('XlsxStandingsAdapter, contro il file reale 2025-26', () => {
     const result = await adapter.parse(REAL_FILE);
 
     for (const row of result.rows) {
-      expect(row.won * 3 + row.drawn * 1).toBe(row.points);
+      const won = row.won ?? 0;
+      const drawn = row.drawn ?? 0;
+      expect(won * 3 + drawn * 1).toBe(row.points);
     }
   });
 });
