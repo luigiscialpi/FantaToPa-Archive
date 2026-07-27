@@ -1,6 +1,6 @@
 # Archivio Storico FantaTopa
 
-Piano di sviluppo completo: [`piano-sviluppo-fantatopa-archive.md`](./piano-sviluppo-fantatopa-archive.md).
+Piano di sviluppo completo: [`piano-sviluppo-fantatopa-archive.md`](./docs/piano-sviluppo-fantatopa-archive.md).
 Convenzioni per lo sviluppo (anche assistito da AI): [`AGENTS.md`](./AGENTS.md).
 
 ## Cosa è già pronto in questo scaffold

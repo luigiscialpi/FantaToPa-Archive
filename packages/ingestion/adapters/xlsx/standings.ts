@@ -26,7 +26,14 @@ export class XlsxStandingsAdapter implements SourceAdapter<StandingsImport> {
       throw new Error('XlsxStandingsAdapter si aspetta un path file (string)');
     }
     const workbook = XLSX.readFile(input);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const firstSheetName = workbook.SheetNames[0];
+    if (firstSheetName === undefined) {
+      throw new Error(`Nessun foglio trovato nel file xlsx: ${input}`);
+    }
+    const sheet = workbook.Sheets[firstSheetName];
+    if (sheet === undefined) {
+      throw new Error(`Foglio "${firstSheetName}" non trovato nel file xlsx: ${input}`);
+    }
     const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
     const rows = raw.slice(HEADER_ROW_COUNT).filter((r) => r[0] !== null && r[0] !== undefined);
