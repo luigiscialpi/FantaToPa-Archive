@@ -4,5 +4,8 @@
   "version": "0.0.0",
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.109.0"
   }
 }
