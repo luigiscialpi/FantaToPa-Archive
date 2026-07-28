@@ -339,7 +339,14 @@ export class SupabaseSeasonRepository implements SeasonRepository {
     const { data: lineupRow, error: lineupError } = await this.client
       .from('lineups')
       .upsert(
-        { match_id: matchId, team_id: teamId, formation: team.formation ?? null },
+        {
+          match_id: matchId,
+          team_id: teamId,
+          formation: team.formation ?? null,
+          defense_modifier: team.defenseModifier,
+          submitted_via: team.submittedVia ?? null,
+          submitted_at: team.submittedAt ?? null,
+        },
         { onConflict: 'match_id, team_id' },
       )
       .select('id')
@@ -366,6 +373,7 @@ export class SupabaseSeasonRepository implements SeasonRepository {
             position_order: index + 1,
             voto: player.voto,
             fantavoto: player.fantavoto,
+            counts_for_total: player.countsForTotal,
           };
         }),
       );

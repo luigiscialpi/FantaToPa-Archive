@@ -171,6 +171,7 @@ export type Database = {
       }
       lineup_players: {
         Row: {
+          counts_for_total: boolean
           fantavoto: number | null
           id: string
           lineup_id: string
@@ -180,6 +181,7 @@ export type Database = {
           voto: number | null
         }
         Insert: {
+          counts_for_total?: boolean
           fantavoto?: number | null
           id?: string
           lineup_id: string
@@ -189,6 +191,7 @@ export type Database = {
           voto?: number | null
         }
         Update: {
+          counts_for_total?: boolean
           fantavoto?: number | null
           id?: string
           lineup_id?: string
@@ -216,21 +219,30 @@ export type Database = {
       }
       lineups: {
         Row: {
+          defense_modifier: number
           formation: string | null
           id: string
           match_id: string
+          submitted_at: string | null
+          submitted_via: string | null
           team_id: string
         }
         Insert: {
+          defense_modifier?: number
           formation?: string | null
           id?: string
           match_id: string
+          submitted_at?: string | null
+          submitted_via?: string | null
           team_id: string
         }
         Update: {
+          defense_modifier?: number
           formation?: string | null
           id?: string
           match_id?: string
+          submitted_at?: string | null
+          submitted_via?: string | null
           team_id?: string
         }
         Relationships: [

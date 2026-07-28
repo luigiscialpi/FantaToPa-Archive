@@ -46,4 +46,47 @@ describe('XlsxLineupAdapter, contro il file reale 2025-26 (giornata 1)', () => {
     const nullVoto = result.matches.flatMap((m) => [...m.home.players, ...m.away.players]).find((p) => p.voto === null);
     expect(nullVoto).toBeDefined();
   });
+
+  it('legge modificatore difesa e info di invio ("Inserita via...") per entrambe le squadre', async () => {
+    const adapter = new XlsxLineupAdapter('2025-26', 'campionato');
+    const result = await adapter.parse(REAL_FILE);
+
+    const firstMatch = result.matches[0];
+    expect(firstMatch?.home.defenseModifier).toBe(1);
+    expect(firstMatch?.away.defenseModifier).toBe(1);
+    expect(firstMatch?.home.submittedVia).toBe('app');
+    expect(firstMatch?.home.submittedAt).toBe('2025-08-29T18:06:24');
+    expect(firstMatch?.away.submittedVia).toBe('web');
+    expect(firstMatch?.away.submittedAt).toBe('2025-08-29T14:10:55');
+  });
+
+  it('legge countsForTotal dal colore del fantavoto, non dal solo voto/slot', async () => {
+    const adapter = new XlsxLineupAdapter('2025-26', 'campionato');
+    const result = await adapter.parse(REAL_FILE);
+
+    const homePlayers = result.matches[0]?.home.players ?? [];
+
+    // Titolare che ha giocato: conta per il totale.
+    const meret = homePlayers.find((p) => p.playerName === 'Meret');
+    expect(meret?.countsForTotal).toBe(true);
+
+    // Titolare senza voto (non ha giocato): non conta.
+    const deWinter = homePlayers.find((p) => p.playerName === 'De Winter');
+    expect(deWinter?.voto).toBeNull();
+    expect(deWinter?.countsForTotal).toBe(false);
+
+    // Panchinaro con un fantavoto reale (6.5, non "-") ma comunque escluso dal
+    // totale: prova che il flag non è deducibile da voto/fantavoto null, va
+    // letto dal colore font (caso reale nel file: riga Palestra).
+    const palestra = homePlayers.find((p) => p.playerName === 'Palestra');
+    expect(palestra?.slot).toBe('panchina');
+    expect(palestra?.fantavoto).toBe(6.5);
+    expect(palestra?.countsForTotal).toBe(false);
+
+    // Panchinaro che invece sostituisce un titolare e il cui voto conta:
+    // stesso slot "panchina" di Palestra, ma countsForTotal true.
+    const zappa = homePlayers.find((p) => p.playerName === 'Zappa');
+    expect(zappa?.slot).toBe('panchina');
+    expect(zappa?.countsForTotal).toBe(true);
+  });
 });

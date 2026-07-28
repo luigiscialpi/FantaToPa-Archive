@@ -717,8 +717,8 @@ Repo scaffold (npm workspaces), progetto Supabase + prima migrazione con lo sche
 **Fase 1 — Ingestion stagioni moderne (2023-24 → 2025-26)** *(completata)*
 Adapter xlsx (Rose, Classifica, Calendario, Formazioni, Coppa), schema Zod, loader idempotente, risoluzione alias squadre/giocatori, import pilota sulla 2025-26.
 
-**Fase 2 — Frontend core** *(in corso)*
-Pagine Classifica/Calendario/Rose/Formazioni per stagione, rendering server-side con sessione utente (niente più generazione statica, sezione 3 punto 5), repository layer tipizzato, responsive mobile. Classifica, Calendario/Risultati e Rose sono online; resta Formazioni. Aggiunto rispetto alla formulazione iniziale: il selettore stagione/competizione persistente in header previsto in sezione 10 è ora un layout condiviso (`stagioni/[season]/layout.tsx`) sopra tutte le pagine di stagione, con tab di navigazione tra Classifica/Calendario/Rose; il selettore competizione si nasconde da sé sulle pagine (come Rose) la cui tabella non ha una dimensione competizione.
+**Fase 2 — Frontend core** *(completata)*
+Pagine Classifica/Calendario/Rose/Formazioni per stagione, rendering server-side con sessione utente (niente più generazione statica, sezione 3 punto 5), repository layer tipizzato, responsive mobile. Tutte e quattro online. Formazioni mostra la lista testuale (titolari/panchina, voto/fantavoto) per giornata, non il campo grafico — resta l'opzione "vedi campo" descritta in sezione 10 se servirà in futuro, non è bloccante. Aggiunto rispetto alla formulazione iniziale: il selettore stagione/competizione persistente in header previsto in sezione 10 è ora un layout condiviso (`stagioni/[season]/layout.tsx`) sopra tutte le pagine di stagione, con tab di navigazione tra Classifica/Calendario/Rose/Formazioni; il selettore competizione si nasconde da sé sulle pagine (come Rose) la cui tabella non ha una dimensione competizione.
 
 **Fase 3 — Auth + pannello admin**
 Supabase Auth, ruoli, RLS, upload → anteprima → conferma import. Registrazione utenti (nome/cognome/squadra rivendicata), Edge Function + Resend per la notifica email admin, schermata admin per approvare/rifiutare le richieste.

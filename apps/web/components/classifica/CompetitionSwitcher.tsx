@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import type { CompetitionOption } from '../../lib/queries/seasons';
 
-const COMPETITION_SCOPED_SEGMENTS = ['classifica', 'calendario'];
+const COMPETITION_SCOPED_SEGMENTS = ['classifica', 'calendario', 'formazioni'];
 
 type CompetitionSwitcherProps = {
   competitions: CompetitionOption[];

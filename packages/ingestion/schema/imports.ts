@@ -88,15 +88,31 @@ export const LineupPlayerImportSchema = z.object({
   voto: z.number().nullable(),
   fantavoto: z.number().nullable(),
   slot: z.enum(['titolare', 'panchina']),
+  // Nel file, il fantavoto dei giocatori che contribuiscono al totale
+  // squadra è in verde (nota nel foglio: "In verde i fantavoti che portano
+  // punteggio alla squadra"); gli altri (non giocati, o sostituti il cui
+  // voto non serve perché il titolare ha giocato) sono in un colore più
+  // leggero. Non deducibile da voto/fantavoto null: un giocatore può avere
+  // un fantavoto reale e comunque non contare — va letto dal colore font,
+  // vedi rilevazione colore nell'adapter xlsx.
+  countsForTotal: z.boolean(),
 });
 export type LineupPlayerImport = z.infer<typeof LineupPlayerImportSchema>;
 
 export const LineupTeamImportSchema = z.object({
   teamName: z.string().min(1),
   formation: z.string().optional(),
-  defenseModifier: z.number().int().optional(),
+  // Assente nel file quando il modificatore è zero, non quando manca il
+  // dato: default 0 qui invece di lasciarlo optional a valle.
+  defenseModifier: z.number().int().default(0),
   total: z.number(),
   players: z.array(LineupPlayerImportSchema),
+  // Riga "Inserita via app/web il DD-MM-YYYY HH:mm:ss" in fondo a ogni
+  // formazione squadra. submittedAt resta una stringa "as-is" (formato
+  // sorgente DD-MM-YYYY HH:mm:ss riportato as ISO naive, senza fuso) — solo
+  // informativo/display, non usato per confronti cross-timezone.
+  submittedVia: z.enum(['app', 'web']).optional(),
+  submittedAt: z.string().optional(),
 });
 export type LineupTeamImport = z.infer<typeof LineupTeamImportSchema>;
 
@@ -114,4 +130,8 @@ export const LineupImportSchema = z.object({
   matches: z.array(LineupMatchImportSchema),
 });
 export type LineupImport = z.infer<typeof LineupImportSchema>;
+// Forma "pre-parse" (defenseModifier ancora opzionale, non ha ancora preso
+// il default 0): usata dagli adapter per costruire l'oggetto che poi viene
+// passato a LineupImportSchema.parse(...).
+export type LineupImportInput = z.input<typeof LineupImportSchema>;
 

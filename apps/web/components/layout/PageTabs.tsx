@@ -13,6 +13,7 @@ const TABS = [
   { segment: 'classifica', label: 'Classifica' },
   { segment: 'calendario', label: 'Calendario' },
   { segment: 'rose', label: 'Rose' },
+  { segment: 'formazioni', label: 'Formazioni' },
 ];
 
 export function PageTabs({ seasonSlug }: { seasonSlug: string }) {
