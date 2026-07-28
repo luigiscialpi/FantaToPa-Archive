@@ -333,9 +333,11 @@ export type Database = {
       }
       matches: {
         Row: {
+          away_goals: number | null
           away_result_points: number | null
           away_score: number | null
           away_team_id: string
+          home_goals: number | null
           home_result_points: number | null
           home_score: number | null
           home_team_id: string
@@ -343,9 +345,11 @@ export type Database = {
           matchday_id: string
         }
         Insert: {
+          away_goals?: number | null
           away_result_points?: number | null
           away_score?: number | null
           away_team_id: string
+          home_goals?: number | null
           home_result_points?: number | null
           home_score?: number | null
           home_team_id: string
@@ -353,9 +357,11 @@ export type Database = {
           matchday_id: string
         }
         Update: {
+          away_goals?: number | null
           away_result_points?: number | null
           away_score?: number | null
           away_team_id?: string
+          home_goals?: number | null
           home_result_points?: number | null
           home_score?: number | null
           home_team_id?: string

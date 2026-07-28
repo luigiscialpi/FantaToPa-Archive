@@ -1,0 +1,43 @@
+import { redirect } from 'next/navigation';
+import type { ReactNode } from 'react';
+import { AppHeader } from '../../components/layout/AppHeader';
+import { canReadLeagueData, getSessionState } from '../../lib/auth/session';
+import { signOut } from '../../lib/auth/actions';
+
+export default async function ProtectedLayout({ children }: { children: ReactNode }) {
+  const session = await getSessionState();
+
+  if (session.kind === 'anonimo') {
+    redirect('/login');
+  }
+
+  const { profile } = session;
+
+  if (!canReadLeagueData(profile)) {
+    const message =
+      profile.status === 'rejected'
+        ? 'La tua richiesta di accesso non è stata approvata. Contatta un amministratore della lega.'
+        : 'La tua richiesta di accesso è in attesa di approvazione da parte di un amministratore.';
+
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-stone-100 px-4">
+        <div className="w-full max-w-sm bg-white rounded-xl border border-stone-200 p-6 text-center space-y-4">
+          <h1 className="font-serif font-bold text-lg text-emerald-950">Archivio FantaTopa</h1>
+          <p className="text-sm text-stone-600">{message}</p>
+          <form action={signOut}>
+            <button type="submit" className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+              Esci
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-stone-100">
+      <AppHeader profile={profile} />
+      {children}
+    </div>
+  );
+}

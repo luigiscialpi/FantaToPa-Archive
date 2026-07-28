@@ -11,16 +11,20 @@ import type { SourceAdapter } from '../types.js';
 //   col 1: fantavoto casa
 //   col 2: fantavoto trasferta
 //   col 3: squadra trasferta
-//   col 4: risultato (es. "2-2")
-function resultPointsFromScore(score: string): { home: number; away: number } {
+//   col 4: risultato (es. "2-2") — i gol reali della partita, non il fantavoto
+function goalsFromResult(score: string): { homeGoals: number; awayGoals: number } {
   const [homeStr, awayStr] = score.split('-');
-  const home = Number(homeStr);
-  const away = Number(awayStr);
-  if (!Number.isFinite(home) || !Number.isFinite(away)) {
+  const homeGoals = Number(homeStr);
+  const awayGoals = Number(awayStr);
+  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) {
     throw new Error(`Risultato non parsificabile: "${score}"`);
   }
-  if (home > away) return { home: 3, away: 0 };
-  if (home === away) return { home: 1, away: 1 };
+  return { homeGoals, awayGoals };
+}
+
+function resultPointsFromGoals(homeGoals: number, awayGoals: number): { home: number; away: number } {
+  if (homeGoals > awayGoals) return { home: 3, away: 0 };
+  if (homeGoals === awayGoals) return { home: 1, away: 1 };
   return { home: 0, away: 3 };
 }
 
@@ -104,12 +108,15 @@ export class XlsxCalendarAdapter implements SourceAdapter<CalendarImport> {
             continue;
           }
 
-          const points = resultPointsFromScore(String(result).trim());
+          const { homeGoals, awayGoals } = goalsFromResult(String(result).trim());
+          const points = resultPointsFromGoals(homeGoals, awayGoals);
           matches.push({
             homeTeamName: String(homeTeamName).trim(),
             awayTeamName: String(awayTeamName).trim(),
             homeScore,
             awayScore,
+            homeGoals,
+            awayGoals,
             homeResultPoints: points.home,
             awayResultPoints: points.away,
           });

@@ -274,6 +274,8 @@ export class SupabaseSeasonRepository implements SeasonRepository {
             away_team_id: awayTeamId,
             home_score: match.homeScore,
             away_score: match.awayScore,
+            home_goals: match.homeGoals,
+            away_goals: match.awayGoals,
             home_result_points: match.homeResultPoints,
             away_result_points: match.awayResultPoints,
           },

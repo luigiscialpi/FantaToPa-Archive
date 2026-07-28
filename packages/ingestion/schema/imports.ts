@@ -54,6 +54,12 @@ export const CalendarMatchImportSchema = z.object({
   awayTeamName: z.string().min(1),
   homeScore: z.number(),
   awayScore: z.number(),
+  // Gol reali della partita, dal campo "risultato" del calendario (es.
+  // "2-2"): distinti da homeScore/awayScore che sono il fantavoto. Servono
+  // per calcolare Gf/Gs/Dr su un intervallo di giornate, non solo sullo
+  // snapshot finale in `standings`.
+  homeGoals: z.number().int().min(0),
+  awayGoals: z.number().int().min(0),
   homeResultPoints: z.number().int().min(0).max(3),
   awayResultPoints: z.number().int().min(0).max(3),
 });
