@@ -12,6 +12,7 @@ import type { ReactNode } from 'react';
 import { createClient } from '../../../../lib/supabase/server';
 import { getCompetitions, getSeasons } from '../../../../lib/queries/seasons';
 import { SeasonSwitcher } from '../../../../components/layout/SeasonSwitcher';
+import { PageTabs } from '../../../../components/layout/PageTabs';
 import { CompetitionSwitcher } from '../../../../components/classifica/CompetitionSwitcher';
 
 type SeasonLayoutProps = {
@@ -40,6 +41,7 @@ export default async function SeasonLayout({ children, params }: SeasonLayoutPro
         </Suspense>
         <SeasonSwitcher seasons={seasons} activeSeasonSlug={season.slug} />
       </nav>
+      <PageTabs seasonSlug={season.slug} />
       {children}
     </div>
   );
