@@ -31,7 +31,7 @@ export default async function CalendarioPage({ params, searchParams }: Calendari
     notFound();
   }
 
-  const matchdays = await getCalendario(supabase, activeCompetition.id);
+  const matchdays = await getCalendario(supabase, activeCompetition.id, season.id);
 
   return (
     <main>

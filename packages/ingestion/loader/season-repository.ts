@@ -42,6 +42,7 @@ export interface SeasonRepository {
   // Helpers di lettura per i test.
   getStandings(competitionSlug: string): Promise<StandingsImport['rows']>;
   getRoster(seasonSlug: string): Promise<RosterImport['entries']>;
+  getTeamCredits(seasonSlug: string): Promise<RosterImport['teamCredits']>;
   getCalendar(competitionSlug: string): Promise<CalendarImport['matchdays']>;
   getLineup(competitionSlug: string, matchdayNumber: number): Promise<LineupImport['matches']>;
 }
@@ -57,6 +58,7 @@ export class InMemorySeasonRepository implements SeasonRepository {
 
   private standings = new Map<string, StandingsImport['rows']>();
   private rosters = new Map<string, RosterImport['entries']>();
+  private teamCredits = new Map<string, RosterImport['teamCredits']>();
   private calendars = new Map<string, CalendarImport['matchdays']>();
   private lineups = new Map<string, LineupImport['matches']>();
 
@@ -103,6 +105,7 @@ export class InMemorySeasonRepository implements SeasonRepository {
   async upsertRoster(input: RosterImport): Promise<void> {
     // Idempotente: sovrascrive l'intera rosa della stagione.
     this.rosters.set(input.seasonSlug, input.entries);
+    this.teamCredits.set(input.seasonSlug, input.teamCredits);
   }
 
   async upsertStandings(input: StandingsImport): Promise<void> {
@@ -126,6 +129,10 @@ export class InMemorySeasonRepository implements SeasonRepository {
 
   async getRoster(seasonSlug: string): Promise<RosterImport['entries']> {
     return this.rosters.get(seasonSlug) ?? [];
+  }
+
+  async getTeamCredits(seasonSlug: string): Promise<RosterImport['teamCredits']> {
+    return this.teamCredits.get(seasonSlug) ?? [];
   }
 
   async getCalendar(competitionSlug: string): Promise<CalendarImport['matchdays']> {

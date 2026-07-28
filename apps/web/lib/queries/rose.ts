@@ -72,6 +72,31 @@ export async function getTeamsWithRoster(supabase: TypedSupabaseClient, seasonId
   return teamsRows.map((team) => ({ id: team.id, slug: team.slug, name: team.canonical_name }));
 }
 
+// team_managers() è una funzione RPC (non una select su `profiles`): la RLS
+// di profiles limita la lettura alla propria riga, quindi il nome di chi
+// gestisce UN'ALTRA squadra non sarebbe altrimenti leggibile — vedi
+// migrazione team_seasons_branding_credits.sql.
+export async function getTeamManagers(supabase: TypedSupabaseClient): Promise<Map<string, string>> {
+  const { data, error } = await supabase.rpc('team_managers');
+
+  if (error) {
+    throw new Error(`Impossibile leggere i responsabili squadra: ${error.message}`);
+  }
+
+  const managers = new Map<string, string>();
+  for (const row of data) {
+    // ponytail: la codegen di Supabase tipizza il ritorno RPC come `string`
+    // non-nullable anche se nullif() in SQL può restituire null (nome e
+    // cognome entrambi assenti) — qui si tratta quindi display_name come
+    // potenzialmente null nonostante il tipo, non ci si fida ciecamente.
+    if (row.display_name) {
+      managers.set(row.team_id, row.display_name);
+    }
+  }
+
+  return managers;
+}
+
 export async function getRoster(
   supabase: TypedSupabaseClient,
   seasonId: string,

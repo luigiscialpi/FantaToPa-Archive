@@ -40,4 +40,20 @@ describe('XlsxRosterAdapter, contro il file reale 2025-26', () => {
     const multiRole = result.entries.find((e) => e.roles.length > 1);
     expect(multiRole).toBeDefined();
   });
+
+  it('legge i crediti residui per tutte e 10 le squadre', async () => {
+    const adapter = new XlsxRosterAdapter('2025-26');
+    const result = await adapter.parse(REAL_FILE);
+
+    expect(result.teamCredits).toHaveLength(10);
+
+    const teamNames = new Set(result.entries.map((e) => e.teamName));
+    const creditsTeamNames = new Set(result.teamCredits.map((c) => c.teamName));
+    expect(creditsTeamNames).toEqual(teamNames);
+
+    for (const credit of result.teamCredits) {
+      expect(Number.isFinite(credit.creditsRemaining)).toBe(true);
+      expect(credit.creditsRemaining).toBeGreaterThanOrEqual(0);
+    }
+  });
 });

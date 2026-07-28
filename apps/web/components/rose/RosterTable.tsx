@@ -22,15 +22,11 @@ function RoleBadges({ roleCodes }: { roleCodes: string[] }) {
 
 export function RosterTable({ players }: { players: RosterPlayerRow[] }) {
   if (players.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-stone-200 px-4 py-8 text-center text-sm text-stone-500">
-        Rosa non disponibile per questa squadra.
-      </div>
-    );
+    return <div className="bg-white px-4 py-8 text-center text-sm text-stone-500">Rosa non disponibile per questa squadra.</div>;
   }
 
   return (
-    <div className="bg-white rounded-xl border border-stone-200 overflow-x-auto">
+    <div className="bg-white overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-stone-200 bg-stone-50 text-stone-500">

@@ -7,6 +7,7 @@
 // query separate + merge in memoria sono più semplici da tenere corrette.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fantatopa/shared-types/database';
+import { getTeamBranding, brandingFor } from './team-branding';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -14,6 +15,7 @@ export type StandingsRow = {
   position: number | null;
   teamName: string;
   teamSlug: string;
+  jerseyUrl: string | null;
   played: number | null;
   won: number | null;
   drawn: number | null;
@@ -25,7 +27,11 @@ export type StandingsRow = {
   totalFantapoints: number | null;
 };
 
-export async function getStandings(supabase: TypedSupabaseClient, competitionId: string): Promise<StandingsRow[]> {
+export async function getStandings(
+  supabase: TypedSupabaseClient,
+  competitionId: string,
+  seasonId: string,
+): Promise<StandingsRow[]> {
   const { data: standingsRows, error: standingsError } = await supabase
     .from('standings')
     .select(
@@ -54,6 +60,7 @@ export async function getStandings(supabase: TypedSupabaseClient, competitionId:
   }
 
   const teamsById = new Map(teamsRows.map((team) => [team.id, team]));
+  const branding = await getTeamBranding(supabase, seasonId, teamIds);
 
   return standingsRows.map((row) => {
     const team = teamsById.get(row.team_id);
@@ -62,6 +69,7 @@ export async function getStandings(supabase: TypedSupabaseClient, competitionId:
       position: row.position,
       teamName: team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
+      jerseyUrl: brandingFor(branding, row.team_id).jerseyUrl,
       played: row.played,
       won: row.won,
       drawn: row.drawn,
@@ -132,6 +140,7 @@ export async function getStandingsForRange(
   supabase: TypedSupabaseClient,
   competitionId: string,
   range: MatchdayRange,
+  seasonId: string,
 ): Promise<StandingsRow[]> {
   const { data: matchdays, error: matchdaysError } = await supabase
     .from('matchdays')
@@ -235,6 +244,7 @@ export async function getStandingsForRange(
   }
 
   const teamsById = new Map(teamsRows.map((team) => [team.id, team]));
+  const branding = await getTeamBranding(supabase, seasonId, teamIds);
 
   const rows: StandingsRow[] = [...accumulators.entries()].map(([teamId, accumulator]) => {
     const team = teamsById.get(teamId);
@@ -245,6 +255,7 @@ export async function getStandingsForRange(
       position: null,
       teamName: team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
+      jerseyUrl: brandingFor(branding, teamId).jerseyUrl,
       played: accumulator.played,
       won: accumulator.won,
       drawn: accumulator.drawn,

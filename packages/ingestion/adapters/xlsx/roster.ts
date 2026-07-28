@@ -24,6 +24,9 @@ function parseCost(raw: unknown): number | undefined {
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
+// Riga di fine sezione, stessa colonna dei ruoli (es. "Crediti Residui: 45").
+const CREDITS_REMAINING_PATTERN = /crediti\s*residui\s*:\s*(-?\d+(?:[.,]\d+)?)/i;
+
 export class XlsxRosterAdapter implements SourceAdapter<RosterImport> {
   constructor(private readonly seasonSlug: string) {}
 
@@ -47,6 +50,7 @@ export class XlsxRosterAdapter implements SourceAdapter<RosterImport> {
     const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
     const entries: RosterImport['entries'] = [];
+    const teamCredits: RosterImport['teamCredits'] = [];
 
     for (let r = 0; r < raw.length; r++) {
       const row = raw[r];
@@ -73,6 +77,13 @@ export class XlsxRosterAdapter implements SourceAdapter<RosterImport> {
           if (!Array.isArray(dataRow)) break;
           const playerName = dataRow[start + 1];
           if (playerName === null || playerName === undefined || String(playerName).trim() === '') {
+            const creditsValue = CREDITS_REMAINING_PATTERN.exec(String(dataRow[start] ?? ''))?.[1];
+            if (creditsValue !== undefined) {
+              teamCredits.push({
+                teamName: trimmedTeamName,
+                creditsRemaining: Number(creditsValue.replace(',', '.')),
+              });
+            }
             break;
           }
           const roles = parseRoles(dataRow[start]);
@@ -93,6 +104,7 @@ export class XlsxRosterAdapter implements SourceAdapter<RosterImport> {
     return RosterImportSchema.parse({
       seasonSlug: this.seasonSlug,
       entries,
+      teamCredits,
     });
   }
 }

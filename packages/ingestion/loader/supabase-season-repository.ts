@@ -204,6 +204,17 @@ export class SupabaseSeasonRepository implements SeasonRepository {
         if (roleError) throw new Error(`Errore upsert ruolo giocatore: ${roleError.message}`);
       }
     }
+
+    for (const credit of input.teamCredits) {
+      const teamId = await this.resolveTeamId(credit.teamName);
+      if (!teamId) throw new Error(`Squadra non trovata per i crediti residui: "${credit.teamName}"`);
+
+      const { error: creditsError } = await this.client.from('team_seasons').upsert(
+        { team_id: teamId, season_id: seasonId, credits_remaining: credit.creditsRemaining },
+        { onConflict: 'team_id, season_id' },
+      );
+      if (creditsError) throw new Error(`Errore upsert crediti residui: ${creditsError.message}`);
+    }
   }
 
   // ============================================================
@@ -394,6 +405,10 @@ export class SupabaseSeasonRepository implements SeasonRepository {
   }
 
   async getRoster(seasonSlug: string): Promise<RosterImport['entries']> {
+    return [];
+  }
+
+  async getTeamCredits(seasonSlug: string): Promise<RosterImport['teamCredits']> {
     return [];
   }
 

@@ -762,6 +762,7 @@ export type Database = {
       }
       team_seasons: {
         Row: {
+          credits_remaining: number | null
           id: string
           jersey_url: string | null
           logo_url: string | null
@@ -770,6 +771,7 @@ export type Database = {
           team_id: string
         }
         Insert: {
+          credits_remaining?: number | null
           id?: string
           jersey_url?: string | null
           logo_url?: string | null
@@ -778,6 +780,7 @@ export type Database = {
           team_id: string
         }
         Update: {
+          credits_remaining?: number | null
           id?: string
           jersey_url?: string | null
           logo_url?: string | null
@@ -828,6 +831,13 @@ export type Database = {
       approve_registration: { Args: { request_id: string }; Returns: undefined }
       can_read_league_data: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      team_managers: {
+        Args: never
+        Returns: {
+          display_name: string
+          team_id: string
+        }[]
+      }
       teams_available_for_registration: {
         Args: never
         Returns: {

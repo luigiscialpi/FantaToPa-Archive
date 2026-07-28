@@ -3,11 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { InMemorySeasonRepository } from './season-repository.js';
 import { XlsxStandingsAdapter } from '../adapters/xlsx/standings.js';
+import { XlsxRosterAdapter } from '../adapters/xlsx/roster.js';
 
 // Stessa fixture reale usata in standings.test.ts, nessun path esterno al repo.
 const REAL_FILE = fileURLToPath(
   new URL('../adapters/xlsx/__fixtures__/Classifica_CAMPIONATO-FANTATOPA-2025-2026.xlsx', import.meta.url),
 );
+const ROSTER_FILE = fileURLToPath(new URL('../adapters/xlsx/__fixtures__/Rose_fantatopa.xlsx', import.meta.url));
 
 describe('InMemorySeasonRepository', () => {
   it('importa la classifica reale e la rilancia due volte senza duplicare (idempotenza)', async () => {
@@ -44,5 +46,17 @@ describe('InMemorySeasonRepository', () => {
 
     const id = await repo.resolveTeamId('MR EKO - C&W F.C. ');
     expect(id).toBeDefined();
+  });
+
+  it('importa i crediti residui dalla rosa reale e li rilancia senza duplicare (idempotenza)', async () => {
+    const adapter = new XlsxRosterAdapter('2025-26');
+    const repo = new InMemorySeasonRepository();
+
+    const parsed = await adapter.parse(ROSTER_FILE);
+    await repo.upsertRoster(parsed);
+    await repo.upsertRoster(parsed); // rilancio intenzionale
+
+    const credits = await repo.getTeamCredits('2025-26');
+    expect(credits).toHaveLength(10);
   });
 });

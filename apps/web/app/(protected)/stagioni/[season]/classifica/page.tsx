@@ -46,8 +46,8 @@ export default async function ClassificaPage({ params, searchParams }: Classific
 
   const standings =
     isRangeFiltered && fromMatchday !== null && toMatchday !== null
-      ? await getStandingsForRange(supabase, activeCompetition.id, { from: fromMatchday, to: toMatchday })
-      : await getStandings(supabase, activeCompetition.id);
+      ? await getStandingsForRange(supabase, activeCompetition.id, { from: fromMatchday, to: toMatchday }, season.id)
+      : await getStandings(supabase, activeCompetition.id, season.id);
 
   return (
     <main>

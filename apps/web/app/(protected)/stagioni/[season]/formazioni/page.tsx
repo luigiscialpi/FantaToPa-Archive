@@ -55,7 +55,7 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
     notFound();
   }
 
-  const matches = await getFormazioni(supabase, activeMatchday.id);
+  const matches = await getFormazioni(supabase, activeMatchday.id, season.id);
 
   return (
     <main>

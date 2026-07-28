@@ -10,6 +10,7 @@
 // è quindi risultati raggruppati per giornata, non un calendario per date.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fantatopa/shared-types/database';
+import { getTeamBranding, brandingFor } from './team-branding';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -17,6 +18,8 @@ export type MatchRow = {
   id: string;
   homeTeamName: string;
   awayTeamName: string;
+  homeJerseyUrl: string | null;
+  awayJerseyUrl: string | null;
   homeScore: number | null;
   awayScore: number | null;
   homeGoals: number | null;
@@ -30,7 +33,11 @@ export type MatchdayGroup = {
   matches: MatchRow[];
 };
 
-export async function getCalendario(supabase: TypedSupabaseClient, competitionId: string): Promise<MatchdayGroup[]> {
+export async function getCalendario(
+  supabase: TypedSupabaseClient,
+  competitionId: string,
+  seasonId: string,
+): Promise<MatchdayGroup[]> {
   const { data: matchdaysRows, error: matchdaysError } = await supabase
     .from('matchdays')
     .select('id, number, label')
@@ -72,11 +79,15 @@ export async function getCalendario(supabase: TypedSupabaseClient, competitionId
       }
     }
 
+    const branding = await getTeamBranding(supabase, seasonId, teamIds);
+
     for (const match of matchesRows) {
       const row: MatchRow = {
         id: match.id,
         homeTeamName: teamNameById.get(match.home_team_id) ?? '—',
         awayTeamName: teamNameById.get(match.away_team_id) ?? '—',
+        homeJerseyUrl: brandingFor(branding, match.home_team_id).jerseyUrl,
+        awayJerseyUrl: brandingFor(branding, match.away_team_id).jerseyUrl,
         homeScore: match.home_score,
         awayScore: match.away_score,
         homeGoals: match.home_goals,

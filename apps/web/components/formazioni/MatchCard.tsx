@@ -1,5 +1,5 @@
 // apps/web/components/formazioni/MatchCard.tsx
-import { Crest } from '../shared/Crest';
+import { TeamCrests } from '../shared/TeamCrests';
 import { LineupColumn } from './LineupColumn';
 import type { FormazioniMatch } from '../../lib/queries/formazioni';
 
@@ -20,7 +20,7 @@ export function MatchCard({ match, expanded, onToggle }: MatchCardProps) {
         aria-expanded={expanded}
         className="w-full bg-brand-600 text-stone-50 px-4 py-3 flex items-center gap-3 cursor-pointer"
       >
-        <Crest name={home.teamName} />
+        <TeamCrests name={home.teamName} logoUrl={home.logoUrl} jerseyUrl={home.jerseyUrl} />
         <div className="flex-1 min-w-0 text-left">
           <div className="text-xs font-medium truncate">{home.teamName}</div>
         </div>
@@ -30,7 +30,7 @@ export function MatchCard({ match, expanded, onToggle }: MatchCardProps) {
         <div className="flex-1 min-w-0 text-right">
           <div className="text-xs font-medium truncate">{away.teamName}</div>
         </div>
-        <Crest name={away.teamName} />
+        <TeamCrests name={away.teamName} logoUrl={away.logoUrl} jerseyUrl={away.jerseyUrl} />
       </button>
 
       {expanded && (

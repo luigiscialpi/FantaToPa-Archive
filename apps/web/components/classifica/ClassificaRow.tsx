@@ -29,7 +29,7 @@ export function ClassificaRow({ row }: { row: StandingsRow }) {
       </td>
       <td className="px-2 py-2">
         <div className="flex items-center gap-2 whitespace-nowrap">
-          <Crest name={row.teamName} />
+          <Crest name={row.teamName} imageUrl={row.jerseyUrl} />
           <span className="text-sm font-semibold text-stone-800">{row.teamName}</span>
         </div>
       </td>

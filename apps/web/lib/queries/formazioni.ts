@@ -12,6 +12,7 @@
 // sorgente (portiere, poi difensori, ecc.).
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fantatopa/shared-types/database';
+import { getTeamBranding, brandingFor } from './team-branding';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -56,6 +57,8 @@ export type LineupPlayerRow = {
 
 export type TeamLineup = {
   teamName: string;
+  logoUrl: string | null;
+  jerseyUrl: string | null;
   formation: string | null;
   totalScore: number | null;
   defenseModifier: number;
@@ -71,7 +74,11 @@ export type FormazioniMatch = {
   away: TeamLineup;
 };
 
-export async function getFormazioni(supabase: TypedSupabaseClient, matchdayId: string): Promise<FormazioniMatch[]> {
+export async function getFormazioni(
+  supabase: TypedSupabaseClient,
+  matchdayId: string,
+  seasonId: string,
+): Promise<FormazioniMatch[]> {
   const { data: matchesRows, error: matchesError } = await supabase
     .from('matches')
     .select('id, home_team_id, away_team_id, home_score, away_score')
@@ -107,6 +114,8 @@ export async function getFormazioni(supabase: TypedSupabaseClient, matchdayId: s
   for (const team of teamsResult.data) {
     teamNameById.set(team.id, team.canonical_name);
   }
+
+  const branding = await getTeamBranding(supabase, seasonId, teamIds);
 
   // Const locale (non lineupsResult.data direttamente): il narrowing
   // non-null di TS sull'errore sopra non attraversa la closure
@@ -165,9 +174,12 @@ export async function getFormazioni(supabase: TypedSupabaseClient, matchdayId: s
   function buildTeamLineup(matchId: string, teamId: string, totalScore: number | null): TeamLineup {
     const lineup = lineups.find((candidate) => candidate.match_id === matchId && candidate.team_id === teamId);
     const players = lineup ? (playersByLineup.get(lineup.id) ?? []) : [];
+    const teamBranding = brandingFor(branding, teamId);
 
     return {
       teamName: teamNameById.get(teamId) ?? '—',
+      logoUrl: teamBranding.logoUrl,
+      jerseyUrl: teamBranding.jerseyUrl,
       formation: lineup?.formation ?? null,
       totalScore,
       defenseModifier: lineup?.defense_modifier ?? 0,

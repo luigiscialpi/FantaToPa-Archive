@@ -24,6 +24,17 @@ export const RosterImportSchema = z.object({
       cost: z.number().nonnegative().optional(),
     }),
   ),
+  // Riga "Crediti Residui: N" a fine sezione squadra in Rose_x.xlsx, una per
+  // squadra. Default vuoto (non opzionale) così il loader non deve
+  // controllare `undefined` in più punti oltre al caso "non ancora parsato".
+  teamCredits: z
+    .array(
+      z.object({
+        teamName: z.string().min(1),
+        creditsRemaining: z.number(),
+      }),
+    )
+    .default([]),
 });
 export type RosterImport = z.infer<typeof RosterImportSchema>;
 
