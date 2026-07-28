@@ -12,6 +12,7 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   { segment: 'classifica', label: 'Classifica' },
   { segment: 'calendario', label: 'Calendario' },
+  { segment: 'rose', label: 'Rose' },
 ];
 
 export function PageTabs({ seasonSlug }: { seasonSlug: string }) {

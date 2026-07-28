@@ -6,11 +6,18 @@
 // passata come prop da una pagina. Il link punta al pathname corrente
 // (qualunque pagina di dominio: Classifica oggi, Calendario/Rose/Formazioni
 // in futuro), non più a un percorso Classifica hardcoded.
+//
+// Nascosto sulle pagine senza dimensione competizione (es. Rose: rosters/
+// player_roles sono per season+team, non per competition — vedi
+// lib/queries/rose.ts) — altrimenti mostrerebbe pillole cliccabili che non
+// cambiano nulla nella pagina corrente.
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import type { CompetitionOption } from '../../lib/queries/seasons';
+
+const COMPETITION_SCOPED_SEGMENTS = ['classifica', 'calendario'];
 
 type CompetitionSwitcherProps = {
   competitions: CompetitionOption[];
@@ -20,7 +27,11 @@ export function CompetitionSwitcher({ competitions }: CompetitionSwitcherProps) 
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  if (competitions.length <= 1) {
+  const isCompetitionScopedPage = COMPETITION_SCOPED_SEGMENTS.some((segment) =>
+    pathname.includes(`/${segment}`),
+  );
+
+  if (competitions.length <= 1 || !isCompetitionScopedPage) {
     return null;
   }
 
