@@ -22,10 +22,10 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     return (
       <main className="min-h-screen flex items-center justify-center bg-stone-100 px-4">
         <div className="w-full max-w-sm bg-white rounded-xl border border-stone-200 p-6 text-center space-y-4">
-          <h1 className="font-serif font-bold text-lg text-emerald-950">Archivio FantaTopa</h1>
+          <h1 className="font-serif font-bold text-lg text-brand-950">Archivio FantaTopa</h1>
           <p className="text-sm text-stone-600">{message}</p>
           <form action={signOut}>
-            <button type="submit" className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+            <button type="submit" className="text-xs font-semibold uppercase tracking-wide text-brand-800">
               Esci
             </button>
           </form>

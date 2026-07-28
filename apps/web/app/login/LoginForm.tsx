@@ -20,7 +20,7 @@ export function LoginForm() {
           type="email"
           required
           autoComplete="email"
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-700"
         />
       </div>
       <div>
@@ -33,14 +33,14 @@ export function LoginForm() {
           type="password"
           required
           autoComplete="current-password"
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-700"
         />
       </div>
       {state.error && <p className="text-sm text-red-700">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-emerald-900 text-stone-50 font-semibold text-sm py-2.5 disabled:opacity-60"
+        className="w-full rounded-lg bg-brand-400 text-brand-950 font-semibold text-sm py-2.5 disabled:opacity-60"
       >
         {pending ? 'Accesso in corso…' : 'Accedi'}
       </button>

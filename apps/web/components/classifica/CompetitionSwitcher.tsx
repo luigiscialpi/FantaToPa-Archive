@@ -14,7 +14,7 @@ export function CompetitionSwitcher({ seasonSlug, competitions, activeCompetitio
   }
 
   return (
-    <nav className="flex gap-2 overflow-x-auto px-4 py-2 bg-emerald-900">
+    <nav className="flex gap-2 overflow-x-auto px-4 py-2 bg-brand-600">
       {competitions.map((competition) => {
         const active = competition.slug === activeCompetitionSlug;
 
@@ -23,7 +23,7 @@ export function CompetitionSwitcher({ seasonSlug, competitions, activeCompetitio
             key={competition.id}
             href={`/stagioni/${seasonSlug}/classifica?competizione=${competition.slug}`}
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-              active ? 'bg-amber-400 text-emerald-950' : 'bg-emerald-800 text-emerald-100'
+              active ? 'bg-amber-400 text-brand-950' : 'bg-white text-brand-700'
             }`}
           >
             {competition.name}

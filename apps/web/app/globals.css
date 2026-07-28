@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+/* Scala colori "brand" derivata da #2E6BE6, posizionato come tonalità
+   medio-scura (600) invece che come anchor centrale: header/nav/bottoni
+   usano le tinte chiare (100-400) della stessa scala, non quelle scure. */
+@theme {
+  --color-brand-50: #f5f8fe;
+  --color-brand-100: #e6edfc;
+  --color-brand-200: #cbdaf9;
+  --color-brand-300: #a7c1f5;
+  --color-brand-400: #7da3f0;
+  --color-brand-500: #5486eb;
+  --color-brand-600: #2e6be6;
+  --color-brand-700: #2556b8;
+  --color-brand-800: #1d428f;
+  --color-brand-900: #153068;
+  --color-brand-950: #0d1e40;
+}

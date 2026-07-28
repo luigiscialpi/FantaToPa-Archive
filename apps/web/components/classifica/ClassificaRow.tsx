@@ -40,7 +40,7 @@ export function ClassificaRow({ row }: { row: StandingsRow }) {
       <StatCell value={row.goalsFor} />
       <StatCell value={row.goalsAgainst} />
       <td className="px-2 py-2 text-center tabular-nums text-stone-600">{goalDiffLabel}</td>
-      <td className="px-2 py-2 text-center font-serif font-bold text-emerald-800 tabular-nums">
+      <td className="px-2 py-2 text-center font-serif font-bold text-brand-800 tabular-nums">
         {row.points ?? '–'}
       </td>
       <td className="px-2 py-2 text-center text-stone-500 tabular-nums">{row.totalFantapoints ?? '–'}</td>

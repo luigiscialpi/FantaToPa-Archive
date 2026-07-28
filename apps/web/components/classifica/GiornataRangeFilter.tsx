@@ -97,7 +97,7 @@ export function GiornataRangeFilter({
 
         {/* Track selezionata */}
         <div
-          className="absolute h-1.5 rounded-full bg-emerald-600"
+          className="absolute h-1.5 rounded-full bg-brand-600"
           style={{
             left: `${leftPercent}%`,
             width: `${rightPercent - leftPercent}%`,
@@ -149,7 +149,7 @@ export function GiornataRangeFilter({
           <button
             type="button"
             onClick={handleReset}
-            className="text-xs font-semibold text-emerald-800 hover:underline"
+            className="text-xs font-semibold text-brand-800 hover:underline"
           >
             Reimposta stagione intera
           </button>
@@ -166,14 +166,14 @@ export function GiornataRangeFilter({
           height: 18px;
           border-radius: 9999px;
           background: #fff;
-          border: 2px solid #047857;
+          border: 2px solid #2556b8;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
           cursor: grab;
           transition: box-shadow 0.15s ease;
         }
         .slider-thumb::-webkit-slider-thumb:active {
           cursor: grabbing;
-          box-shadow: 0 0 0 4px rgba(4, 120, 87, 0.2);
+          box-shadow: 0 0 0 4px rgba(37, 86, 184, 0.2);
         }
         .slider-thumb::-moz-range-thumb {
           pointer-events: auto;
@@ -181,16 +181,16 @@ export function GiornataRangeFilter({
           height: 18px;
           border-radius: 9999px;
           background: #fff;
-          border: 2px solid #047857;
+          border: 2px solid #2556b8;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
           cursor: grab;
         }
         .slider-thumb::-moz-range-thumb:active {
           cursor: grabbing;
-          box-shadow: 0 0 0 4px rgba(4, 120, 87, 0.2);
+          box-shadow: 0 0 0 4px rgba(37, 86, 184, 0.2);
         }
         .slider-thumb:focus-visible::-webkit-slider-thumb {
-          outline: 2px solid #047857;
+          outline: 2px solid #2556b8;
           outline-offset: 2px;
         }
       `}</style>

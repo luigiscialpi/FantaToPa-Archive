@@ -21,7 +21,7 @@ export function Crest({ name, highlight = false }: CrestProps) {
   return (
     <div
       className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold font-serif ring-2 ${
-        highlight ? 'bg-amber-400 text-emerald-950 ring-amber-200' : 'bg-emerald-800 text-amber-200 ring-emerald-700'
+        highlight ? 'bg-amber-400 text-brand-950 ring-amber-200' : 'bg-brand-200 text-brand-800 ring-brand-400'
       }`}
     >
       {initials}

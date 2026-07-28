@@ -63,7 +63,7 @@ export default async function ClassificaPage({ params, searchParams }: Classific
         activeCompetitionSlug={activeCompetition.slug}
       />
       <div className="p-4">
-        <h1 className="font-serif font-bold text-xl text-emerald-950 mb-1">{season.label}</h1>
+        <h1 className="font-serif font-bold text-xl text-brand-950 mb-1">{season.label}</h1>
         <p className="text-sm text-stone-500 mb-4">{activeCompetition.name}</p>
         {bounds && (
           <GiornataRangeFilter
