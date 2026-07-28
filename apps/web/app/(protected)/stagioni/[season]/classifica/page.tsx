@@ -1,13 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '../../../../../lib/supabase/server';
-import {
-  getCompetitions,
-  getMatchdayBounds,
-  getSeasons,
-  getStandings,
-  getStandingsForRange,
-} from '../../../../../lib/queries/classifica';
-import { CompetitionSwitcher } from '../../../../../components/classifica/CompetitionSwitcher';
+import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons';
+import { getMatchdayBounds, getStandings, getStandingsForRange } from '../../../../../lib/queries/classifica';
 import { ClassificaTable } from '../../../../../components/classifica/ClassificaTable';
 import { GiornataRangeFilter } from '../../../../../components/classifica/GiornataRangeFilter';
 
@@ -57,11 +51,6 @@ export default async function ClassificaPage({ params, searchParams }: Classific
 
   return (
     <main>
-      <CompetitionSwitcher
-        seasonSlug={season.slug}
-        competitions={competitions}
-        activeCompetitionSlug={activeCompetition.slug}
-      />
       <div className="p-4">
         <h1 className="font-serif font-bold text-xl text-brand-950 mb-1">{season.label}</h1>
         <p className="text-sm text-stone-500 mb-4">{activeCompetition.name}</p>

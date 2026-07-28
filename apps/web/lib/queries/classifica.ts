@@ -10,18 +10,6 @@ import type { Database } from '@fantatopa/shared-types/database';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
-export type SeasonOption = {
-  id: string;
-  slug: string;
-  label: string;
-};
-
-export type CompetitionOption = {
-  id: string;
-  slug: string;
-  name: string;
-};
-
 export type StandingsRow = {
   position: number | null;
   teamName: string;
@@ -36,33 +24,6 @@ export type StandingsRow = {
   points: number | null;
   totalFantapoints: number | null;
 };
-
-export async function getSeasons(supabase: TypedSupabaseClient): Promise<SeasonOption[]> {
-  const { data, error } = await supabase
-    .from('seasons')
-    .select('id, slug, label')
-    .order('starts_on', { ascending: false });
-
-  if (error) {
-    throw new Error(`Impossibile leggere le stagioni: ${error.message}`);
-  }
-
-  return data;
-}
-
-export async function getCompetitions(supabase: TypedSupabaseClient, seasonId: string): Promise<CompetitionOption[]> {
-  const { data, error } = await supabase
-    .from('competitions')
-    .select('id, slug, name')
-    .eq('season_id', seasonId)
-    .order('slug', { ascending: true });
-
-  if (error) {
-    throw new Error(`Impossibile leggere le competizioni: ${error.message}`);
-  }
-
-  return data;
-}
 
 export async function getStandings(supabase: TypedSupabaseClient, competitionId: string): Promise<StandingsRow[]> {
   const { data: standingsRows, error: standingsError } = await supabase

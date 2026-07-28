@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
-import { getSeasons } from '../../lib/queries/classifica';
+import { getSeasons } from '../../lib/queries/seasons';
 
 export default async function HomePage() {
   const supabase = await createClient();
