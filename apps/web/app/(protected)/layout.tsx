@@ -35,9 +35,11 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-stone-100">
-      <AppHeader profile={profile} />
-      {children}
+    <div className="min-h-screen bg-stone-200 bg-skin-desktop lg:py-6">
+      <div className="max-w-5xl mx-auto bg-stone-100 min-h-screen lg:min-h-[calc(100vh-3rem)] lg:rounded-xl lg:shadow-xl overflow-hidden border-stone-300 lg:border">
+        <AppHeader profile={profile} />
+        {children}
+      </div>
     </div>
   );
 }

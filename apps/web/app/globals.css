@@ -16,3 +16,17 @@
   --color-brand-900: #153068;
   --color-brand-950: #0d1e40;
 }
+
+/* Sfondo con immagini skin (header + bande laterali sinistra/destra) stile Fantacalcio per vista Desktop */
+@media (min-width: 1024px) {
+  .bg-skin-desktop {
+    background-image:
+      url('/skins/default/skin_header.png'),
+      url('/skins/default/skin_left.png'),
+      url('/skins/default/skin_right.png');
+    background-size: 1080px 152px, 420px 990px, 420px 990px;
+    background-position: calc(50% - 1px) 0px, calc(50% - 730px + 1px) 0px, calc(50% + 730px - 1px) 0px;
+    background-repeat: no-repeat;
+  }
+}
+
