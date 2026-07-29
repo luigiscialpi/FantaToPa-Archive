@@ -62,6 +62,7 @@ export type TeamLineup = {
   formation: string | null;
   totalScore: number | null;
   defenseModifier: number;
+  fieldAdvantage: number;
   submittedVia: 'app' | 'web' | null;
   submittedAt: string | null;
   starters: LineupPlayerRow[];
@@ -99,7 +100,7 @@ export async function getFormazioni(
     supabase.from('teams').select('id, canonical_name').in('id', teamIds),
     supabase
       .from('lineups')
-      .select('id, match_id, team_id, formation, defense_modifier, submitted_via, submitted_at')
+      .select('id, match_id, team_id, formation, defense_modifier, field_advantage, submitted_via, submitted_at')
       .in('match_id', matchIds),
   ]);
 
@@ -183,6 +184,7 @@ export async function getFormazioni(
       formation: lineup?.formation ?? null,
       totalScore,
       defenseModifier: lineup?.defense_modifier ?? 0,
+      fieldAdvantage: lineup?.field_advantage ?? 0,
       submittedVia: lineup?.submitted_via === 'app' || lineup?.submitted_via === 'web' ? lineup.submitted_via : null,
       submittedAt: lineup?.submitted_at ?? null,
       starters: players.filter((player) => player.slot === 'titolare'),

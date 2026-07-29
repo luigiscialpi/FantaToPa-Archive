@@ -220,6 +220,7 @@ export type Database = {
       lineups: {
         Row: {
           defense_modifier: number
+          field_advantage: number
           formation: string | null
           id: string
           match_id: string
@@ -229,6 +230,7 @@ export type Database = {
         }
         Insert: {
           defense_modifier?: number
+          field_advantage?: number
           formation?: string | null
           id?: string
           match_id: string
@@ -238,6 +240,7 @@ export type Database = {
         }
         Update: {
           defense_modifier?: number
+          field_advantage?: number
           formation?: string | null
           id?: string
           match_id?: string

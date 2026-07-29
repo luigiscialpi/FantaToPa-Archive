@@ -116,6 +116,11 @@ export const LineupTeamImportSchema = z.object({
   // Assente nel file quando il modificatore è zero, non quando manca il
   // dato: default 0 qui invece di lasciarlo optional a valle.
   defenseModifier: z.number().int().default(0),
+  // Solo nei file di Coppa Fase Finale (eliminazione diretta): bonus per chi
+  // ha il vantaggio campo in quel turno. Assente altrove, stesso default 0
+  // di defenseModifier per lo stesso motivo (assente = non applicabile, non
+  // dato mancante).
+  fieldAdvantage: z.number().int().default(0),
   total: z.number(),
   players: z.array(LineupPlayerImportSchema),
   // Riga "Inserita via app/web il DD-MM-YYYY HH:mm:ss" in fondo a ogni

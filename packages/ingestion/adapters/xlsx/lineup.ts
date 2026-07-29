@@ -152,6 +152,7 @@ type PartialLineupTeam = {
   teamName: string;
   formation?: string;
   defenseModifier?: number;
+  fieldAdvantage?: number;
   total?: number;
   submittedVia?: 'app' | 'web';
   submittedAt?: string;
@@ -220,29 +221,55 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
           continue;
         }
 
-        if (typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('modificatore')) {
-          home.defenseModifier = parseNumberOrNull(dataRow[HOME_START + 4]) ?? undefined;
-          away.defenseModifier = parseNumberOrNull(dataRow[AWAY_START + 4]) ?? undefined;
-          // In Coppa il totale away può trovarsi sulla stessa riga del modificatore.
-          if (away.total === undefined) away.total = parseTotal(dataRow[AWAY_START]);
-          continue;
-        }
+        // Modificatore difesa e TOTALE possono cadere su righe diverse per
+        // home e away: quando una squadra non applica il modificatore, il
+        // file salta del tutto la sua riga "Modificatore difesa" e la sua
+        // colonna guadagna un anticipo di una riga sull'altra per il resto
+        // del blocco partita. Il desync è stato osservato in ENTRAMBE le
+        // direzioni: away in anticipo su home (giornata 37 2025-26,
+        // Carloparola Fc: away.total letto per errore dalla riga "Inserita
+        // via..." di away, che non è una riga di totale) e home in anticipo
+        // su away (giornata 23 2025-26, Los Cientoquattros Hertha Rallo: la
+        // riga "TOTALE" di away non veniva mai raggiunta perché il branch si
+        // basava solo su homeCell0, e away.total restava undefined -> 0 di
+        // default). Per questo le due fasi vanno rilevate e lette in modo
+        // indipendente per ciascuna colonna, non assumendo che siano sempre
+        // allineate sulla stessa riga o che sia sempre home a "guidare".
+        //
+        // Nei file di Coppa Fase Finale esiste anche una riga "Fattore
+        // campo" (bonus per chi ha il vantaggio campo in quel turno di
+        // eliminazione diretta), presente solo per una colonna. Il suo
+        // valore è già incluso nel TOTALE della riga successiva, ma va
+        // ANCHE salvato a parte (come defenseModifier) per poterlo mostrare
+        // in UI. La riga va comunque riconosciuta ed esclusa dal check
+        // "Inserita via..." sotto — altrimenti, quando questa riga coincide
+        // con la vera sottomissione dell'altra squadra (già arrivata prima
+        // perché non ha "Fattore campo"), il loop si interrompe subito e il
+        // totale della squadra ancora in corso (che deve leggere ancora
+        // "Fattore campo" + TOTALE + la propria sottomissione) resta
+        // undefined -> 0 di default (bug reale: Prozalpi S.F. 0 punti in
+        // Coppa Fase Finale giornata 1).
+        const homeIsModificatore = typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('modificatore');
+        const awayIsModificatore = typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('modificatore');
+        const homeIsTotale = typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('totale');
+        const awayIsTotale = typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('totale');
+        const homeIsFattoreCampo = typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('fattore campo');
+        const awayIsFattoreCampo = typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('fattore campo');
 
-        if (typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('totale')) {
-          home.total = parseTotal(homeCell0);
-          // Bug reale (giornata 37 2025-26, Carloparola Fc): quando away non ha
-          // un modificatore difesa, il file salta del tutto la sua riga
-          // "Modificatore difesa" e le due colonne si desincronizzano di una
-          // riga per il resto del blocco partita. A questo punto awayCell0 è
-          // già la riga "Inserita via ..." di away (non un totale), ma prima
-          // veniva comunque passata a parseTotal, che ci estraeva il primo
-          // numero trovato (es. il giorno "22" da "...il 22-05-2026...") e
-          // sovrascriveva un away.total già corretto, letto sulla riga
-          // precedente dal ramo "modificatore" sopra. Va aggiornato solo se
-          // la cella away è davvero una riga di totale.
-          if (away.total === undefined && typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('totale')) {
-            away.total = parseTotal(awayCell0);
-          }
+        if (
+          homeIsModificatore ||
+          awayIsModificatore ||
+          homeIsTotale ||
+          awayIsTotale ||
+          homeIsFattoreCampo ||
+          awayIsFattoreCampo
+        ) {
+          if (homeIsModificatore) home.defenseModifier = parseNumberOrNull(dataRow[HOME_START + 4]) ?? undefined;
+          if (awayIsModificatore) away.defenseModifier = parseNumberOrNull(dataRow[AWAY_START + 4]) ?? undefined;
+          if (homeIsFattoreCampo) home.fieldAdvantage = parseNumberOrNull(dataRow[HOME_START + 4]) ?? undefined;
+          if (awayIsFattoreCampo) away.fieldAdvantage = parseNumberOrNull(dataRow[AWAY_START + 4]) ?? undefined;
+          if (homeIsTotale) home.total = parseTotal(homeCell0);
+          if (awayIsTotale) away.total = parseTotal(awayCell0);
           continue;
         }
 
@@ -304,6 +331,7 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
           teamName: home.teamName,
           formation: home.formation,
           defenseModifier: home.defenseModifier,
+          fieldAdvantage: home.fieldAdvantage,
           total: home.total ?? 0,
           submittedVia: home.submittedVia,
           submittedAt: home.submittedAt,
@@ -313,6 +341,7 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
           teamName: away.teamName,
           formation: away.formation,
           defenseModifier: away.defenseModifier,
+          fieldAdvantage: away.fieldAdvantage,
           total: away.total ?? 0,
           submittedVia: away.submittedVia,
           submittedAt: away.submittedAt,

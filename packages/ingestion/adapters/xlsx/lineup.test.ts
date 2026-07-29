@@ -125,3 +125,66 @@ describe('XlsxLineupAdapter, quando una squadra non ha modificatore difesa (gior
     expect(secondMatch?.away.total).toBe(66);
   });
 });
+
+const HOME_MISSING_DEFENSE_MODIFIER_FILE = fileURLToPath(
+  new URL('./__fixtures__/Formazioni_fantatopa_23_giornata.xlsx', import.meta.url),
+);
+
+describe('XlsxLineupAdapter, quando è HOME a non avere modificatore difesa (giornata 23)', () => {
+  it('legge comunque il totale away, anche se la sua riga "TOTALE" arriva quando home è già oltre', async () => {
+    // Bug reale (Los Cientoquattros Hertha Rallo, giornata 23): qui è HOME
+    // (MR EKO - C&W F.C.) a non applicare il modificatore difesa, quindi è
+    // la sua colonna ad "anticipare" di una riga rispetto ad away — il
+    // desync opposto rispetto al caso giornata 37 sopra. Il codice vecchio
+    // decideva se una riga fosse "modificatore"/"totale" guardando solo
+    // homeCell0: quando home arrivava già alla riga "Inserita via..." mentre
+    // away era ancora sulla sua riga "TOTALE", quella riga non veniva mai
+    // letta come totale e away.total restava undefined -> 0 di default in
+    // LineupImportSchema. Le due fasi vanno rilevate in modo indipendente
+    // per ciascuna colonna, non assumendo che sia sempre home ad "anticipare".
+    const adapter = new XlsxLineupAdapter('2025-26', 'campionato');
+    const result = await adapter.parse(HOME_MISSING_DEFENSE_MODIFIER_FILE);
+
+    const match = result.matches.find(
+      (m) => m.home.teamName.startsWith('MR EKO') && m.away.teamName.startsWith('LOS CIENTOQUATTROS'),
+    );
+    expect(match).toBeDefined();
+    expect(match?.home.defenseModifier).toBe(0);
+    expect(match?.home.total).toBe(64.5);
+    expect(match?.away.defenseModifier).toBe(1);
+    expect(match?.away.total).toBe(68.5);
+  });
+});
+
+const FASE_FINALE_FATTORE_CAMPO_FILE = fileURLToPath(
+  new URL('./__fixtures__/Formazioni_COPPA_FASE_FINALE_1_giornata.xlsx', import.meta.url),
+);
+
+describe('XlsxLineupAdapter, riga "Fattore campo" di Coppa Fase Finale (giornata 1)', () => {
+  it('non interrompe la lettura prima che home raggiunga il proprio totale', async () => {
+    // Bug reale (Prozalpi S.F., Coppa Fase Finale giornata 1): questi file
+    // hanno una riga extra "Fattore campo" (bonus casa dell'eliminazione
+    // diretta) solo per una colonna, il cui valore è già incluso nel TOTALE
+    // della riga successiva. Quando ALL'INTERNO DELLO STESSO MATCH away non
+    // applica il modificatore difesa (quindi è già avanti, sul proprio
+    // TOTALE/sottomissione) mentre home deve ancora leggere "Fattore campo"
+    // + il proprio TOTALE, il vecchio codice interrompeva subito il loop
+    // non appena UNA delle due colonne conteneva una riga "Inserita via...",
+    // scartando il TOTALE di home ancora da leggere -> home.total restava
+    // undefined -> 0 di default.
+    const adapter = new XlsxLineupAdapter('2025-26', 'coppa-fase-finale');
+    const result = await adapter.parse(FASE_FINALE_FATTORE_CAMPO_FILE);
+
+    const match = result.matches.find(
+      (m) => m.home.teamName.startsWith('PROZALPI') && m.away.teamName.startsWith('REAL COCU'),
+    );
+    expect(match).toBeDefined();
+    expect(match?.home.total).toBe(72.5);
+    expect(match?.away.total).toBe(74.5);
+    // Prozalpi ha il vantaggio campo in questo turno: il bonus (+1, già
+    // incluso nel totale sopra) va anche salvato a parte per poterlo
+    // mostrare in UI, esattamente come defenseModifier.
+    expect(match?.home.fieldAdvantage).toBe(1);
+    expect(match?.away.fieldAdvantage).toBe(0);
+  });
+});

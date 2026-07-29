@@ -61,6 +61,15 @@ export function LineupColumn({ lineup }: { lineup: TeamLineup }) {
         </div>
       )}
 
+      {lineup.fieldAdvantage !== 0 && (
+        <div className="mt-3 mb-1.5 pt-2 border-t border-stone-200">
+          <span className="text-sm text-stone-700 tabular-nums">
+            Fattore campo: {lineup.fieldAdvantage > 0 ? "+" : ""}
+            {lineup.fieldAdvantage}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mt-3 pt-2 border-t border-stone-200">
         {lineup.submittedVia && lineup.submittedAt ? (
           <span className="text-[11px] text-stone-400">

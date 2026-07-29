@@ -355,6 +355,7 @@ export class SupabaseSeasonRepository implements SeasonRepository {
           team_id: teamId,
           formation: team.formation ?? null,
           defense_modifier: team.defenseModifier,
+          field_advantage: team.fieldAdvantage,
           submitted_via: team.submittedVia ?? null,
           submitted_at: team.submittedAt ?? null,
         },
