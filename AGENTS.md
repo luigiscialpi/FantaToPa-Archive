@@ -33,6 +33,13 @@ pubblico.
 - **Ingestion: adapter → schema Zod per concern → `SeasonRepository`**: mai scrivere su
   Supabase direttamente da un parser. Un `SeasonRepository` finto in memoria deve poter
   sostituire quello reale nei test, senza rete.
+- **L'adapter Formazioni xlsx (`lineup.ts`) legge le colonne home/away come due stream
+  indipendenti, mai una coppia sincronizzata riga per riga**: il file salta o aggiunge
+  righe (es. "Modificatore difesa" assente se zero, "Fattore campo" solo in Coppa Fase
+  Finale) per un solo lato alla volta. Dedurre lo stato di una riga guardando solo la
+  cella home (o assumendo che home e away siano sulla stessa riga) ha causato 3 bug reali
+  di totali azzerati — qualsiasi nuovo tipo di riga scoperto va riconosciuto ed escluso
+  per entrambe le colonne separatamente.
 - **Funzioni Postgres usate in policy RLS: sempre `plpgsql`, mai `sql`** — una funzione
   `sql security definer` può venire inlined dal query planner e perdere il privilegio
   elevato, riportando la ricorsione che dovrebbe evitare.

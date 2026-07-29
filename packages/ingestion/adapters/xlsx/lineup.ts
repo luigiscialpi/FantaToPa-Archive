@@ -13,9 +13,21 @@ import type { SourceAdapter } from '../types.js';
 //   - riga "Panchina"
 //   - righe successive: riserve
 //   - riga "Modificatore difesa" con valore in col 4 (home) / col 10 (away)
+//   - riga "Fattore campo" con valore in col 4/10 — SOLO nei file di Coppa
+//     Fase Finale (bonus vantaggio campo dell'eliminazione diretta), assente
+//     in Campionato e nei gironi di Coppa.
 //   - riga "TOTALE: 74,00" / "TOTALE: 77,50"
 //   - riga "Inserita via app|web il DD-MM-YYYY HH:mm:ss"
 //   - riga vuota
+//
+// ATTENZIONE: questo elenco è l'ordine "tipico", non garantito uguale per
+// home e away sulla stessa riga. Il file può saltare una riga (es.
+// "Modificatore difesa" assente se il modificatore è 0) o averne una in più
+// per un solo lato (es. "Fattore campo") indipendentemente per le due
+// colonne — le due squadre vanno quindi lette come due stream indipendenti,
+// mai assumendo che siano allineate riga per riga. Dettagli e bug reali
+// causati da questa assunzione sbagliata nei commenti dentro il loop più
+// sotto (branch modificatore/totale/fattore campo).
 //
 // Usiamo exceljs (non xlsx/SheetJS Community) perché serve leggere il colore
 // font delle celle fantavoto: il file marca in verde (font FF008000) i voti
