@@ -230,7 +230,19 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
 
         if (typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('totale')) {
           home.total = parseTotal(homeCell0);
-          if (typeof awayCell0 === 'string') away.total = parseTotal(awayCell0);
+          // Bug reale (giornata 37 2025-26, Carloparola Fc): quando away non ha
+          // un modificatore difesa, il file salta del tutto la sua riga
+          // "Modificatore difesa" e le due colonne si desincronizzano di una
+          // riga per il resto del blocco partita. A questo punto awayCell0 è
+          // già la riga "Inserita via ..." di away (non un totale), ma prima
+          // veniva comunque passata a parseTotal, che ci estraeva il primo
+          // numero trovato (es. il giorno "22" da "...il 22-05-2026...") e
+          // sovrascriveva un away.total già corretto, letto sulla riga
+          // precedente dal ramo "modificatore" sopra. Va aggiornato solo se
+          // la cella away è davvero una riga di totale.
+          if (away.total === undefined && typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('totale')) {
+            away.total = parseTotal(awayCell0);
+          }
           continue;
         }
 

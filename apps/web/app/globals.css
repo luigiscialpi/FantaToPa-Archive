@@ -27,6 +27,7 @@
     background-size: 1080px 152px, 420px 990px, 420px 990px;
     background-position: calc(50% - 1px) 0px, calc(50% - 730px + 1px) 0px, calc(50% + 730px - 1px) 0px;
     background-repeat: no-repeat;
+    background-attachment: fixed;
   }
 }
 

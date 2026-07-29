@@ -90,3 +90,38 @@ describe('XlsxLineupAdapter, contro il file reale 2025-26 (giornata 1)', () => {
     expect(zappa?.countsForTotal).toBe(true);
   });
 });
+
+const NO_DEFENSE_MODIFIER_FILE = fileURLToPath(
+  new URL('./__fixtures__/Formazioni_fantatopa_37_giornata.xlsx', import.meta.url),
+);
+
+describe('XlsxLineupAdapter, quando una squadra non ha modificatore difesa (giornata 37)', () => {
+  it('non legge un totale falso dalla riga "Inserita via" della squadra sfalsata', async () => {
+    // Bug reale: quando away non applica un modificatore difesa, il file
+    // salta del tutto la sua riga "Modificatore difesa" e le colonne
+    // home/away si desincronizzano di una riga per il resto del blocco
+    // partita. Il totale away finiva per essere letto dalla riga "Inserita
+    // via ... il 22-05-2026 ..." (il parser prendeva "22" come se fosse un
+    // punteggio). Il vero totale (61,50) è già disponibile una riga sopra,
+    // sulla stessa riga del "Modificatore difesa" di home.
+    const adapter = new XlsxLineupAdapter('2025-26', 'campionato');
+    const result = await adapter.parse(NO_DEFENSE_MODIFIER_FILE);
+
+    const match = result.matches.find(
+      (m) => m.home.teamName.startsWith('PROZALPI') && m.away.teamName.startsWith('CARLOPAROLA'),
+    );
+    expect(match).toBeDefined();
+    expect(match?.away.defenseModifier).toBe(0);
+    expect(match?.away.total).toBe(61.5);
+    expect(match?.home.total).toBe(65.5);
+
+    // Stesso schema, seconda partita della stessa giornata: prova che non è
+    // un caso isolato del primo match, ma un pattern ricorrente nel file.
+    const secondMatch = result.matches.find(
+      (m) => m.home.teamName.startsWith('UNIONE SPORTIVA NERITINA') && m.away.teamName.startsWith('REAL COCU'),
+    );
+    expect(secondMatch).toBeDefined();
+    expect(secondMatch?.away.defenseModifier).toBe(0);
+    expect(secondMatch?.away.total).toBe(66);
+  });
+});
