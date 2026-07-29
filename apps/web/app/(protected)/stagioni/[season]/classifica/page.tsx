@@ -31,23 +31,32 @@ export default async function ClassificaPage({ params, searchParams }: Classific
     notFound();
   }
 
-  const bounds = await getMatchdayBounds(supabase, activeCompetition.id);
   const fromMatchday = da ? Number(da) : null;
   const toMatchday = a ? Number(a) : null;
+  const hasRangeParams = fromMatchday !== null && toMatchday !== null;
 
-  // "Filtrata" solo se l'intervallo scelto è un vero sotto-insieme della
-  // stagione: se coincide con l'intera stagione usiamo lo snapshot importato
-  // in `standings` (più affidabile, ha anche Gf/Gs) invece di ricalcolare.
-  const isRangeFiltered =
-    bounds !== null &&
-    fromMatchday !== null &&
-    toMatchday !== null &&
-    (fromMatchday !== bounds.min || toMatchday !== bounds.max);
+  // Caso comune (nessun filtro range): bounds e standings sono indipendenti,
+  // lanciali in parallelo. Quando da/a sono nei searchParams, bounds serve
+  // prima per decidere se il range è un vero sotto-insieme della stagione
+  // (se no, usiamo lo snapshot da `standings` che ha anche Gf/Gs).
+  let bounds: Awaited<ReturnType<typeof getMatchdayBounds>>;
+  let standings: Awaited<ReturnType<typeof getStandings>>;
 
-  const standings =
-    isRangeFiltered && fromMatchday !== null && toMatchday !== null
+  if (!hasRangeParams) {
+    [bounds, standings] = await Promise.all([
+      getMatchdayBounds(supabase, activeCompetition.id),
+      getStandings(supabase, activeCompetition.id, season.id),
+    ]);
+  } else {
+    bounds = await getMatchdayBounds(supabase, activeCompetition.id);
+    const isRangeFiltered =
+      bounds !== null &&
+      (fromMatchday !== bounds.min || toMatchday !== bounds.max);
+
+    standings = isRangeFiltered
       ? await getStandingsForRange(supabase, activeCompetition.id, { from: fromMatchday, to: toMatchday }, season.id)
       : await getStandings(supabase, activeCompetition.id, season.id);
+  }
 
   return (
     <main>

@@ -50,17 +50,16 @@ export async function getStandings(
     return [];
   }
 
-  const { data: teamsRows, error: teamsError } = await supabase
-    .from('teams')
-    .select('id, canonical_name, slug')
-    .in('id', teamIds);
+  const [teamsResult, branding] = await Promise.all([
+    supabase.from('teams').select('id, canonical_name, slug').in('id', teamIds),
+    getTeamBranding(supabase, seasonId, teamIds),
+  ]);
 
-  if (teamsError) {
-    throw new Error(`Impossibile leggere le squadre: ${teamsError.message}`);
+  if (teamsResult.error) {
+    throw new Error(`Impossibile leggere le squadre: ${teamsResult.error.message}`);
   }
 
-  const teamsById = new Map(teamsRows.map((team) => [team.id, team]));
-  const branding = await getTeamBranding(supabase, seasonId, teamIds);
+  const teamsById = new Map(teamsResult.data.map((team) => [team.id, team]));
 
   return standingsRows.map((row) => {
     const team = teamsById.get(row.team_id);
@@ -234,17 +233,16 @@ export async function getStandingsForRange(
     return [];
   }
 
-  const { data: teamsRows, error: teamsError } = await supabase
-    .from('teams')
-    .select('id, canonical_name, slug')
-    .in('id', teamIds);
+  const [teamsResult, branding] = await Promise.all([
+    supabase.from('teams').select('id, canonical_name, slug').in('id', teamIds),
+    getTeamBranding(supabase, seasonId, teamIds),
+  ]);
 
-  if (teamsError) {
-    throw new Error(`Impossibile leggere le squadre: ${teamsError.message}`);
+  if (teamsResult.error) {
+    throw new Error(`Impossibile leggere le squadre: ${teamsResult.error.message}`);
   }
 
-  const teamsById = new Map(teamsRows.map((team) => [team.id, team]));
-  const branding = await getTeamBranding(supabase, seasonId, teamIds);
+  const teamsById = new Map(teamsResult.data.map((team) => [team.id, team]));
 
   const rows: StandingsRow[] = [...accumulators.entries()].map(([teamId, accumulator]) => {
     const team = teamsById.get(teamId);

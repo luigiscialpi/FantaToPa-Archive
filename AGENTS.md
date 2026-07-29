@@ -36,6 +36,15 @@ pubblico.
 - **Funzioni Postgres usate in policy RLS: sempre `plpgsql`, mai `sql`** — una funzione
   `sql security definer` può venire inlined dal query planner e perdere il privilegio
   elevato, riportando la ricorsione che dovrebbe evitare.
+- **`createClient` e query cross-dominio (`getSeasons`, `getCompetitions`) wrappate in
+  `cache()` di React**: layout e page le invocano entrambi nella stessa render request;
+  senza `cache()` partirebbero due volte. La cache è per-request (non cross-utente),
+  quindi rispetta la RLS. Query di dominio specifiche (classifica, formazioni...) non
+  servono in `cache()` perché chiamate da un solo punto.
+- **Ogni route sotto `stagioni/[season]/` ha un `loading.tsx`** con skeleton animato che
+  ricalca la struttura della pagina reale. Il layout di stagione (navbar + tab) resta
+  visibile durante il caricamento — lo skeleton sostituisce solo `{children}`. Nuove
+  pagine di stagione devono avere il proprio `loading.tsx`.
 
 ## Come scrivere codice qui
 

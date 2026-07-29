@@ -6,6 +6,12 @@
 // Formazioni) per risolvere la stagione/competizione attiva dai parametri
 // URL. Vivono qui e non in `classifica.ts` perché non sono specifiche di
 // quella pagina — vedi AGENTS.md, query Supabase mai nei componenti React.
+//
+// Wrappate in cache() di React: layout e page invocano entrambe getSeasons/
+// getCompetitions nella stessa render request — cache() garantisce che la
+// query parta una volta sola (la cache è per-request, non cross-utente,
+// quindi rispetta la RLS).
+import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fantatopa/shared-types/database';
 
@@ -23,7 +29,7 @@ export type CompetitionOption = {
   name: string;
 };
 
-export async function getSeasons(supabase: TypedSupabaseClient): Promise<SeasonOption[]> {
+export const getSeasons = cache(async (supabase: TypedSupabaseClient): Promise<SeasonOption[]> => {
   const { data, error } = await supabase
     .from('seasons')
     .select('id, slug, label')
@@ -34,9 +40,9 @@ export async function getSeasons(supabase: TypedSupabaseClient): Promise<SeasonO
   }
 
   return data;
-}
+});
 
-export async function getCompetitions(supabase: TypedSupabaseClient, seasonId: string): Promise<CompetitionOption[]> {
+export const getCompetitions = cache(async (supabase: TypedSupabaseClient, seasonId: string): Promise<CompetitionOption[]> => {
   const { data, error } = await supabase
     .from('competitions')
     .select('id, slug, name')
@@ -48,4 +54,4 @@ export async function getCompetitions(supabase: TypedSupabaseClient, seasonId: s
   }
 
   return data;
-}
+});

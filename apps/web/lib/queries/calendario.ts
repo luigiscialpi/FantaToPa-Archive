@@ -10,7 +10,7 @@
 // è quindi risultati raggruppati per giornata, non un calendario per date.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fantatopa/shared-types/database';
-import { getTeamBranding, brandingFor } from './team-branding';
+import { getTeamBranding, brandingFor, type TeamBranding } from './team-branding';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -63,23 +63,24 @@ export async function getCalendario(
 
     const teamIds = [...new Set(matchesRows.flatMap((match) => [match.home_team_id, match.away_team_id]))];
     const teamNameById = new Map<string, string>();
+    let branding = new Map<string, TeamBranding>();
 
     if (teamIds.length > 0) {
-      const { data: teamsRows, error: teamsError } = await supabase
-        .from('teams')
-        .select('id, canonical_name')
-        .in('id', teamIds);
+      const [teamsResult, brandingResult] = await Promise.all([
+        supabase.from('teams').select('id, canonical_name').in('id', teamIds),
+        getTeamBranding(supabase, seasonId, teamIds),
+      ]);
 
-      if (teamsError) {
-        throw new Error(`Impossibile leggere le squadre: ${teamsError.message}`);
+      if (teamsResult.error) {
+        throw new Error(`Impossibile leggere le squadre: ${teamsResult.error.message}`);
       }
 
-      for (const team of teamsRows) {
+      for (const team of teamsResult.data) {
         teamNameById.set(team.id, team.canonical_name);
       }
-    }
 
-    const branding = await getTeamBranding(supabase, seasonId, teamIds);
+      branding = brandingResult;
+    }
 
     for (const match of matchesRows) {
       const row: MatchRow = {
