@@ -13,6 +13,7 @@ type TypedSupabaseClient = SupabaseClient<Database>;
 
 export type StandingsRow = {
   position: number | null;
+  teamId: string;
   teamName: string;
   teamSlug: string;
   jerseyUrl: string | null;
@@ -66,6 +67,7 @@ export async function getStandings(
 
     return {
       position: row.position,
+      teamId: row.team_id,
       teamName: team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
       jerseyUrl: brandingFor(branding, row.team_id).jerseyUrl,
@@ -251,6 +253,7 @@ export async function getStandingsForRange(
 
     return {
       position: null,
+      teamId,
       teamName: team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
       jerseyUrl: brandingFor(branding, teamId).jerseyUrl,

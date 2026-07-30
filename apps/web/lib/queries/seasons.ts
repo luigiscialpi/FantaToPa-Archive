@@ -21,31 +21,33 @@ export type SeasonOption = {
   id: string;
   slug: string;
   label: string;
+  endsOn: string | null;
 };
 
 export type CompetitionOption = {
   id: string;
   slug: string;
   name: string;
+  kindCode: string;
 };
 
 export const getSeasons = cache(async (supabase: TypedSupabaseClient): Promise<SeasonOption[]> => {
   const { data, error } = await supabase
     .from('seasons')
-    .select('id, slug, label')
+    .select('id, slug, label, ends_on')
     .order('starts_on', { ascending: false });
 
   if (error) {
     throw new Error(`Impossibile leggere le stagioni: ${error.message}`);
   }
 
-  return data;
+  return data.map((row) => ({ id: row.id, slug: row.slug, label: row.label, endsOn: row.ends_on }));
 });
 
 export const getCompetitions = cache(async (supabase: TypedSupabaseClient, seasonId: string): Promise<CompetitionOption[]> => {
   const { data, error } = await supabase
     .from('competitions')
-    .select('id, slug, name')
+    .select('id, slug, name, kind_code')
     .eq('season_id', seasonId)
     .order('slug', { ascending: true });
 
@@ -53,5 +55,5 @@ export const getCompetitions = cache(async (supabase: TypedSupabaseClient, seaso
     throw new Error(`Impossibile leggere le competizioni: ${error.message}`);
   }
 
-  return data;
+  return data.map((row) => ({ id: row.id, slug: row.slug, name: row.name, kindCode: row.kind_code }));
 });

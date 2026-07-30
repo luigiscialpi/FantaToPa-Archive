@@ -677,7 +677,7 @@ La v1 di questa sezione era una lista di pagine, non un progetto di interazione 
 **Mappa delle pagine** (consolidata da tutta la discussione, aggiornata dopo la scelta "riservato"):
 
 *Non autenticato*: Login/Registrazione (nome, cognome, squadra opzionale — è di fatto anche la landing page, non c'è altro da vedere finché non sei approvato) · stato "richiesta in revisione".
-*Membro approvato*: Home (con pannello personalizzato) · Classifica · Calendario/Risultati · Formazioni · **Statistiche** (confronto punti/fantapunti tra due squadre, scoperta nel mockup) · Rosa squadra · Profilo squadra (storico) · Profilo giocatore (storico) · Albo d'oro · Ricerca · Il mio profilo (stato, squadra associata, sola lettura).
+*Membro approvato*: **Home** (pannello squadra personale, vetrina generale, galleria stagioni — dettagliata più sotto) · Classifica · Calendario/Risultati · Formazioni · **Statistiche** (confronto punti/fantapunti tra due squadre, scoperta nel mockup) · Rosa squadra · Profilo squadra (storico) · Profilo giocatore (storico) · Albo d'oro · Ricerca · Il mio profilo (stato, squadra associata, sola lettura).
 *Admin*: Pannello import (upload→anteprima→conferma) · Gestione registrazioni (approva/rifiuta).
 Trasversale a tutte le pagine da membro: selettore stagione/competizione persistente in header (nav, non una pagina a sé). **Albo d'oro fa eccezione**: a differenza di Classifica/Formazioni/Statistiche (scoperte per una singola stagione/competizione selezionata), mostra TUTTE le annate insieme in un'unica lista scorrevole — coerente con cosa è davvero un albo d'oro (un registro storico), non con lo schema "seleziona prima l'anno". Podio Campionato (1° al centro più alto, 2° a sinistra, 3° a destra) più vincitore Coppa per ogni stagione; le stagioni senza dato (2022-23) mostrano lo stato vuoto esplicito invece di essere saltate in silenzio.
 
@@ -699,15 +699,27 @@ Rispetto alla mappa precedente: non esiste più una versione "pubblica" della Ho
 
 **Accessibilità come base**: contrasto colore per eventuali codifiche-colore-squadra, alt text sui loghi, focus da tastiera nel pannello admin. Con Tailwind e HTML semantico è quasi gratis se lo pensi da subito, costa caro se lo rincorri dopo.
 
-**Homepage personalizzata per utente/squadra — risolve anche la domanda che avevo lasciato aperta** (archivio-consultazione vs esperienza da esplorare: ora è chiaramente la seconda). Meccanismo: `profiles.team_id` (sezione 6), assegnato dall'admin, non self-service — resta vero che l'utente normale non scrive nulla. Da loggato con squadra assegnata, la home aggiunge un pannello personalizzato sopra ai contenuti generali; da sloggato o senza squadra assegnata, resta la versione generica. Proposta di statistiche, in ordine di priorità (tutte query di aggregazione sullo schema già definito, nessuna nuova complessità architetturale):
+**Homepage personalizzata per utente/squadra — risolve anche la domanda che avevo lasciato aperta** (archivio-consultazione vs esperienza da esplorare: ora è chiaramente la seconda). È anche, letteralmente, la pagina che oggi manca: la route `/` si limita a un `redirect` alla classifica dell'ultima stagione, nessun contenuto proprio — corretto come placeholder in Fase 2, ma è il momento di sostituirlo.
 
-1. **Andamento storico** — grafico a linee del piazzamento per stagione partecipata.
-2. **Bacheca** — conteggio Campionati/Coppe vinti nel tempo (posizione 1 in `standings` per competizione).
+**Gerarchia della pagina, dall'alto verso il basso** — è la prima schermata dopo il login, deve orientare prima di elencare: (1) pannello squadra personale, solo se l'utente ha una squadra assegnata; (2) vetrina generale, visibile a chiunque sia approvato, squadra o no; (3) galleria stagioni, l'ingresso verso l'archivio vero e proprio.
+
+**1. Pannello squadra personale** — meccanismo: `profiles.team_id` (sezione 6), assegnato dall'admin, non self-service. Da loggato con squadra assegnata, la home aggiunge questo pannello sopra al resto; senza squadra assegnata si salta direttamente al punto 2 — niente sezione vuota "nessuna squadra", è proprio assente. Proposta di statistiche, in ordine di priorità (tutte query di aggregazione sullo schema già definito, nessuna nuova complessità architetturale):
+
+1. **Andamento storico** — grafico a linee del piazzamento per stagione partecipata. Con una sola stagione importata è un punto solo: sotto le 3 stagioni il componente mostra invece una card "stagione corrente" (posizione, punti, distacco dalla prima) e diventa grafico da solo appena i dati bastano a renderlo leggibile — stesso principio degli stati vuoti scritto sopra, non un placeholder silenzioso.
+2. **Bacheca** — conteggio titoli vinti nel tempo (posizione 1 in `standings`), Campionato e Coppa separati (es. "Campionati: 1 · Coppe: 0") invece di un unico numero che nasconde quale competizione.
 3. **Testa a testa** — record V/N/P contro ciascun avversario storico, da `matches`.
 4. **Record personali** — miglior/peggior punteggio fantavoto di sempre, con giornata e avversario.
-5. **Giocatore più fedele** — chi è rimasto in rosa più stagioni consecutive per quella squadra, da `rosters`.
+5. **Giocatore chiave** — con storico multi-stagione sufficiente, chi è rimasto in rosa più stagioni consecutive per quella squadra (da `rosters`); nella stagione singola attuale la stessa card mostra il giocatore più schierato di questa stagione (da `lineup_players`) — stesso slot, metrica che matura quando i dati lo permettono, non una voce che nel frattempo resta vuota o finta.
 
-Nota architetturale: a differenza delle pagine di stagione chiusa (sezione 3, punto 5), questo pannello è per definizione dinamico/per-utente — non è una contraddizione del principio "statico di default", è un'isola personalizzata sopra una shell che resta statica per il resto. Se vuoi, la prossima volta ti propongo 2-3 varianti di layout per questo pannello prima di scriverci codice sopra.
+**2. Vetrina generale** — non richiede una squadra assegnata, quindi visibile anche a un membro approvato senza rivendicazione (es. chi segue la lega da spettatore). Digest verso le pagine dedicate, non una loro duplicazione:
+- **Ultimi risultati** — mini-riepilogo dell'ultima giornata giocata, con link a Calendario.
+- **Classifica in breve** — prime 3 posizioni, più la riga della squadra dell'utente evidenziata se fuori dal podio; link a Classifica completa.
+- **Record della lega** — punteggio fantavoto più alto mai registrato in una giornata e vittoria con il margine più ampio, entrambi da `matches`, calcolati su tutte le squadre.
+- **Squadra più titolata** — teaser (nome squadra + conteggio) che rimanda ad Albo d'oro, non lo sostituisce — la home non deve diventare una copia parziale di una pagina che esiste già.
+
+**3. Galleria stagioni** — l'ingresso per navigare le annate a partire dalla home, distinto dal selettore persistente in header (sopra): quello serve a restare sulla stessa vista cambiando stagione da dentro una pagina già aperta, questo serve a scoprire quali stagioni esistono partendo da zero contesto. Una card per riga di `seasons` (stesso ordine di `getSeasons`), con etichetta, badge "in corso" per la stagione senza `ends_on`, click verso la classifica di quella stagione. Con una sola stagione (2025-26) la galleria è una card sola — non è uno stato transitorio da rimandare, è lo stato in cui deve reggere bene fin da subito: se ne aggiunge una ogni stagione che chiude.
+
+Nota architetturale: come per le altre statistiche di questa sezione, tutto quanto sopra si calcola da tabelle già esistenti (`standings`, `matches`, `lineup_players`, `rosters`, `team_seasons`, `seasons`) — nessuna tabella nuova, solo query di aggregazione nuove e indipendenti tra loro (`apps/web/lib/queries/home.ts`), parallelizzabili con `Promise.all` come già in uso altrove in questa sezione. Il pannello squadra (punto 1) e la vetrina generale (punto 2) sono sezioni della stessa pagina, non due home diverse — quando `team_id` è nullo sparisce solo la prima, il resto resta identico. Questa è la proposta di layout definita, non 2-3 varianti tra cui scegliere: se qualcosa non convince (ordine delle sezioni, quali record di lega mostrare) conviene discuterlo puntualmente piuttosto che riaprire il foglio bianco.
 
 **Cose che restano invariate dal v1, confermate**: rosa/profilo giocatore trasversale, profilo storico squadra, albo d'oro, ricerca full-text nativa Postgres (niente Algolia, sarebbe over-engineering per questi volumi), generazione statica per stagioni chiuse — vedi sezione 3, punto 5.
 
@@ -726,7 +738,7 @@ Pagine Classifica/Calendario/Rose/Formazioni per stagione, rendering server-side
 Supabase Auth, ruoli, RLS, upload → anteprima → conferma import. Registrazione utenti (nome/cognome/squadra rivendicata), Edge Function + Resend per la notifica email admin, schermata admin per approvare/rifiutare le richieste.
 
 **Fase 4 — Feature trasversali**
-Profilo giocatore multi-stagione, profilo squadra storico, ricerca. **Albo d'oro** (podio Campionato + vincitore Coppa per ogni annata, layout già in mockup) e **Statistiche** (confronto punti/fantapunti tra due squadre, sezione 6 — nessuna tabella nuova, si calcola da `matches`) hanno già un mockup funzionante: restano da collegare ai dati reali e aggiungere le competizioni diverse dal Campionato.
+**Home personalizzata** (pannello squadra + vetrina generale + galleria stagioni, sezione 10 — priorità alta: è il primo schermo dopo il login e oggi la route `/` si limita a un redirect alla classifica). Profilo giocatore multi-stagione, profilo squadra storico, ricerca. **Albo d'oro** (podio Campionato + vincitore Coppa per ogni annata, layout già in mockup) e **Statistiche** (confronto punti/fantapunti tra due squadre, sezione 6 — nessuna tabella nuova, si calcola da `matches`) hanno già un mockup funzionante: restano da collegare ai dati reali e aggiungere le competizioni diverse dal Campionato.
 
 **Fase 5 — Dati legacy (immagini 2020-21/2021-22)**
 Adapter OCR (img2table), eventuale cross-check vision LLM, import con revisione admin.
