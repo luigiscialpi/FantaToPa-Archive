@@ -5,7 +5,7 @@
 // idempotente su matchday_id+home_team_id+away_team_id, vedi
 // supabase-season-repository.ts) per popolare le due colonne sulle partite
 // già importate. Non tocca rose/formazioni/classifiche: quelle non sono
-// cambiate, non serve ri-eseguire tutto pilot-import-2025-26.ts.
+// cambiate, non serve ri-eseguire tutto import-season.ts.
 import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
 import { createIngestionClient } from '../lib/supabase-client.js';

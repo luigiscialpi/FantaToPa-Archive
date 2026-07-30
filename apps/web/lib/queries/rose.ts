@@ -30,9 +30,13 @@ export type RosterPlayerRow = {
 
 // Ordine "Mantra" standard (portiere → difensori → centrocampisti →
 // attaccanti), lo stesso ordine con cui i ruoli sono caricati nella lookup
-// table roles (vedi pilot-import-2025-26.ts). Serve solo a ordinare la rosa
-// in modo leggibile, non a validare i codici — quello resta compito
-// dell'import (Zod + FK su roles).
+// table roles (vedi packages/ingestion/scripts/import-season.ts). Serve solo
+// a ordinare la rosa in modo leggibile, non a validare i codici — quello
+// resta compito dell'import (Zod + FK su roles).
+// NOTA: le stagioni con ruleset "classico" (2020-21/2021-22/2022-23) usano
+// anche i codici "P"/"D", non elencati qui — roleRank li mette in coda
+// invece che in testa (fallback esplicito sotto), nessun crash ma ordine
+// non ideale finché non si aggiorna per il ruleset classico.
 const ROLE_ORDER = ['Por', 'Dc', 'Ds', 'Dd', 'B', 'E', 'M', 'C', 'W', 'T', 'A', 'Pc'];
 
 function roleRank(roleCodes: string[]): number {

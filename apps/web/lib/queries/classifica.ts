@@ -122,7 +122,7 @@ type TeamAccumulator = {
   goalsFor: number;
   goalsAgainst: number;
   // Le partite di Coppa fase gironi non hanno un calendario xlsx sorgente
-  // (solo formazioni + classifica finale, vedi pilot-import-2025-26.ts):
+  // (solo formazioni + classifica finale, vedi packages/ingestion/scripts/import-season.ts):
   // home_goals/away_goals restano null per quelle. Se anche una sola partita
   // nel range non ha i gol, meglio mostrare Gf/Gs assenti per l'intera riga
   // che un parziale silenzioso.
