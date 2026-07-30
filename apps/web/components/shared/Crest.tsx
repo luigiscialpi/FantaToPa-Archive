@@ -1,8 +1,8 @@
 // apps/web/components/shared/Crest.tsx
 //
 // Mostra l'immagine reale (logo o maglia) quando team_seasons la fornisce
-// (vedi migrazione team_seasons_branding_credits.sql + script di backfill
-// backfill-team-branding-2025-26.ts); altrimenti iniziali su sfondo
+// (vedi migrazione team_seasons_branding_credits.sql + step seedBranding in
+// import-season.ts); altrimenti iniziali su sfondo
 // colorato come fallback — la maggior parte delle squadre non ha ancora
 // un'immagine caricata, non è un caso d'errore.
 // object-contain (non cover): le maglie sono più larghe che alte dentro un

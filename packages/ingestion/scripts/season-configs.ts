@@ -28,6 +28,13 @@ export interface CoppaFaseFinaleFiles {
   folder: string;
 }
 
+export interface SeasonBrandingFolders {
+  /** Cartella con le immagini logo squadra (nome file ≈ nome squadra). */
+  loghi: string;
+  /** Cartella con le immagini maglia squadra (nome file ≈ nome squadra). */
+  maglie: string;
+}
+
 export interface SeasonConfig {
   slug: string;
   label: string;
@@ -38,6 +45,8 @@ export interface SeasonConfig {
   root: string;
   /** undefined = rosa d'asta assente per questa stagione (2022-23: nessun Rose_*.xlsx nello zip). */
   rosterFolder: string | undefined;
+  /** undefined = nessuna cartella "Loghi & Maglie" raccolta per questa stagione. */
+  brandingFolder: SeasonBrandingFolders | undefined;
   campionato: {
     /** Cartella con Classifica_*.xlsx e Calendario_*.xlsx del campionato. */
     folder: string;
@@ -75,6 +84,7 @@ export const SEASON_CONFIGS: SeasonConfig[] = [
     ruleset: 'classico',
     root: ROOT_2020_21,
     rosterFolder: ROOT_2020_21,
+    brandingFolder: undefined,
     campionato: {
       folder: ROOT_2020_21, // niente sottocartella "Campionato/" per questa stagione
       lineupsFolder: path.join(ROOT_2020_21, 'Formazioni di giornata'),
@@ -95,6 +105,7 @@ export const SEASON_CONFIGS: SeasonConfig[] = [
     ruleset: 'classico',
     root: ROOT_2021_22,
     rosterFolder: ROOT_2021_22,
+    brandingFolder: undefined,
     campionato: {
       folder: ROOT_2021_22,
       lineupsFolder: path.join(ROOT_2021_22, 'Formazioni di giornata'),
@@ -118,6 +129,8 @@ export const SEASON_CONFIGS: SeasonConfig[] = [
     // Nessun Rose_fantatopa.xlsx nello zip per questa stagione — verificato,
     // non è in nessuna sottocartella. Squadre seminate dalla classifica.
     rosterFolder: undefined,
+    // Nessuna cartella "Loghi & Maglie" per questa stagione — verificato.
+    brandingFolder: undefined,
     campionato: {
       folder: path.join(ROOT_2022_23, 'Campionato'),
       lineupsFolder: path.join(ROOT_2022_23, 'Campionato', 'Formazioni'),
@@ -136,6 +149,10 @@ export const SEASON_CONFIGS: SeasonConfig[] = [
     ruleset: 'mantra', // Mantra ma senza il ruolo B (Terzino) — nessuna azione richiesta, il ruolo semplicemente non compare nei dati
     root: ROOT_2023_24,
     rosterFolder: ROOT_2023_24,
+    brandingFolder: {
+      loghi: path.join(ROOT_2023_24, 'Loghi & Maglie', 'Loghi'),
+      maglie: path.join(ROOT_2023_24, 'Loghi & Maglie', 'Maglie'),
+    },
     campionato: {
       folder: path.join(ROOT_2023_24, 'Campionato'),
       lineupsFolder: path.join(ROOT_2023_24, 'Campionato', 'Formazioni'),
@@ -154,6 +171,10 @@ export const SEASON_CONFIGS: SeasonConfig[] = [
     ruleset: 'mantra',
     root: ROOT_2024_25,
     rosterFolder: ROOT_2024_25,
+    brandingFolder: {
+      loghi: path.join(ROOT_2024_25, 'Loghi & Maglie', 'Loghi'),
+      maglie: path.join(ROOT_2024_25, 'Loghi & Maglie', 'Maglie'),
+    },
     campionato: {
       folder: path.join(ROOT_2024_25, 'Campionato'),
       lineupsFolder: path.join(ROOT_2024_25, 'Campionato', 'Formazioni'),
@@ -174,6 +195,10 @@ export const SEASON_CONFIGS: SeasonConfig[] = [
     ruleset: 'mantra',
     root: ROOT_2025_26,
     rosterFolder: ROOT_2025_26,
+    brandingFolder: {
+      loghi: path.join(ROOT_2025_26, 'Loghi & Maglie', 'Loghi'),
+      maglie: path.join(ROOT_2025_26, 'Loghi & Maglie', 'Maglie'),
+    },
     campionato: {
       folder: path.join(ROOT_2025_26, 'Campionato'),
       lineupsFolder: path.join(ROOT_2025_26, 'Campionato', 'Formazioni'),

@@ -20,7 +20,7 @@ import { XlsxLineupAdapter } from '../adapters/xlsx/lineup.js';
 import { findXlsxByPrefix, listXlsxByPrefix } from '../lib/discover-files.js';
 import { getSeasonConfig, type SeasonConfig } from './season-configs.js';
 import { TEAM_REGISTRY } from './team-registry.js';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { normalizeName } from '../lib/normalize-name.js';
 
@@ -200,6 +200,94 @@ async function seedTeams(config: SeasonConfig, repo: SupabaseSeasonRepository): 
   console.log(`Seed squadre: ${teamNames.size} squadre per ${config.slug}`);
 }
 
+// ============================================================
+// Branding (loghi/maglie) — generalizza backfill-team-branding-2025-26.ts
+// ============================================================
+
+const BRANDING_IMAGE_PATTERN = /\.(png|jpe?g|webp)$/i;
+// 2024-25/Maglie aggiunge un suffisso "_maglia" al nome squadra (le altre
+// stagioni e le cartelle Loghi no): va tolto prima del match per alias,
+// altrimenti "Andreajax_maglia" non normalizza a nessun alias noto.
+const BRANDING_SUFFIX_PATTERN = /[ _-]?(maglia|logo)$/i;
+type BrandingKind = 'logo' | 'jersey';
+type BrandingTeam = { id: string; slug: string; canonicalName: string };
+
+async function buildTeamBrandingLookup(client: SupabaseClient): Promise<Map<string, BrandingTeam>> {
+  const { data: teams, error: teamsError } = await client.from('teams').select('id, slug, canonical_name');
+  if (teamsError) throw new Error(`Errore lettura squadre: ${teamsError.message}`);
+  const { data: aliases, error: aliasError } = await client.from('team_aliases').select('team_id, alias_normalized');
+  if (aliasError) throw new Error(`Errore lettura alias squadre: ${aliasError.message}`);
+
+  const byId = new Map(teams.map((team) => [team.id, team]));
+  const lookup = new Map<string, BrandingTeam>();
+  for (const team of teams) {
+    lookup.set(normalizeName(team.canonical_name), { id: team.id, slug: team.slug, canonicalName: team.canonical_name });
+  }
+  for (const alias of aliases) {
+    const team = byId.get(alias.team_id);
+    if (team) lookup.set(alias.alias_normalized, { id: team.id, slug: team.slug, canonicalName: team.canonical_name });
+  }
+  return lookup;
+}
+
+async function uploadBrandingAsset(
+  client: SupabaseClient,
+  seasonId: string,
+  seasonSlug: string,
+  team: BrandingTeam,
+  kind: BrandingKind,
+  filePath: string,
+): Promise<void> {
+  const ext = path.extname(filePath).slice(1).toLowerCase() || 'png';
+  const storagePath = `${seasonSlug}/${team.slug}/${kind}.${ext}`;
+  const buffer = await readFile(filePath);
+
+  const { error: uploadError } = await client.storage.from('team-branding').upload(storagePath, buffer, {
+    contentType: ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : 'image/png',
+    upsert: true,
+  });
+  if (uploadError) throw new Error(`Errore upload ${kind} per "${team.canonicalName}": ${uploadError.message}`);
+
+  const {
+    data: { publicUrl },
+  } = client.storage.from('team-branding').getPublicUrl(storagePath);
+  const patch = kind === 'logo' ? { logo_url: publicUrl } : { jersey_url: publicUrl };
+  const { error: updateError } = await client
+    .from('team_seasons')
+    .upsert({ team_id: team.id, season_id: seasonId, ...patch }, { onConflict: 'team_id, season_id' });
+  if (updateError) throw new Error(`Errore aggiornamento ${kind} per "${team.canonicalName}": ${updateError.message}`);
+
+  console.log(`  OK ${kind === 'logo' ? 'logo ' : 'maglia'} -> ${team.canonicalName} (${storagePath})`);
+}
+
+async function seedBranding(client: SupabaseClient, seasonId: string, config: SeasonConfig): Promise<void> {
+  if (!config.brandingFolder) {
+    console.log(`${config.slug}: nessuna cartella Loghi & Maglie, branding non caricato`);
+    return;
+  }
+
+  const lookup = await buildTeamBrandingLookup(client);
+  const dirs: { dir: string; kind: BrandingKind }[] = [
+    { dir: config.brandingFolder.loghi, kind: 'logo' },
+    { dir: config.brandingFolder.maglie, kind: 'jersey' },
+  ];
+
+  for (const { dir, kind } of dirs) {
+    const entries = await readdir(dir);
+    const files = entries.filter((name) => BRANDING_IMAGE_PATTERN.test(name)).map((name) => path.join(dir, name));
+    console.log(`${kind === 'logo' ? 'Loghi' : 'Maglie'}: ${files.length} file in ${dir}`);
+    for (const filePath of files) {
+      const baseName = path.basename(filePath, path.extname(filePath)).trim().replace(BRANDING_SUFFIX_PATTERN, '');
+      const team = lookup.get(normalizeName(baseName));
+      if (!team) {
+        console.warn(`  ? nessuna squadra riconosciuta per "${path.basename(filePath)}"`);
+        continue;
+      }
+      await uploadBrandingAsset(client, seasonId, config.slug, team, kind, filePath);
+    }
+  }
+}
+
 async function seedPlayersFromRoster(config: SeasonConfig, repo: SupabaseSeasonRepository): Promise<void> {
   const rosterFile = config.rosterFolder ? await findXlsxByPrefix(config.rosterFolder, 'rose') : undefined;
   if (!rosterFile) {
@@ -257,6 +345,15 @@ async function seedPlayersFromLineups(client: SupabaseClient, config: SeasonConf
 
     const overrideTarget = overrides[name];
     if (overrideTarget) {
+      // Override che punta al proprio stesso nome: non un alias, conferma
+      // esplicita dell'utente che è un giocatore reale distinto (stesso
+      // cognome ma persona diversa, es. ambiguità di ruolo non risolvibile
+      // per iniziale), non semplice fallback "nessun candidato".
+      if (normalizeName(overrideTarget) === key) {
+        newPlayerNames.add(name);
+        knownExact.add(key);
+        continue;
+      }
       const targetKey = normalizeName(overrideTarget);
       const targetPlayer = allPlayers.find((p) => normalizeName(p.canonical_name) === targetKey);
       if (targetPlayer) {
@@ -404,6 +501,7 @@ async function importSeason(slug: string): Promise<void> {
   await ensureCompetitions(client, seasonId, config);
 
   await seedTeams(config, repo);
+  await seedBranding(client, seasonId, config);
   await seedPlayersFromRoster(config, repo);
   await seedPlayersFromLineups(client, config, repo);
   await importRoster(config, repo);
