@@ -3,23 +3,23 @@ import Link from 'next/link';
 import { signOut } from '../../lib/auth/actions';
 import type { SessionProfile } from '../../lib/auth/session';
 
-// inline-flex items-center su entrambi: un <button> (dentro <form>, che è
-// anch'esso flex) e un <a> di Link altrimenti si allineano su baseline
-// diverse nella riga flex del genitore — visibile come "Esci" più in basso
-// di "Admin" nonostante classi identiche.
+// inline-flex items-center su entrambi per perfetto allineamento verticale
 const navItemClassName =
-  'inline-flex items-center text-xs font-semibold uppercase tracking-wide text-brand-100 hover:text-white px-2 py-1';
+  'inline-flex items-center text-xs font-medium tracking-wide text-brand-100 hover:text-white hover:bg-brand-600/60 px-2.5 py-1 rounded-md transition-colors';
 
 export function AppHeader({ profile }: { profile: SessionProfile }) {
   const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email || 'Membro';
 
   return (
-    <header className="bg-brand-600 text-stone-50 px-4 py-3 flex items-center justify-between gap-3">
+    <header className="bg-brand-700 text-stone-50 px-4 py-3 flex items-center justify-between gap-3 border-b border-brand-800/40">
       <div className="min-w-0">
-        <Link href="/" className="block font-serif font-bold tracking-tight text-base truncate hover:text-stone-100">
+        <Link href="/" className="block font-serif font-bold tracking-tight text-base sm:text-lg truncate hover:text-stone-100 transition-colors">
           Archivio FantaTopa
         </Link>
-        <div className="text-xs text-brand-100 truncate">{displayName}</div>
+        <div className="text-xs text-brand-200/90 truncate flex items-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span>{displayName}</span>
+        </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {profile.role === 'admin' && (

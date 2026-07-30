@@ -20,7 +20,7 @@ export function PageTabs({ seasonSlug }: { seasonSlug: string }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex gap-4 px-4 border-b border-stone-200 bg-white">
+    <div className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-none min-w-0 flex-1">
       {TABS.map((tab) => {
         const href = `/stagioni/${seasonSlug}/${tab.segment}`;
         const active = pathname.startsWith(href);
@@ -29,8 +29,10 @@ export function PageTabs({ seasonSlug }: { seasonSlug: string }) {
           <Link
             key={tab.segment}
             href={href}
-            className={`py-2 text-sm font-semibold border-b-2 -mb-px ${
-              active ? 'border-brand-600 text-brand-800' : 'border-transparent text-stone-500 hover:text-stone-700'
+            className={`py-2.5 text-xs sm:text-sm font-bold border-b-2 -mb-px whitespace-nowrap transition-colors ${
+              active
+                ? 'border-brand-600 text-brand-900'
+                : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
             {tab.label}

@@ -38,7 +38,10 @@ export function CompetitionSwitcher({ competitions }: CompetitionSwitcherProps) 
   const activeCompetitionSlug = searchParams.get('competizione') ?? competitions[0]?.slug;
 
   return (
-    <div className="flex flex-1 min-w-0 gap-2 overflow-x-auto">
+    <div className="bg-stone-100/90 px-4 py-2 border-b border-stone-200/80 flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 shrink-0 mr-1 hidden sm:inline">
+        Torneo:
+      </span>
       {competitions.map((competition) => {
         const active = competition.slug === activeCompetitionSlug;
 
@@ -46,8 +49,10 @@ export function CompetitionSwitcher({ competitions }: CompetitionSwitcherProps) 
           <Link
             key={competition.id}
             href={`${pathname}?competizione=${competition.slug}`}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-              active ? 'bg-amber-400 text-brand-950' : 'bg-white text-brand-700'
+            className={`shrink-0 rounded-full px-3 py-1 text-xs whitespace-nowrap transition-all ${
+              active
+                ? 'bg-brand-600 text-white font-semibold shadow-xs'
+                : 'bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 hover:text-stone-900 font-medium'
             }`}
           >
             {competition.name}

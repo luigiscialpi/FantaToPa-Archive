@@ -5,13 +5,15 @@ export default function FormazioniLoading() {
   return (
     <main>
       <div className="p-4">
-        {/* Titolo stagione + competizione */}
-        <div className="h-6 w-40 bg-stone-200 rounded animate-pulse mb-1" />
-        <div className="h-4 w-28 bg-stone-200 rounded animate-pulse mb-4" />
-
-        {/* Selettore giornata (MatchdaySelector) */}
-        <div className="mb-4">
-          <div className="h-10 w-48 bg-stone-100 rounded-lg animate-pulse" />
+        {/* Header titolo e selettore giornata */}
+        <div className="flex flex-row items-center justify-between gap-3 mb-4">
+          <div>
+            <div className="h-6 w-36 bg-stone-200 rounded animate-pulse mb-1" />
+            <div className="h-4 w-24 bg-stone-200 rounded animate-pulse" />
+          </div>
+          <div className="shrink-0 flex justify-end">
+            <div className="h-8 w-36 bg-stone-200 rounded-lg animate-pulse" />
+          </div>
         </div>
 
         {/* 3 match cards */}

@@ -35,13 +35,13 @@ export default async function SeasonLayout({ children, params }: SeasonLayoutPro
 
   return (
     <div>
-      <nav className="flex items-center justify-between gap-3 px-4 py-2 bg-brand-600">
-        <Suspense fallback={null}>
-          <CompetitionSwitcher competitions={competitions} />
-        </Suspense>
+      <div className="bg-white border-b border-stone-200/90 px-4 flex items-center justify-between gap-3 sticky top-0 z-10">
+        <PageTabs seasonSlug={season.slug} />
         <SeasonSwitcher seasons={seasons} activeSeasonSlug={season.slug} />
-      </nav>
-      <PageTabs seasonSlug={season.slug} />
+      </div>
+      <Suspense fallback={null}>
+        <CompetitionSwitcher competitions={competitions} />
+      </Suspense>
       {children}
     </div>
   );
