@@ -834,6 +834,7 @@ export type Database = {
       approve_registration: { Args: { request_id: string }; Returns: undefined }
       can_read_league_data: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      reject_registration: { Args: { request_id: string }; Returns: undefined }
       team_managers: {
         Args: never
         Returns: {

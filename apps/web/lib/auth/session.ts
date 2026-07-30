@@ -4,6 +4,7 @@
 // getClaims() (non getUser()/getSession()) perché verifica la firma del JWT
 // — con le chiavi di firma asimmetriche del progetto lo fa localmente,
 // senza round-trip di rete (vedi doc Supabase SSR, sezione "Danger").
+import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fantatopa/shared-types/database';
 import { createClient } from '../supabase/server';
@@ -46,7 +47,10 @@ async function loadProfile(
   };
 }
 
-export async function getSessionState(): Promise<SessionState> {
+// cache(): il layout protetto e il layout admin la invocano entrambi nella
+// stessa render request (stesso principio di getSeasons/getCompetitions,
+// AGENTS.md) — senza, la query su profiles partirebbe due volte.
+export const getSessionState = cache(async (): Promise<SessionState> => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
 
@@ -57,7 +61,7 @@ export async function getSessionState(): Promise<SessionState> {
   const profile = await loadProfile(supabase, data.claims.sub, data.claims.email ?? null);
 
   return { kind: 'autenticato', profile };
-}
+});
 
 // Rispecchia la funzione Postgres can_read_league_data() usata nelle policy
 // RLS (schema_iniziale.sql): stessa logica, ma qui serve solo per decidere
