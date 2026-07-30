@@ -1,6 +1,8 @@
 # Piano di Sviluppo — Archivio Storico FantaTopa
 
-> Working title. Sito che raccoglie e presenta tutte le edizioni storiche della lega fantacalcio, a partire dai dati in `Fantacalcio.zip` (stagioni 2020-21, 2021-22, 2023-24, 2024-25, 2025-26 — la 2022-23 è confermata mancante, buco reale nell'archivio) più le edizioni ancora più vecchie salvate come siti interi scaricati, per cui l'approccio si deciderà più avanti.
+> Working title. Sito che raccoglie e presenta tutte le edizioni storiche della lega fantacalcio, a partire dai dati in `Fantacalcio.zip` (stagioni 2020-21, 2021-22, 2022-23, 2023-24, 2024-25, 2025-26) più le edizioni ancora più vecchie salvate come siti interi scaricati, per cui l'approccio si deciderà più avanti.
+>
+> **Aggiornamento**: la 2022-23 — indicata più sotto come "confermata mancante" nella stesura originale di questo piano — è stata in realtà recuperata separatamente ed è oggi una sesta stagione importabile come le altre, con alcune lacune reali proprie (niente `Rose_fantatopa.xlsx`, dati Coppa gironi/Fase Finale incompleti) ma non un buco totale. Vedi sezione 8 per il quadro aggiornato delle lacune dati per stagione.
 
 ## Indice
 
@@ -43,7 +45,7 @@ Aperti tutti i file dello zip. Riepilogo:
 | Quotazioni asta | xlsx | valori giocatori pre-stagione |
 | Loghi/Maglie | png, nome file ≈ nome squadra | **incoerente tra stagioni** |
 | Regolamento | pdf, nome/versione diversi ogni anno | |
-| 2020-21 e 2021-22 | **classifiche e calendari solo in .jpg** (screenshot), non xlsx | dato non strutturato |
+| Coppa gironi 2020-21/2021-22 (calendario) | **solo .jpg** (screenshot), non xlsx | unico dato di quelle 2 stagioni realmente non recuperabile senza OCR — il resto (Classifica/Calendario Campionato, Rose, Formazioni) è xlsx pulito, verificato lanciando gli adapter reali, non solo a occhio |
 
 Due problemi concreti già visibili, non ipotetici:
 
@@ -578,6 +580,8 @@ Un'ultima cosa che vale la pena rendere esplicita come principio: **i file grezz
 
 ## 8. Dati legacy e OCR
 
+> **Aggiornamento (fase di import reale)**: lanciando gli adapter xlsx reali su tutti i file di 2020-21/2021-22 (non solo guardando i nomi file), è emerso che Classifica/Calendario Campionato, Rose e Formazioni sono xlsx puliti, già coperti dagli adapter esistenti — nessun OCR necessario per quella parte. L'unico dato realmente solo-immagine è il calendario dei gironi di Coppa di quelle 2 stagioni (pochi file, non 10-15): un gap stretto, trattato come lacuna dati accettata e segnalata esplicitamente in UI (stesso pattern delle lacune di 2022-23), non un motivo per costruire la pipeline OCR sotto. La ricerca che segue resta comunque un riferimento valido per le edizioni pre-2020 ("siti interi scaricati", sezione 12), quando/se verranno recuperate.
+
 Le immagini da gestire (2020-21, 2021-22) sono circa 10-15 file: screenshot puliti presi direttamente dal sito fantacalcio.it, non foto di carta — tabelle con bordi netti, font digitale. È un caso relativamente facile per l'OCR strutturato.
 
 | Libreria | Approccio | Setup | Adatta al nostro caso? |
@@ -731,6 +735,9 @@ Repo scaffold (npm workspaces), progetto Supabase + prima migrazione con lo sche
 **Fase 1 — Ingestion stagioni moderne (2023-24 → 2025-26)** *(completata)*
 Adapter xlsx (Rose, Classifica, Calendario, Formazioni, Coppa), schema Zod, loader idempotente, risoluzione alias squadre/giocatori, import pilota sulla 2025-26.
 
+**Estensione — Ingestion generalizzata a tutte le 6 stagioni** *(in corso)*
+Il pilota è stato generalizzato (`import-season.ts`/`check-season.ts`/`season-configs.ts`/`team-registry.ts`, non più `pilot-import-2025-26.ts` hardcoded) e validato su tutte e 6 le stagioni (2020-21 → 2025-26, inclusa la 2022-23 recuperata — sezione 1). Copre anche il caricamento loghi/maglie (`seedBranding`, dove la stagione ha la cartella `Loghi & Maglie/`). Import reale su Supabase staging in corso stagione per stagione: 2024-25 completata e verificata; restano 2023-24, 2022-23, 2021-22, 2020-21.
+
 **Fase 2 — Frontend core** *(completata)*
 Pagine Classifica/Calendario/Rose/Formazioni per stagione, rendering server-side con sessione utente (niente più generazione statica, sezione 3 punto 5), repository layer tipizzato, responsive mobile. Tutte e quattro online. Formazioni mostra la lista testuale (titolari/panchina, voto/fantavoto) per giornata, non il campo grafico — resta l'opzione "vedi campo" descritta in sezione 10 se servirà in futuro, non è bloccante. Aggiunto rispetto alla formulazione iniziale: il selettore stagione/competizione persistente in header previsto in sezione 10 è ora un layout condiviso (`stagioni/[season]/layout.tsx`) sopra tutte le pagine di stagione, con tab di navigazione tra Classifica/Calendario/Rose/Formazioni; il selettore competizione si nasconde da sé sulle pagine (come Rose) la cui tabella non ha una dimensione competizione.
 
@@ -740,8 +747,8 @@ Supabase Auth, ruoli, RLS, upload → anteprima → conferma import. Registrazio
 **Fase 4 — Feature trasversali**
 **Home personalizzata** (pannello squadra + vetrina generale + galleria stagioni, sezione 10 — priorità alta: è il primo schermo dopo il login e oggi la route `/` si limita a un redirect alla classifica). Profilo giocatore multi-stagione, profilo squadra storico, ricerca. **Albo d'oro** (podio Campionato + vincitore Coppa per ogni annata, layout già in mockup) e **Statistiche** (confronto punti/fantapunti tra due squadre, sezione 6 — nessuna tabella nuova, si calcola da `matches`) hanno già un mockup funzionante: restano da collegare ai dati reali e aggiungere le competizioni diverse dal Campionato.
 
-**Fase 5 — Dati legacy (immagini 2020-21/2021-22)**
-Adapter OCR (img2table), eventuale cross-check vision LLM, import con revisione admin.
+**Fase 5 — Dati legacy (immagini 2020-21/2021-22)** *(ridimensionata — vedi sezione 8)*
+Si ipotizzava un adapter OCR completo (img2table + eventuale cross-check vision LLM). Verificato invece che quasi tutti i dati di quelle 2 stagioni sono xlsx puliti, già coperti dalla Fase 1 generalizzata; resta solo il calendario dei gironi di Coppa come gap immagine-soltanto, trattato come lacuna dati accettata (stesso pattern di 2022-23) finché non risulterà davvero necessario recuperarlo.
 
 **Fase 6 — Siti storici scaricati (edizioni pre-2020)**
 Adapter `html-legacy` quando i file sono disponibili, stesso schema canonico, nessuna modifica al resto del sistema.
@@ -751,7 +758,7 @@ Adapter `html-legacy` quando i file sono disponibili, stesso schema canonico, ne
 - Le edizioni "siti interi scaricati": che formato hanno esattamente (HTML statico, screenshot, altro)? Definisce l'adapter della fase 6 — per ora resta "poi vediamo", nessuna azione richiesta ora.
 - Per la direzione visiva: preferisci che ti proponga 2-3 direzioni concrete da cui partire quando arriviamo al frontend, o hai già un'idea/riferimento in testa?
 
-**Risolte in questa revisione**: stagione 2022-23 confermata mancante (sezione 1); utenti normali solo in consultazione, zero scritture (sezione 9); loghi/maglie senza ottimizzazione in fase di import; home page personalizzata per utente/squadra con statistiche (sezione 10); workflow Supabase pull+push (sezione 4); flusso di registrazione con validazione admin (sezione 9).
+**Risolte in questa revisione**: stagione 2022-23 confermata mancante (sezione 1 — **superato**: recuperata separatamente in seguito, vedi nota di aggiornamento in sezione 1); utenti normali solo in consultazione, zero scritture (sezione 9); loghi/maglie senza ottimizzazione in fase di import; home page personalizzata per utente/squadra con statistiche (sezione 10); workflow Supabase pull+push (sezione 4); flusso di registrazione con validazione admin (sezione 9).
 
 ## 13. Prossimo passo pratico
 
