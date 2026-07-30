@@ -171,6 +171,81 @@ type PartialLineupTeam = {
   players: PartialLineupPlayer[];
 };
 
+// Una cella "Modificatore difesa"/"Fattore campo"/"TOTALE: N"/"Inserita
+// via..." somiglia spesso a un nome squadra per looksLikeTeamName (stringa
+// lunga, non un token ruolo, non un pattern modulo) — va esclusa esplicitamente
+// dal check di inizio-nuova-partita, altrimenti due di queste righe allineate
+// sulla stessa riga (o anche una sola, con l'altra colonna già a null perché
+// il suo lato ha finito prima) verrebbero scambiate per l'header della
+// partita successiva.
+function isTerminalMarkerCell(cell0: unknown): boolean {
+  if (typeof cell0 !== 'string') return false;
+  const lower = cell0.toLowerCase();
+  return (
+    lower.includes('modificatore') ||
+    lower.includes('fattore campo') ||
+    lower.includes('totale') ||
+    parseSubmission(cell0) !== undefined
+  );
+}
+
+// Applica il contenuto della cella di UNA colonna (home o away) alla
+// squadra corrispondente. Le due colonne vanno avanzate in modo
+// indipendente perché possono avere panchine di lunghezza molto diversa —
+// osservato concretamente nei file classico 2020-2021/2021-2022/2022-2023
+// (fino a 10 vs 13 giocatori in panchina nello stesso match): il lato con la
+// panchina più corta raggiunge Modificatore/Fattore campo/Totale/Inserita
+// via con molte righe di anticipo sull'altro, non solo una. Ritorna true
+// quando la riga "Inserita via..." di QUESTA squadra è stata letta (fine
+// blocco per questo lato).
+function applyTeamCell(
+  team: PartialLineupTeam,
+  cell0: unknown,
+  dataRow: unknown[],
+  columnStart: number,
+  worksheet: Worksheet,
+  dataRowIndex0: number,
+  slot: 'titolare' | 'panchina',
+): boolean {
+  if (typeof cell0 === 'string') {
+    const lower = cell0.toLowerCase();
+    if (lower.includes('modificatore')) {
+      team.defenseModifier = parseNumberOrNull(dataRow[columnStart + 4]) ?? undefined;
+      return false;
+    }
+    if (lower.includes('fattore campo')) {
+      team.fieldAdvantage = parseNumberOrNull(dataRow[columnStart + 4]) ?? undefined;
+      return false;
+    }
+    if (lower.includes('totale')) {
+      team.total = parseTotal(cell0);
+      return false;
+    }
+    const submission = parseSubmission(cell0);
+    if (submission) {
+      team.submittedVia = submission.submittedVia;
+      team.submittedAt = submission.submittedAt;
+      return true;
+    }
+  }
+
+  const name = dataRow[columnStart + 1];
+  if (typeof name === 'string' && name.trim() !== '') {
+    const roles = parseRoles(cell0);
+    if (roles.length > 0) {
+      team.players.push({
+        playerName: name.trim(),
+        roles,
+        voto: parseNumberOrNull(dataRow[columnStart + 3]),
+        fantavoto: parseNumberOrNull(dataRow[columnStart + 4]),
+        slot,
+        countsForTotal: countsForTotalAt(worksheet, dataRowIndex0, columnStart + 4),
+      });
+    }
+  }
+  return false;
+}
+
 export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
   constructor(
     private readonly seasonSlug: string,
@@ -219,6 +294,11 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
       if (formationRow[AWAY_START]) away.formation = String(formationRow[AWAY_START]).trim();
 
       let slot: 'titolare' | 'panchina' = 'titolare';
+      // Ognuna diventa true quando la riga "Inserita via..." di QUEL lato è
+      // stata letta — vedi applyTeamCell per il perché vanno tracciate in
+      // modo indipendente invece che con un singolo continue/break condiviso.
+      let homeDone = false;
+      let awayDone = false;
 
       for (let dr = 2; dr + r < rowCount; dr++) {
         const dataRowIndex0 = r + dr;
@@ -227,114 +307,43 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
         const homeCell0 = dataRow[HOME_START];
         const awayCell0 = dataRow[AWAY_START];
 
-        // Panchina può apparire solo nella colonna away in alcuni file Coppa.
+        // Panchina può apparire solo nella colonna away in alcuni file Coppa;
+        // i titolari sono sempre esattamente 11 per entrambe le squadre,
+        // quindi questa riga cade sempre allineata per le due colonne.
         if (typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('panchina')) {
           slot = 'panchina';
           continue;
         }
 
-        // Modificatore difesa e TOTALE possono cadere su righe diverse per
-        // home e away: quando una squadra non applica il modificatore, il
-        // file salta del tutto la sua riga "Modificatore difesa" e la sua
-        // colonna guadagna un anticipo di una riga sull'altra per il resto
-        // del blocco partita. Il desync è stato osservato in ENTRAMBE le
-        // direzioni: away in anticipo su home (giornata 37 2025-26,
-        // Carloparola Fc: away.total letto per errore dalla riga "Inserita
-        // via..." di away, che non è una riga di totale) e home in anticipo
-        // su away (giornata 23 2025-26, Los Cientoquattros Hertha Rallo: la
-        // riga "TOTALE" di away non veniva mai raggiunta perché il branch si
-        // basava solo su homeCell0, e away.total restava undefined -> 0 di
-        // default). Per questo le due fasi vanno rilevate e lette in modo
-        // indipendente per ciascuna colonna, non assumendo che siano sempre
-        // allineate sulla stessa riga o che sia sempre home a "guidare".
-        //
-        // Nei file di Coppa Fase Finale esiste anche una riga "Fattore
-        // campo" (bonus per chi ha il vantaggio campo in quel turno di
-        // eliminazione diretta), presente solo per una colonna. Il suo
-        // valore è già incluso nel TOTALE della riga successiva, ma va
-        // ANCHE salvato a parte (come defenseModifier) per poterlo mostrare
-        // in UI. La riga va comunque riconosciuta ed esclusa dal check
-        // "Inserita via..." sotto — altrimenti, quando questa riga coincide
-        // con la vera sottomissione dell'altra squadra (già arrivata prima
-        // perché non ha "Fattore campo"), il loop si interrompe subito e il
-        // totale della squadra ancora in corso (che deve leggere ancora
-        // "Fattore campo" + TOTALE + la propria sottomissione) resta
-        // undefined -> 0 di default (bug reale: Prozalpi S.F. 0 punti in
-        // Coppa Fase Finale giornata 1).
-        const homeIsModificatore = typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('modificatore');
-        const awayIsModificatore = typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('modificatore');
-        const homeIsTotale = typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('totale');
-        const awayIsTotale = typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('totale');
-        const homeIsFattoreCampo = typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('fattore campo');
-        const awayIsFattoreCampo = typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('fattore campo');
-
-        if (
-          homeIsModificatore ||
-          awayIsModificatore ||
-          homeIsTotale ||
-          awayIsTotale ||
-          homeIsFattoreCampo ||
-          awayIsFattoreCampo
-        ) {
-          if (homeIsModificatore) home.defenseModifier = parseNumberOrNull(dataRow[HOME_START + 4]) ?? undefined;
-          if (awayIsModificatore) away.defenseModifier = parseNumberOrNull(dataRow[AWAY_START + 4]) ?? undefined;
-          if (homeIsFattoreCampo) home.fieldAdvantage = parseNumberOrNull(dataRow[HOME_START + 4]) ?? undefined;
-          if (awayIsFattoreCampo) away.fieldAdvantage = parseNumberOrNull(dataRow[AWAY_START + 4]) ?? undefined;
-          if (homeIsTotale) home.total = parseTotal(homeCell0);
-          if (awayIsTotale) away.total = parseTotal(awayCell0);
-          continue;
-        }
-
-        // Riga "Inserita via app|web il ...": ultima riga utile della partita.
-        const homeSubmission = parseSubmission(homeCell0);
-        const awaySubmission = parseSubmission(awayCell0);
-        if (homeSubmission || awaySubmission) {
-          if (homeSubmission) {
-            home.submittedVia = homeSubmission.submittedVia;
-            home.submittedAt = homeSubmission.submittedAt;
-          }
-          if (awaySubmission) {
-            away.submittedVia = awaySubmission.submittedVia;
-            away.submittedAt = awaySubmission.submittedAt;
-          }
+        // Un nuovo blocco partita inizia solo se nessuna delle due colonne è
+        // un marcatore di fine blocco su questa riga (vedi isTerminalMarkerCell)
+        // — altrimenti una riga come "TOTALE: N" (che looksLikeTeamName
+        // considera un possibile nome squadra) verrebbe scambiata per l'inizio
+        // di una nuova partita prima ancora di leggerne il valore.
+        if (!isTerminalMarkerCell(homeCell0) && !isTerminalMarkerCell(awayCell0) && looksLikeMatchStart(dataRow)) {
           break;
         }
 
-        // Se la riga home è un nuovo nome squadra, la partita corrente è finita.
-        if (looksLikeMatchStart(dataRow)) {
+        // Le due colonne vanno lette come stream indipendenti: quando una
+        // squadra ha una panchina più corta dell'altra, la sua colonna
+        // raggiunge Modificatore/Fattore campo/Totale/Inserita via con
+        // diverse righe di anticipo (non solo una — osservato fino a 3 righe
+        // nei file classico 2020-2021/2021-2022/2022-23, dove le panchine
+        // arrivano ad avere 10 vs 13 giocatori nello stesso match). Un
+        // singolo continue/break condiviso su "una delle due colonne ha
+        // trovato il marcatore" perdeva sia i giocatori panchina ancora da
+        // leggere sul lato più lungo, sia il suo totale (mai raggiunto prima
+        // del break) — bug reale, non solo teorico: verificato riga per riga
+        // su Formazioni_fantatopa_38_giornata.xlsx (2020-2021).
+        if (!homeDone) {
+          homeDone = applyTeamCell(home, homeCell0, dataRow, HOME_START, worksheet, dataRowIndex0, slot);
+        }
+        if (!awayDone) {
+          awayDone = applyTeamCell(away, awayCell0, dataRow, AWAY_START, worksheet, dataRowIndex0, slot);
+        }
+
+        if (homeDone && awayDone) {
           break;
-        }
-
-        // Giocatore home
-        const homeName = dataRow[HOME_START + 1];
-        if (typeof homeName === 'string' && homeName.trim() !== '') {
-          const roles = parseRoles(homeCell0);
-          if (roles.length > 0) {
-            home.players.push({
-              playerName: homeName.trim(),
-              roles,
-              voto: parseNumberOrNull(dataRow[HOME_START + 3]),
-              fantavoto: parseNumberOrNull(dataRow[HOME_START + 4]),
-              slot,
-              countsForTotal: countsForTotalAt(worksheet, dataRowIndex0, HOME_START + 4),
-            });
-          }
-        }
-
-        // Giocatore away
-        const awayName = dataRow[AWAY_START + 1];
-        if (typeof awayName === 'string' && awayName.trim() !== '') {
-          const roles = parseRoles(awayCell0);
-          if (roles.length > 0) {
-            away.players.push({
-              playerName: awayName.trim(),
-              roles,
-              voto: parseNumberOrNull(dataRow[AWAY_START + 3]),
-              fantavoto: parseNumberOrNull(dataRow[AWAY_START + 4]),
-              slot,
-              countsForTotal: countsForTotalAt(worksheet, dataRowIndex0, AWAY_START + 4),
-            });
-          }
         }
       }
 
