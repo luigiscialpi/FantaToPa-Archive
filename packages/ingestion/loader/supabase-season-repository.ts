@@ -137,6 +137,24 @@ export class SupabaseSeasonRepository implements SeasonRepository {
     if (error) throw new Error(`Errore alias squadra: ${error.message}`);
   }
 
+  async upsertTeamSeasonDisplayName(teamId: string, seasonId: string, displayName: string): Promise<void> {
+    const { error } = await this.client
+      .from('team_seasons')
+      .upsert({ team_id: teamId, season_id: seasonId, display_name: displayName }, { onConflict: 'team_id, season_id' });
+    if (error) throw new Error(`Errore salvataggio nome stagione squadra: ${error.message}`);
+  }
+
+  async getTeamSeasonDisplayName(teamId: string, seasonId: string): Promise<string | undefined> {
+    const { data, error } = await this.client
+      .from('team_seasons')
+      .select('display_name')
+      .eq('team_id', teamId)
+      .eq('season_id', seasonId)
+      .maybeSingle();
+    if (error) throw new Error(`Errore lettura nome stagione squadra: ${error.message}`);
+    return data?.display_name ?? undefined;
+  }
+
   async upsertPlayers(players: PlayerSeed[]): Promise<void> {
     for (const player of players) {
       const canonicalName = player.name.trim();

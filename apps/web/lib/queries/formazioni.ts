@@ -178,7 +178,7 @@ export async function getFormazioni(
     const teamBranding = brandingFor(branding, teamId);
 
     return {
-      teamName: teamNameById.get(teamId) ?? '—',
+      teamName: teamBranding.displayName ?? teamNameById.get(teamId) ?? '—',
       logoUrl: teamBranding.logoUrl,
       jerseyUrl: teamBranding.jerseyUrl,
       formation: lineup?.formation ?? null,

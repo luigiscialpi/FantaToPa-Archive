@@ -10,3 +10,8 @@ supabase/.temp/
 .netlify/
 docs/*/**
 docs/*.zip
+
+# Dati privati di questa lega (nomi squadre reali/alias): mai committati,
+# cosi' il codice resti distribuibile ad altre leghe senza editare TypeScript.
+# Copiare team-registry.example.json la prima volta e compilarlo.
+packages/ingestion/scripts/team-registry.local.json

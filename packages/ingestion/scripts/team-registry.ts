@@ -8,55 +8,44 @@
 // righe `teams` distinte e spezzerebbe la storia della squadra (rilevante
 // per pagine cross-stagione come l'Albo d'Oro).
 //
-// Mappatura confermata dall'utente (2026-07-30) confrontando gli insiemi di
-// nomi squadra reali su tutte le 6 stagioni — vedi
-// `.agents`/memoria repo `legacy-seasons-compat.md` per il dettaglio
-// stagione per stagione. Un solo anello (PSV BEETHOVEN -> adagio_andante_avanti,
-// 2023-24 -> 2024-25) è dedotto per esclusione, non confermato esplicitamente:
-// segnalato di nuovo qui nel caso emerga un'informazione diversa.
-export interface TeamIdentity {
-  /** Nome canonico attuale (stagione 2025-26): quello che finisce in teams.canonical_name. */
-  canonicalName: string;
+// I dati reali (nomi/manager di QUESTA lega privata) non vivono più in
+// questo file sorgente: andrebbero committati in un codice potenzialmente
+// distribuibile ad altre leghe. Vivono in team-registry.local.json
+// (gitignored, accanto a questo file) — copiare team-registry.example.json
+// la prima volta e compilarlo con i dati reali. Questo file resta solo il
+// loader + la validazione Zod, seguendo lo stesso schema-per-concern usato
+// in packages/ingestion/schema/imports.ts.
+//
+// Il registro viene seminato nel database UNA TANTUM con
+// seed-team-registry.ts (non ad ogni import-season.ts): dopo il seed, teams/
+// team_aliases nel database sono la fonte di verità, questo file JSON serve
+// solo a (ri)popolarli quando cambiano.
+import { z } from 'zod';
+import { readFile } from 'node:fs/promises';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const TeamIdentitySchema = z.object({
+  /** Nome canonico attuale: quello che finisce in teams.canonical_name. */
+  canonicalName: z.string().min(1),
   /** Nomi con cui la stessa squadra/manager è comparsa in stagioni precedenti. */
-  aliases: string[];
+  aliases: z.array(z.string()).default([]),
+});
+export type TeamIdentity = z.infer<typeof TeamIdentitySchema>;
+
+const TeamRegistrySchema = z.array(TeamIdentitySchema);
+
+const REGISTRY_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'team-registry.local.json');
+
+export async function loadTeamRegistry(): Promise<TeamIdentity[]> {
+  let raw: string;
+  try {
+    raw = await readFile(REGISTRY_PATH, 'utf-8');
+  } catch {
+    throw new Error(
+      `Registro squadre non trovato (${REGISTRY_PATH}). Copia team-registry.example.json in ` +
+        'team-registry.local.json nella stessa cartella e compilalo con nomi/alias reali.',
+    );
+  }
+  return TeamRegistrySchema.parse(JSON.parse(raw));
 }
-
-export const TEAM_REGISTRY: TeamIdentity[] = [
-  // Stabili su tutte le stagioni disponibili (2020-21 -> 2025-26): nessun alias necessario.
-  { canonicalName: 'Biancoceleste Athletic Club', aliases: [] },
-  { canonicalName: 'Carloparola Fc', aliases: [] },
-  { canonicalName: 'Monster', aliases: [] },
-  { canonicalName: 'Real Cocu 2003 Fc', aliases: [] },
-
-  // Il nome nei dati (rosa/classifica) non cambia mai: l'alias serve solo per
-  // i file immagine 2023-24 ("ProZalpi.png", senza "S.F."), non per un rename reale.
-  { canonicalName: 'Prozalpi S.F.', aliases: ['ProZalpi'] },
-
-  // Rename confermati dall'utente.
-  {
-    canonicalName: 'Los Cientoquattros Hertha Rallo',
-    aliases: ['Hertha Rallo'],
-  },
-  {
-    canonicalName: 'MR EKO - C&W F.C.',
-    aliases: ['SKAJAHNNY 04 F.C.', 'BBSATLPR 22 F.C.', 'CIARFandWHITE 23 FC', 'Ciarf&White FC 23'],
-  },
-  {
-    canonicalName: 'Associazione Sportiva via Roma',
-    aliases: [
-      'Herta Bellinu',
-      'PSG - Paria San Giseppu',
-      'PSV BEETHOVEN',
-      // dedotto per esclusione (2023-24 -> 2024-25), non confermato esplicitamente
-      'adagio_andante_avanti',
-    ],
-  },
-  {
-    canonicalName: 'Fantamerda',
-    aliases: ['Deportivo La Carogna'],
-  },
-  {
-    canonicalName: 'Unione Sportiva Neritina',
-    aliases: ['Andreajax'],
-  },
-];

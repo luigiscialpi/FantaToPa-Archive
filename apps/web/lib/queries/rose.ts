@@ -11,6 +11,7 @@
 // per squadra, non per competizione.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fantatopa/shared-types/database';
+import { getTeamBranding, brandingFor } from './team-branding';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -73,7 +74,13 @@ export async function getTeamsWithRoster(supabase: TypedSupabaseClient, seasonId
     throw new Error(`Impossibile leggere le squadre: ${teamsError.message}`);
   }
 
-  return teamsRows.map((team) => ({ id: team.id, slug: team.slug, name: team.canonical_name }));
+  const branding = await getTeamBranding(supabase, seasonId, teamIds);
+
+  return teamsRows.map((team) => ({
+    id: team.id,
+    slug: team.slug,
+    name: brandingFor(branding, team.id).displayName ?? team.canonical_name,
+  }));
 }
 
 // team_managers() è una funzione RPC (non una select su `profiles`): la RLS

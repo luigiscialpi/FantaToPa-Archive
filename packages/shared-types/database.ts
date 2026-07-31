@@ -766,6 +766,7 @@ export type Database = {
       team_seasons: {
         Row: {
           credits_remaining: number | null
+          display_name: string | null
           id: string
           jersey_url: string | null
           logo_url: string | null
@@ -775,6 +776,7 @@ export type Database = {
         }
         Insert: {
           credits_remaining?: number | null
+          display_name?: string | null
           id?: string
           jersey_url?: string | null
           logo_url?: string | null
@@ -784,6 +786,7 @@ export type Database = {
         }
         Update: {
           credits_remaining?: number | null
+          display_name?: string | null
           id?: string
           jersey_url?: string | null
           logo_url?: string | null

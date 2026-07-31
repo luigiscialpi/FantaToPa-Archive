@@ -85,8 +85,8 @@ export async function getCalendario(
     for (const match of matchesRows) {
       const row: MatchRow = {
         id: match.id,
-        homeTeamName: teamNameById.get(match.home_team_id) ?? '—',
-        awayTeamName: teamNameById.get(match.away_team_id) ?? '—',
+        homeTeamName: brandingFor(branding, match.home_team_id).displayName ?? teamNameById.get(match.home_team_id) ?? '—',
+        awayTeamName: brandingFor(branding, match.away_team_id).displayName ?? teamNameById.get(match.away_team_id) ?? '—',
         homeJerseyUrl: brandingFor(branding, match.home_team_id).jerseyUrl,
         awayJerseyUrl: brandingFor(branding, match.away_team_id).jerseyUrl,
         homeScore: match.home_score,

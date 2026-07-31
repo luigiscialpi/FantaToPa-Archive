@@ -19,7 +19,6 @@ import { XlsxCalendarAdapter } from '../adapters/xlsx/calendar.js';
 import { XlsxLineupAdapter } from '../adapters/xlsx/lineup.js';
 import { findXlsxByPrefix, listXlsxByPrefix } from '../lib/discover-files.js';
 import { getSeasonConfig, type SeasonConfig } from './season-configs.js';
-import { TEAM_REGISTRY } from './team-registry.js';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { normalizeName } from '../lib/normalize-name.js';
@@ -179,16 +178,15 @@ async function collectSeasonTeamNames(config: SeasonConfig): Promise<Set<string>
   return names;
 }
 
-async function seedTeams(config: SeasonConfig, repo: SupabaseSeasonRepository): Promise<void> {
-  // Registro squadre (identità persistenti tra stagioni): seminato per
-  // intero ad ogni run, indipendentemente da quale stagione si sta
-  // importando — idempotente, upsertTeams riusa la squadra se il nome
-  // canonico esiste già.
-  await repo.upsertTeams(TEAM_REGISTRY.map((t) => ({ name: t.canonicalName, aliases: t.aliases })));
-
-  // Fallback per nomi di questa stagione non coperti dal registro (non
-  // dovrebbe succedere per le 6 stagioni note, protegge da sorprese).
+async function seedTeams(config: SeasonConfig, seasonId: string, repo: SupabaseSeasonRepository): Promise<void> {
+  // Il registro squadre (identità persistenti tra stagioni, alias inclusi)
+  // vive nel database (teams/team_aliases), seminato una tantum con
+  // seed-team-registry.ts — import-season.ts non lo tocca più, si limita a
+  // risolvere i nomi di QUESTA stagione contro quello che c'è già.
   const teamNames = await collectSeasonTeamNames(config);
+
+  // Fallback per nomi di questa stagione non ancora noti al database (non
+  // dovrebbe succedere per le 6 stagioni note, protegge da sorprese).
   const unresolved: string[] = [];
   for (const name of teamNames) {
     if (!(await repo.resolveTeamId(name))) unresolved.push(name);
@@ -196,6 +194,14 @@ async function seedTeams(config: SeasonConfig, repo: SupabaseSeasonRepository): 
   if (unresolved.length > 0) {
     await repo.upsertTeams(unresolved.map((name) => ({ name })));
     console.log(`Squadre non nel registro (aggiunte come nuove): ${unresolved.join(', ')}`);
+  }
+
+  // Nome REALE usato in questa stagione (prima della risoluzione alias):
+  // diverso da teams.canonical_name se la squadra ha cambiato nome dopo.
+  for (const name of teamNames) {
+    const teamId = await repo.resolveTeamId(name);
+    if (!teamId) throw new Error(`Impossibile risolvere la squadra "${name}" dopo il seed`);
+    await repo.upsertTeamSeasonDisplayName(teamId, seasonId, name);
   }
   console.log(`Seed squadre: ${teamNames.size} squadre per ${config.slug}`);
 }
@@ -500,7 +506,7 @@ async function importSeason(slug: string): Promise<void> {
   await ensureLookups(client);
   await ensureCompetitions(client, seasonId, config);
 
-  await seedTeams(config, repo);
+  await seedTeams(config, seasonId, repo);
   await seedBranding(client, seasonId, config);
   await seedPlayersFromRoster(config, repo);
   await seedPlayersFromLineups(client, config, repo);

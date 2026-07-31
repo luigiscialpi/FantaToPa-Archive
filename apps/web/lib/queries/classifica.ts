@@ -68,7 +68,7 @@ export async function getStandings(
     return {
       position: row.position,
       teamId: row.team_id,
-      teamName: team?.canonical_name ?? '—',
+      teamName: brandingFor(branding, row.team_id).displayName ?? team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
       jerseyUrl: brandingFor(branding, row.team_id).jerseyUrl,
       played: row.played,
@@ -254,7 +254,7 @@ export async function getStandingsForRange(
     return {
       position: null,
       teamId,
-      teamName: team?.canonical_name ?? '—',
+      teamName: brandingFor(branding, teamId).displayName ?? team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
       jerseyUrl: brandingFor(branding, teamId).jerseyUrl,
       played: accumulator.played,

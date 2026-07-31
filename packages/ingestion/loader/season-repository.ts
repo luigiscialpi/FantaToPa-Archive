@@ -33,6 +33,11 @@ export interface SeasonRepository {
   upsertTeams(teams: TeamSeed[]): Promise<void>;
   upsertPlayers(players: PlayerSeed[]): Promise<void>;
 
+  // Nome REALE usato da una squadra in una specifica stagione (prima della
+  // risoluzione alias): diverso da teams.canonical_name se la squadra ha
+  // cambiato nome dopo. Scritto da import-season.ts per ogni stagione.
+  upsertTeamSeasonDisplayName(teamId: string, seasonId: string, displayName: string): Promise<void>;
+
   // Import veri e propri, uno per concern (sezione 7 del piano).
   upsertRoster(input: RosterImport): Promise<void>;
   upsertStandings(input: StandingsImport): Promise<void>;
@@ -45,6 +50,7 @@ export interface SeasonRepository {
   getTeamCredits(seasonSlug: string): Promise<RosterImport['teamCredits']>;
   getCalendar(competitionSlug: string): Promise<CalendarImport['matchdays']>;
   getLineup(competitionSlug: string, matchdayNumber: number): Promise<LineupImport['matches']>;
+  getTeamSeasonDisplayName(teamId: string, seasonId: string): Promise<string | undefined>;
 }
 
 // ponytail: implementazione in memoria sufficiente per testare logica di
@@ -55,6 +61,7 @@ export class InMemorySeasonRepository implements SeasonRepository {
   private teamAliases = new Map<string, string>(); // normalized -> team id
   private players = new Map<string, { id: string; canonicalName: string }>();
   private playerAliases = new Map<string, string>(); // normalized -> player id
+  private teamSeasonDisplayNames = new Map<string, string>(); // `${teamId}:${seasonId}` -> nome stagione
 
   private standings = new Map<string, StandingsImport['rows']>();
   private rosters = new Map<string, RosterImport['entries']>();
@@ -100,6 +107,14 @@ export class InMemorySeasonRepository implements SeasonRepository {
         this.playerAliases.set(normalizeName(alias), id);
       }
     }
+  }
+
+  async upsertTeamSeasonDisplayName(teamId: string, seasonId: string, displayName: string): Promise<void> {
+    this.teamSeasonDisplayNames.set(`${teamId}:${seasonId}`, displayName);
+  }
+
+  async getTeamSeasonDisplayName(teamId: string, seasonId: string): Promise<string | undefined> {
+    return this.teamSeasonDisplayNames.get(`${teamId}:${seasonId}`);
   }
 
   async upsertRoster(input: RosterImport): Promise<void> {

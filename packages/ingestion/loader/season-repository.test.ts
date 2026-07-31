@@ -48,6 +48,19 @@ describe('InMemorySeasonRepository', () => {
     expect(id).toBeDefined();
   });
 
+  it('salva il nome usato da una squadra in una specifica stagione, distinto dal nome canonico', async () => {
+    const repo = new InMemorySeasonRepository();
+    await repo.upsertTeams([{ name: 'Los Cientoquattros Hertha Rallo', aliases: ['Hertha Rallo'] }]);
+    const teamId = await repo.resolveTeamId('Hertha Rallo');
+    if (!teamId) throw new Error('team non risolto');
+
+    await repo.upsertTeamSeasonDisplayName(teamId, 'season-2020-21', 'Hertha Rallo');
+    await repo.upsertTeamSeasonDisplayName(teamId, 'season-2025-26', 'Los Cientoquattros Hertha Rallo');
+
+    expect(await repo.getTeamSeasonDisplayName(teamId, 'season-2020-21')).toBe('Hertha Rallo');
+    expect(await repo.getTeamSeasonDisplayName(teamId, 'season-2025-26')).toBe('Los Cientoquattros Hertha Rallo');
+  });
+
   it('importa i crediti residui dalla rosa reale e li rilancia senza duplicare (idempotenza)', async () => {
     const adapter = new XlsxRosterAdapter('2025-26');
     const repo = new InMemorySeasonRepository();
