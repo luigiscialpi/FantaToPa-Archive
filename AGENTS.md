@@ -69,6 +69,11 @@ con commento `ponytail:` che nomina il limite e il percorso di upgrade.
 - Un componente = un file. ~200-250 righe è una soglia di attenzione da rivedere in
   review, non un limite imposto meccanicamente. Cartelle per dominio
   (`components/classifica/`, non un `components/` piatto).
+- Import relativi: **mai** suffisso `.js` in `apps/web/**` (il bundler Next.js non lo
+  risolve verso il file sorgente `.ts`/`.tsx` sibling, "Module not found" in `next build`
+  anche se `tsc --noEmit` passa), **sempre** in `packages/ingestion/**` (gira via `tsx`/
+  Node ESM diretto, senza bundler, che richiede il suffisso). Stessa regola per
+  `@fantatopa/shared-types/database`.
 - Migrazioni Supabase sempre in `supabase/migrations/`, mai modifiche a mano da Studio
   senza poi catturarle con `supabase db pull`.
 
