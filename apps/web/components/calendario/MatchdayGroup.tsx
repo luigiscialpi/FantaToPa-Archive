@@ -4,7 +4,10 @@ import type { MatchdayGroup as MatchdayGroupData } from '../../lib/queries/calen
 
 export function MatchdayGroup({ matchday }: { matchday: MatchdayGroupData }) {
   return (
-    <div className="mb-4 rounded-xl bg-white border border-stone-200 overflow-hidden">
+    <div
+      id={`giornata-${matchday.number}`}
+      className="mb-4 rounded-xl bg-white border border-stone-200 overflow-hidden scroll-mt-28"
+    >
       <div className="px-4 py-2 bg-stone-100 text-xs font-semibold uppercase tracking-wide text-stone-500">
         {matchday.label ?? `Giornata ${matchday.number}`}
       </div>
