@@ -11,15 +11,21 @@ type CrestProps = {
   name: string;
   imageUrl?: string | null;
   highlight?: boolean;
+  size?: 'md' | 'lg';
 };
 
-export function Crest({ name, imageUrl, highlight = false }: CrestProps) {
+const SIZE_CLASSNAMES = {
+  md: 'w-9 h-9 text-xs',
+  lg: 'w-14 h-14 text-base',
+};
+
+export function Crest({ name, imageUrl, highlight = false, size = 'md' }: CrestProps) {
   if (imageUrl) {
     return (
       <img
         src={imageUrl}
         alt={name}
-        className={`shrink-0 w-9 h-9 rounded-full bg-white object-contain ring-2 ${
+        className={`shrink-0 rounded-full bg-white object-contain ring-2 ${SIZE_CLASSNAMES[size]} ${
           highlight ? 'ring-amber-200' : 'ring-brand-400'
         }`}
       />
@@ -37,7 +43,7 @@ export function Crest({ name, imageUrl, highlight = false }: CrestProps) {
 
   return (
     <div
-      className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold font-serif ring-2 ${
+      className={`shrink-0 rounded-full flex items-center justify-center font-bold font-serif ring-2 ${SIZE_CLASSNAMES[size]} ${
         highlight ? 'bg-amber-400 text-brand-950 ring-amber-200' : 'bg-brand-200 text-brand-800 ring-brand-400'
       }`}
     >

@@ -71,6 +71,8 @@ export type TeamLineup = {
 
 export type FormazioniMatch = {
   matchId: string;
+  homeGoals: number | null;
+  awayGoals: number | null;
   home: TeamLineup;
   away: TeamLineup;
 };
@@ -82,7 +84,7 @@ export async function getFormazioni(
 ): Promise<FormazioniMatch[]> {
   const { data: matchesRows, error: matchesError } = await supabase
     .from('matches')
-    .select('id, home_team_id, away_team_id, home_score, away_score')
+    .select('id, home_team_id, away_team_id, home_score, away_score, home_goals, away_goals')
     .eq('matchday_id', matchdayId);
 
   if (matchesError) {
@@ -194,6 +196,8 @@ export async function getFormazioni(
 
   return matchesRows.map((match) => ({
     matchId: match.id,
+    homeGoals: match.home_goals,
+    awayGoals: match.away_goals,
     home: buildTeamLineup(match.id, match.home_team_id, match.home_score),
     away: buildTeamLineup(match.id, match.away_team_id, match.away_score),
   }));

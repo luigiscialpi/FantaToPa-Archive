@@ -10,13 +10,14 @@ type TeamCrestsProps = {
   logoUrl: string | null;
   jerseyUrl: string | null;
   highlight?: boolean;
+  size?: 'md' | 'lg';
 };
 
-export function TeamCrests({ name, logoUrl, jerseyUrl, highlight = false }: TeamCrestsProps) {
+export function TeamCrests({ name, logoUrl, jerseyUrl, highlight = false, size = 'md' }: TeamCrestsProps) {
   return (
     <div className="flex items-center gap-1.5 shrink-0">
-      <Crest name={name} imageUrl={logoUrl} highlight={highlight} />
-      <Crest name={name} imageUrl={jerseyUrl} highlight={highlight} />
+      <Crest name={name} imageUrl={logoUrl} highlight={highlight} size={size} />
+      <Crest name={name} imageUrl={jerseyUrl} highlight={highlight} size={size} />
     </div>
   );
 }
