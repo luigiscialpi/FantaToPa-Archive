@@ -388,7 +388,19 @@ async function seedPlayersFromLineups(client: SupabaseClient, config: SeasonConf
     const base = normalizeName(stripInitial(name));
     const candidates = byBaseName.get(base) ?? [];
 
-    if (candidates.length === 1) {
+    // Nome in arrivo "nudo" (senza iniziale finale) che condivide il nome base
+    // con un unico candidato "qualificato" (che HA un'iniziale, es. "Ordonez C."):
+    // la presenza stessa di un'iniziale sul candidato esistente segnala che a
+    // suo tempo serviva a distinguerlo da un omonimo — quindi il nome nudo può
+    // benissimo essere quell'omonimo, non una variante dello stesso giocatore.
+    // Fusione automatica qui ha causato due bug reali (Milinkovic-Savic
+    // portiere/centrocampista, Bastoni Inter/Spezia, stagione 2021-22): un
+    // fratello/omonimo con nome nudo veniva confuso col candidato qualificato
+    // già in rosa. Va trattato come ambiguo, non auto-unito.
+    const soleCandidateIsQualifiedButNameIsBare =
+      candidates.length === 1 && !initialLetter(name) && initialLetter(candidates[0]!.canonicalName) !== undefined;
+
+    if (candidates.length === 1 && !soleCandidateIsQualifiedButNameIsBare) {
       const playerId = candidates[0]!.id;
       const arr = aliasesToAdd.get(playerId) ?? [];
       if (!arr.includes(key)) arr.push(key);
@@ -397,7 +409,7 @@ async function seedPlayersFromLineups(client: SupabaseClient, config: SeasonConf
       continue;
     }
 
-    if (candidates.length > 1) {
+    if (candidates.length > 1 || soleCandidateIsQualifiedButNameIsBare) {
       const initial = initialLetter(name);
       const byInitial = initial ? candidates.filter((c) => initialLetter(c.canonicalName) === initial) : [];
       if (byInitial.length === 1) {
@@ -418,9 +430,14 @@ async function seedPlayersFromLineups(client: SupabaseClient, config: SeasonConf
   }
 
   if (unresolved.size > 0) {
+    // ponytail: default sempre null, mai un candidato pre-scelto — anche
+    // quando c'è un solo candidato, la sua presenza qui significa che è
+    // proprio quello "sospetto" (nome nudo su un candidato qualificato, vedi
+    // sopra), quindi pre-compilarlo riproporrebbe la stessa fusione errata
+    // se l'utente rilancia lo script senza guardare il file.
     const merged: Record<string, string | null> = { ...overrides };
-    for (const [name, candidates] of unresolved) {
-      merged[name] = merged[name] ?? (candidates.length === 1 ? (candidates[0] ?? null) : null);
+    for (const [name] of unresolved) {
+      merged[name] = merged[name] ?? null;
     }
     await writeFile(aliasOverridesFile, `${JSON.stringify(merged, null, 2)}\n`, 'utf-8');
 
