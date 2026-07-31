@@ -38,7 +38,7 @@ export type RosterPlayerRow = {
 // anche i codici "P"/"D", non elencati qui — roleRank li mette in coda
 // invece che in testa (fallback esplicito sotto), nessun crash ma ordine
 // non ideale finché non si aggiorna per il ruleset classico.
-const ROLE_ORDER = ['Por', 'P', 'D', 'Dc', 'Ds', 'Dd', 'B', 'E', 'M', 'C', 'W', 'T', 'A', 'Pc'];
+const ROLE_ORDER = ['Por', 'P', 'D', 'Dc', 'B', 'Ds', 'Dd', 'E', 'M', 'C', 'W', 'T', 'A', 'Pc'];
 
 function roleRank(roleCodes: string[]): number {
   if (roleCodes.length === 0) return ROLE_ORDER.length;

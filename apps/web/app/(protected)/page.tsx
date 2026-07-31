@@ -111,6 +111,9 @@ export default async function HomePage() {
           />
         </div>
       )}
+      <div className="p-4">
+        <SeasonGallery seasons={seasonGallery} />
+      </div>
       <div className="border-b border-stone-200 p-4">
         <LeagueShowcase
           seasonSlug={latestSeason.slug}
@@ -120,9 +123,6 @@ export default async function HomePage() {
           leagueRecords={leagueRecords}
           mostTitled={mostTitled}
         />
-      </div>
-      <div className="p-4">
-        <SeasonGallery seasons={seasonGallery} />
       </div>
     </main>
   );
