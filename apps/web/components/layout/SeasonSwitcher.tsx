@@ -1,4 +1,12 @@
 // apps/web/components/layout/SeasonSwitcher.tsx
+//
+// Vive nell'header globale (AppHeader), non nel layout di stagione: deriva
+// la stagione attiva da usePathname() invece di riceverla come prop, perché
+// l'header è renderizzato anche fuori da /stagioni/[season]/** (es. Home) e
+// da lì non arriverebbe alcuno slug. Fuori da una pagina di stagione il
+// cambio porta a /stagioni/<slug>/classifica (pagina di atterraggio di
+// default); dentro una pagina di stagione sostituisce solo lo slug,
+// mantenendo il resto del percorso, come prima.
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
@@ -6,10 +14,9 @@ import type { SeasonOption } from '../../lib/queries/seasons';
 
 type SeasonSwitcherProps = {
   seasons: SeasonOption[];
-  activeSeasonSlug: string;
 };
 
-export function SeasonSwitcher({ seasons, activeSeasonSlug }: SeasonSwitcherProps) {
+export function SeasonSwitcher({ seasons }: SeasonSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -17,8 +24,14 @@ export function SeasonSwitcher({ seasons, activeSeasonSlug }: SeasonSwitcherProp
     return null;
   }
 
+  const seasonMatch = /^\/stagioni\/([^/]+)/.exec(pathname);
+  const activeSeasonSlug = seasonMatch?.[1] ?? seasons[0]!.slug;
+
   function handleChange(nextSlug: string) {
-    router.push(pathname.replace(`/stagioni/${activeSeasonSlug}`, `/stagioni/${nextSlug}`));
+    const nextPath = seasonMatch
+      ? pathname.replace(`/stagioni/${activeSeasonSlug}`, `/stagioni/${nextSlug}`)
+      : `/stagioni/${nextSlug}/classifica`;
+    router.push(nextPath);
   }
 
   return (

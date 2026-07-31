@@ -77,7 +77,7 @@ export default async function RosePage({ params }: RosePageProps) {
               <section
                 key={team.id}
                 id={`squadra-${team.slug}`}
-                className="scroll-mt-4 rounded-xl bg-white border border-stone-200 overflow-hidden"
+                className="scroll-mt-28 rounded-xl bg-white border border-stone-200 overflow-hidden"
               >
                 <TeamRosterHeader
                   teamName={team.name}
