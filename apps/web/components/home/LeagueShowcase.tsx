@@ -4,6 +4,7 @@
 // approvato, con o senza squadra assegnata — digest verso le pagine
 // dedicate (Calendario, Classifica), non una loro duplicazione. Niente link
 // per "Squadra più titolata": /albo-doro non esiste ancora come pagina.
+import Link from 'next/link';
 import { Flame, Trophy } from 'lucide-react';
 import { Crest } from '../shared/Crest';
 import { StatCard } from './StatCard';
@@ -18,6 +19,15 @@ type LeagueShowcaseProps = {
   leagueRecords: { highestScore: MatchHighlight | null; biggestWin: BiggestWin | null };
   mostTitled: { teamName: string; titles: TitleCounts } | null;
 };
+
+function formatMatchdayLink(record: MatchHighlight) {
+  const href = `/stagioni/${record.seasonSlug}/calendario?competizione=${record.competitionSlug}#giornata-${record.matchdayNumber}`;
+  return (
+    <Link href={href} className="underline decoration-stone-300 underline-offset-2 hover:text-brand-700">
+      {record.matchdayNumber}ª giornata ({record.seasonLabel})
+    </Link>
+  );
+}
 
 export function LeagueShowcase({
   seasonSlug,
@@ -76,9 +86,10 @@ export function LeagueShowcase({
         <StatCard label="Record della lega">
           <Flame size={18} className="mb-1 text-orange-500" />
           {leagueRecords.highestScore ? (
-            <div className="mb-1 text-xs text-stone-600">
+            <div className="mb-1.5 text-xs text-stone-600">
               Punteggio più alto: <strong className="text-stone-800">{leagueRecords.highestScore.score}</strong> (
-              {leagueRecords.highestScore.teamName}, {leagueRecords.highestScore.seasonLabel})
+              {leagueRecords.highestScore.teamName})
+              <div className="text-[11px] text-stone-500">{formatMatchdayLink(leagueRecords.highestScore)}</div>
             </div>
           ) : (
             <div className="mb-1 text-xs text-stone-400">Nessun dato</div>
@@ -87,6 +98,7 @@ export function LeagueShowcase({
             <div className="text-xs text-stone-600">
               Vittoria più larga: <strong className="text-stone-800">{leagueRecords.biggestWin.teamName}</strong>{' '}
               {leagueRecords.biggestWin.score}-{leagueRecords.biggestWin.opponentScore} {leagueRecords.biggestWin.opponentName}
+              <div className="text-[11px] text-stone-500">{formatMatchdayLink(leagueRecords.biggestWin)}</div>
             </div>
           )}
         </StatCard>

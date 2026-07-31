@@ -162,7 +162,9 @@ export type MatchHighlight = {
   teamName: string;
   opponentName: string;
   score: number;
+  seasonSlug: string;
   seasonLabel: string;
+  competitionSlug: string;
   matchdayNumber: number;
 };
 
@@ -205,7 +207,7 @@ async function enrichMatch(
   }
 
   const [competitionResult, teamsResult] = await Promise.all([
-    supabase.from('competitions').select('season_id').eq('id', matchday.competition_id).maybeSingle(),
+    supabase.from('competitions').select('season_id, slug').eq('id', matchday.competition_id).maybeSingle(),
     supabase.from('teams').select('id, canonical_name').in('id', [focusTeamId, opponentId]),
   ]);
 
@@ -221,7 +223,7 @@ async function enrichMatch(
 
   const { data: season, error: seasonError } = await supabase
     .from('seasons')
-    .select('label')
+    .select('slug, label')
     .eq('id', competitionResult.data.season_id)
     .maybeSingle();
 
@@ -235,7 +237,9 @@ async function enrichMatch(
     teamName: nameById.get(focusTeamId) ?? '—',
     opponentName: nameById.get(opponentId) ?? '—',
     score,
+    seasonSlug: season?.slug ?? '',
     seasonLabel: season?.label ?? '—',
+    competitionSlug: competitionResult.data.slug ?? '',
     matchdayNumber: matchday.number,
   };
 }

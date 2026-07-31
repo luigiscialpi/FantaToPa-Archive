@@ -4,6 +4,7 @@
 // Home solo se il profilo ha una squadra assegnata (profiles.team_id). Ogni
 // tessera degrada a un messaggio neutro quando manca il dato, invece di
 // nascondersi o mostrare zeri fabbricati.
+import Link from 'next/link';
 import { Trophy, Swords, TrendingUp, Users } from 'lucide-react';
 import { Crest } from '../shared/Crest';
 import { StatCard } from './StatCard';
@@ -25,6 +26,15 @@ type TeamPanelProps = {
   records: { best: MatchHighlight | null; worst: MatchHighlight | null };
   keyPlayer: FieldedPlayer | null;
 };
+
+function formatMatchdayLink(record: MatchHighlight) {
+  const href = `/stagioni/${record.seasonSlug}/calendario?competizione=${record.competitionSlug}#giornata-${record.matchdayNumber}`;
+  return (
+    <Link href={href} className="underline decoration-stone-300 underline-offset-2 hover:text-brand-700">
+      {record.matchdayNumber}ª giornata ({record.seasonLabel})
+    </Link>
+  );
+}
 
 export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, rivalry, records, keyPlayer }: TeamPanelProps) {
   const gap =
@@ -79,8 +89,9 @@ export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, riv
         <StatCard label="Record personali">
           <TrendingUp size={18} className="mb-1 text-emerald-600" />
           {records.best ? (
-            <div className="mb-1 text-xs text-stone-600">
+            <div className="mb-1.5 text-xs text-stone-600">
               Migliore: <strong className="text-stone-800">{records.best.score}</strong> vs {records.best.opponentName}
+              <div className="text-[11px] text-stone-500">{formatMatchdayLink(records.best)}</div>
             </div>
           ) : (
             <div className="mb-1 text-xs text-stone-400">Nessun dato</div>
@@ -88,6 +99,7 @@ export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, riv
           {records.worst && (
             <div className="text-xs text-stone-600">
               Peggiore: <strong className="text-stone-800">{records.worst.score}</strong> vs {records.worst.opponentName}
+              <div className="text-[11px] text-stone-500">{formatMatchdayLink(records.worst)}</div>
             </div>
           )}
         </StatCard>

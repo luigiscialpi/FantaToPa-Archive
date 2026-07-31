@@ -25,9 +25,10 @@ export function SeasonSwitcher({ seasons }: SeasonSwitcherProps) {
   }
 
   const seasonMatch = /^\/stagioni\/([^/]+)/.exec(pathname);
-  const activeSeasonSlug = seasonMatch?.[1] ?? seasons[0]!.slug;
+  const activeSeasonSlug = seasonMatch ? seasonMatch[1] : '';
 
   function handleChange(nextSlug: string) {
+    if (!nextSlug) return;
     const nextPath = seasonMatch
       ? pathname.replace(`/stagioni/${activeSeasonSlug}`, `/stagioni/${nextSlug}`)
       : `/stagioni/${nextSlug}/classifica`;
@@ -42,6 +43,11 @@ export function SeasonSwitcher({ seasons }: SeasonSwitcherProps) {
         aria-label="Stagione"
         className="appearance-none shrink-0 rounded-lg bg-stone-100/90 text-brand-950 text-xs font-bold pl-2.5 pr-7 py-1.5 border border-stone-200/90 focus:outline-none focus:ring-2 focus:ring-brand-600/30 cursor-pointer shadow-sm hover:bg-stone-200/90 transition-colors"
       >
+        {!seasonMatch && (
+          <option value="" disabled>
+            Seleziona stagione...
+          </option>
+        )}
         {seasons.map((season) => (
           <option key={season.id} value={season.slug}>
             {season.label}

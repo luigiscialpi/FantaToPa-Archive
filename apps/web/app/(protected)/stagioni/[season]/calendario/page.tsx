@@ -5,6 +5,7 @@ import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons'
 import { getCalendario } from '../../../../../lib/queries/calendario';
 import { MatchdayGroup } from '../../../../../components/calendario/MatchdayGroup';
 import { MatchdayJumpBar } from '../../../../../components/calendario/MatchdayJumpBar';
+import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
 
 type CalendarioPageProps = {
   params: Promise<{ season: string }>;
@@ -36,6 +37,7 @@ export default async function CalendarioPage({ params, searchParams }: Calendari
 
   return (
     <main>
+      <ScrollToAnchor />
       <div className="p-4">
         <div className="flex flex-row items-center justify-between gap-3 mb-4">
           <div>

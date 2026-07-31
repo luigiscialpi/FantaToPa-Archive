@@ -14,7 +14,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="it">
+    // scrollbar-gutter va su html, non su body: è html (il root element) a
+    // generare la scrollbar del viewport, su body la proprietà non ha
+    // effetto — senza, il contenitore centrato "saltava" di ~7px tra
+    // pagine con e senza scroll verticale.
+    <html lang="it" className="[scrollbar-gutter:stable]">
       <body className="bg-stone-100 text-stone-900 antialiased">{children}</body>
     </html>
   );

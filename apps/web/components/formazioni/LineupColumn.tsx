@@ -16,19 +16,14 @@ function formatSubmittedAt(iso: string): string {
 export function LineupColumn({ lineup }: { lineup: TeamLineup }) {
   return (
     <div className="flex-1 min-w-0">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+      <div className="flex items-center justify-center mb-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 text-center">
           Titolari
         </span>
-        {lineup.formation && (
-          <span className="text-xs text-stone-400 tabular-nums">
-            {lineup.formation}
-          </span>
-        )}
       </div>
 
       {lineup.starters.length === 0 ? (
-        <p className="text-xs text-stone-400">Formazione non disponibile</p>
+        <p className="text-xs text-stone-400 text-center">Formazione non disponibile</p>
       ) : (
         <div className="divide-y divide-stone-100">
           {lineup.starters.map((player) => (
@@ -39,7 +34,7 @@ export function LineupColumn({ lineup }: { lineup: TeamLineup }) {
 
       {lineup.bench.length > 0 && (
         <>
-          <div className="mt-3 mb-1.5 pt-2 border-t border-stone-200">
+          <div className="mt-3 mb-1.5 pt-2 border-t border-stone-200 text-center">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Panchina
             </span>
