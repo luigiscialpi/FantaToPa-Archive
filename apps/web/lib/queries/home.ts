@@ -412,8 +412,8 @@ export type LatestMatchdayResult = {
   awayTeamName: string;
   homeJerseyUrl: string | null;
   awayJerseyUrl: string | null;
-  homeScore: number | null;
-  awayScore: number | null;
+  homeGoals: number | null;
+  awayGoals: number | null;
 };
 
 export type LatestMatchday = { number: number; matches: LatestMatchdayResult[] };
@@ -444,7 +444,7 @@ export async function getLatestMatchdayResults(
 
   const { data: matches, error: matchesError } = await supabase
     .from('matches')
-    .select('home_team_id, away_team_id, home_score, away_score')
+    .select('home_team_id, away_team_id, home_goals, away_goals')
     .eq('matchday_id', matchday.id);
 
   if (matchesError) {
@@ -474,8 +474,8 @@ export async function getLatestMatchdayResults(
       awayTeamName: nameById.get(match.away_team_id) ?? '—',
       homeJerseyUrl: brandingFor(branding, match.home_team_id).jerseyUrl,
       awayJerseyUrl: brandingFor(branding, match.away_team_id).jerseyUrl,
-      homeScore: match.home_score,
-      awayScore: match.away_score,
+      homeGoals: match.home_goals,
+      awayGoals: match.away_goals,
     })),
   };
 }

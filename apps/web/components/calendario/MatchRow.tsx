@@ -3,7 +3,7 @@ import { Crest } from '../shared/Crest';
 import type { MatchRow as MatchRowData } from '../../lib/queries/calendario';
 
 export function MatchRow({ match }: { match: MatchRowData }) {
-  const hasGoals = match.homeGoals !== null && match.awayGoals !== null;
+  const hasScore = match.homeScore !== null || match.awayScore !== null;
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -13,11 +13,11 @@ export function MatchRow({ match }: { match: MatchRowData }) {
       </div>
       <div className="shrink-0 text-center px-2">
         <div className="font-serif font-bold text-lg text-brand-800 tabular-nums whitespace-nowrap">
-          {match.homeScore ?? '–'} - {match.awayScore ?? '–'}
+          {match.homeGoals ?? '–'} - {match.awayGoals ?? '–'}
         </div>
-        {hasGoals && (
+        {hasScore && (
           <div className="text-xs text-stone-400 tabular-nums">
-            {match.homeGoals} - {match.awayGoals}
+            {match.homeScore ?? '–'} - {match.awayScore ?? '–'}
           </div>
         )}
       </div>
