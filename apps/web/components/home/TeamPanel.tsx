@@ -5,9 +5,10 @@
 // tessera degrada a un messaggio neutro quando manca il dato, invece di
 // nascondersi o mostrare zeri fabbricati.
 import Link from 'next/link';
-import { Trophy, Swords, TrendingUp, Users } from 'lucide-react';
+import { Trophy, Swords, TrendingUp } from 'lucide-react';
 import { Crest } from '../shared/Crest';
 import { StatCard } from './StatCard';
+import { KeyPlayersCard } from './KeyPlayersCard';
 import type { TitleCounts, RivalryHighlight, MatchHighlight, FieldedPlayer } from '../../lib/queries/home';
 
 type CurrentStanding = {
@@ -24,7 +25,7 @@ type TeamPanelProps = {
   titles: TitleCounts;
   rivalry: RivalryHighlight | null;
   records: { best: MatchHighlight | null; worst: MatchHighlight | null };
-  keyPlayer: FieldedPlayer | null;
+  keyPlayers: FieldedPlayer[];
 };
 
 function formatMatchdayLink(record: MatchHighlight) {
@@ -36,7 +37,7 @@ function formatMatchdayLink(record: MatchHighlight) {
   );
 }
 
-export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, rivalry, records, keyPlayer }: TeamPanelProps) {
+export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, rivalry, records, keyPlayers }: TeamPanelProps) {
   const gap =
     standing && standing.leaderPoints !== null && standing.points !== null ? standing.leaderPoints - standing.points : null;
 
@@ -122,21 +123,7 @@ export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, riv
           )}
         </StatCard>
 
-        <StatCard label="Giocatore chiave">
-          {keyPlayer ? (
-            <>
-              <Users size={18} className="mb-1 text-brand-500" />
-              <div className="truncate text-sm font-semibold text-stone-800">
-                {keyPlayer.playerName}
-              </div>
-              <div className="text-xs text-stone-500">
-                {keyPlayer.appearances} presenze da titolare
-              </div>
-            </>
-          ) : (
-            <div className="text-sm text-stone-400">Ancora nessun dato</div>
-          )}
-        </StatCard>
+        <KeyPlayersCard players={keyPlayers} />
       </div>
     </section>
   );

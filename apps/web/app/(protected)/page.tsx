@@ -7,7 +7,7 @@ import {
   getAllTimeTitleCounts,
   getLatestMatchdayResults,
   getLeagueRecords,
-  getMostFieldedPlayer,
+  getMostFieldedPlayers,
   getMostTitledTeam,
   getPersonalRecords,
   getRivalryHighlight,
@@ -61,16 +61,16 @@ export default async function HomePage() {
     titles: TitleCounts;
     rivalry: RivalryHighlight | null;
     records: { best: MatchHighlight | null; worst: MatchHighlight | null };
-    keyPlayer: FieldedPlayer | null;
+    keyPlayers: FieldedPlayer[];
   } | null = null;
 
   if (profile?.teamId) {
     const teamId = profile.teamId;
-    const [titleCounts, rivalry, records, keyPlayer, branding, teamRow] = await Promise.all([
+    const [titleCounts, rivalry, records, keyPlayers, branding, teamRow] = await Promise.all([
       getAllTimeTitleCounts(supabase),
       getRivalryHighlight(supabase, teamId),
       getPersonalRecords(supabase, teamId),
-      getMostFieldedPlayer(supabase, teamId),
+      getMostFieldedPlayers(supabase, teamId),
       getTeamBranding(supabase, latestSeason.id, [teamId]),
       supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
     ]);
@@ -91,7 +91,7 @@ export default async function HomePage() {
       titles: titleCounts.get(teamId) ?? { campionati: 0, coppe: 0 },
       rivalry,
       records,
-      keyPlayer,
+      keyPlayers,
     };
   }
 
@@ -107,7 +107,7 @@ export default async function HomePage() {
             titles={teamPanel.titles}
             rivalry={teamPanel.rivalry}
             records={teamPanel.records}
-            keyPlayer={teamPanel.keyPlayer}
+            keyPlayers={teamPanel.keyPlayers}
           />
         </div>
       )}

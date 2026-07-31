@@ -347,64 +347,126 @@ export async function getLeagueRecords(
 
 export type FieldedPlayer = { playerName: string; appearances: number };
 
-// ponytail: conta le titolarità su TUTTE le lineup della squadra senza
-// filtrare per stagione — oggi ne esiste una sola, quindi equivalente al
-// conteggio "questa stagione". Quando esisterà una seconda stagione, prima
-// di fidarsi ancora di questo conteggio va deciso se scendere a livello di
-// singola stagione (lineups -> matches -> matchdays -> competitions.
-// season_id) o sostituire la funzione con la vera metrica di fedeltà
-// multi-stagione già in sezione 10 del piano ("chi è rimasto in rosa più
-// stagioni consecutive").
-export async function getMostFieldedPlayer(supabase: TypedSupabaseClient, teamId: string): Promise<FieldedPlayer | null> {
-  const { data: lineups, error: lineupsError } = await supabase.from('lineups').select('id').eq('team_id', teamId);
+// Conta le titolarità nel campionato (mai coppa) su TUTTE le stagioni della
+// squadra: è una statistica di "carriera in questa squadra", non della sola
+// stagione corrente (confermato dall'utente il 2026-07-31). Filtrare solo
+// per team_id, senza passare da matchdays/matches/competitions, mescolava
+// invece ANCHE la coppa nel conteggio — bug reale confermato lo stesso
+// giorno (una squadra con 6 stagioni di storico: "Soulè 39" era 32
+// campionato + 7 coppa nella sola 2025/26).
+//
+// Si parte da lineups già filtrate per team_id (poche centinaia di righe) e
+// si risale a matches/matchdays/competitions, invece del percorso inverso
+// (tutte le giornate di campionato di tutte le stagioni, poi tutte le
+// partite di tutte le squadre): con 6 stagioni quella lista di partite non
+// filtrate per squadra supera la lunghezza URL accettata da Supabase per un
+// filtro `.in()` e la query fallisce con "Bad Request".
+// Il costo della query non dipende da `limit`: la paginazione qui sotto
+// scorre comunque TUTTE le lineup_players campionato della squadra per
+// contare le presenze di ognuno, `limit` taglia solo l'array già ordinato
+// alla fine. Il chiamante può quindi chiedere fino a 30 (il tetto della
+// tendina "quanti mostrare" in KeyPlayersCard) senza query aggiuntive.
+export async function getMostFieldedPlayers(
+  supabase: TypedSupabaseClient,
+  teamId: string,
+  limit = 30,
+): Promise<FieldedPlayer[]> {
+  const { data: lineups, error: lineupsError } = await supabase
+    .from('lineups')
+    .select('id, match_id')
+    .eq('team_id', teamId);
   if (lineupsError) {
     throw new Error(`Impossibile leggere le formazioni: ${lineupsError.message}`);
   }
+  if (lineups.length === 0) {
+    return [];
+  }
 
-  const lineupIds = lineups.map((lineup) => lineup.id);
+  const matchIds = [...new Set(lineups.map((lineup) => lineup.match_id))];
+  const { data: matches, error: matchesError } = await supabase.from('matches').select('id, matchday_id').in('id', matchIds);
+  if (matchesError) {
+    throw new Error(`Impossibile leggere le partite: ${matchesError.message}`);
+  }
+
+  const matchdayIds = [...new Set(matches.map((match) => match.matchday_id))];
+  const { data: matchdays, error: matchdaysError } = await supabase
+    .from('matchdays')
+    .select('id, competition_id')
+    .in('id', matchdayIds);
+  if (matchdaysError) {
+    throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+  }
+
+  const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
+  const { data: competitions, error: competitionsError } = await supabase
+    .from('competitions')
+    .select('id, kind_code')
+    .in('id', competitionIds);
+  if (competitionsError) {
+    throw new Error(`Impossibile leggere i campionati: ${competitionsError.message}`);
+  }
+
+  const campionatoCompetitionIds = new Set(
+    competitions.filter((competition) => competition.kind_code === 'campionato').map((competition) => competition.id),
+  );
+  const campionatoMatchdayIds = new Set(
+    matchdays.filter((matchday) => campionatoCompetitionIds.has(matchday.competition_id)).map((matchday) => matchday.id),
+  );
+  const campionatoMatchIds = new Set(
+    matches.filter((match) => campionatoMatchdayIds.has(match.matchday_id)).map((match) => match.id),
+  );
+  const lineupIds = lineups.filter((lineup) => campionatoMatchIds.has(lineup.match_id)).map((lineup) => lineup.id);
   if (lineupIds.length === 0) {
-    return null;
+    return [];
   }
 
-  const { data: lineupPlayers, error: lineupPlayersError } = await supabase
-    .from('lineup_players')
-    .select('player_id')
-    .in('lineup_id', lineupIds)
-    .eq('slot', 'titolare');
-
-  if (lineupPlayersError) {
-    throw new Error(`Impossibile leggere i titolari: ${lineupPlayersError.message}`);
-  }
-
+  // lineup_players per 6 stagioni di campionato di una squadra supera le
+  // 1000 righe restituite di default da Supabase per risposta: senza
+  // paginare esplicitamente con .range(), il conteggio verrebbe troncato in
+  // modo silenzioso e arbitrario (bug reale osservato: "Ederson 53" invece
+  // del vero totale).
   const appearancesByPlayer = new Map<string, number>();
-  for (const row of lineupPlayers) {
-    appearancesByPlayer.set(row.player_id, (appearancesByPlayer.get(row.player_id) ?? 0) + 1);
-  }
-
-  let topPlayerId: string | null = null;
-  let topAppearances = 0;
-  for (const [playerId, appearances] of appearancesByPlayer) {
-    if (appearances > topAppearances) {
-      topAppearances = appearances;
-      topPlayerId = playerId;
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data: page, error: pageError } = await supabase
+      .from('lineup_players')
+      .select('player_id')
+      .in('lineup_id', lineupIds)
+      .eq('slot', 'titolare')
+      .range(from, from + pageSize - 1);
+    if (pageError) {
+      throw new Error(`Impossibile leggere i titolari: ${pageError.message}`);
     }
+    for (const row of page) {
+      appearancesByPlayer.set(row.player_id, (appearancesByPlayer.get(row.player_id) ?? 0) + 1);
+    }
+    if (page.length < pageSize) break;
   }
 
-  if (!topPlayerId) {
-    return null;
+  const topPlayerIds = [...appearancesByPlayer.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, limit)
+    .map(([playerId]) => playerId);
+
+  if (topPlayerIds.length === 0) {
+    return [];
   }
 
-  const { data: player, error: playerError } = await supabase
+  const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('canonical_name')
-    .eq('id', topPlayerId)
-    .maybeSingle();
+    .select('id, canonical_name')
+    .in('id', topPlayerIds);
 
-  if (playerError) {
-    throw new Error(`Impossibile leggere il giocatore: ${playerError.message}`);
+  if (playersError) {
+    throw new Error(`Impossibile leggere i giocatori: ${playersError.message}`);
   }
 
-  return { playerName: player?.canonical_name ?? '—', appearances: topAppearances };
+  const nameById = new Map(players.map((player) => [player.id, player.canonical_name]));
+
+  return topPlayerIds.map((playerId) => ({
+    playerName: nameById.get(playerId) ?? '—',
+    appearances: appearancesByPlayer.get(playerId) ?? 0,
+  }));
 }
 
 export type LatestMatchdayResult = {
