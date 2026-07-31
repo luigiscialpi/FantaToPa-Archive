@@ -10,8 +10,9 @@ Convenzioni per lo sviluppo (anche assistito da AI): [`AGENTS.md`](./AGENTS.md).
   tabelle, i trigger, le funzioni di sicurezza, e un bug reale già trovato e
   corretto (`registration_requests.first_name`/`last_name` nullable — vedi il
   commento nella migrazione per il perché).
-- `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md` e le skill di
-  progetto (`fantatopa-dev`, `ponytail`) in `.agents/skills/`.
+- `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md` e la skill di
+  progetto `fantatopa-dev` in `.agents/skills/` (fa da router verso il piano e
+  verso la skill personale generica `ponytail`, non versionata in questo repo).
 - Workspace npm (`apps/`, `packages/`), TypeScript `strict: true`, ESLint con
   `@typescript-eslint/no-explicit-any` a `error`.
 - Workflow GitHub Actions: CI (typecheck/lint/test), keepalive Supabase ogni 3

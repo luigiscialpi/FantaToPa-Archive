@@ -55,11 +55,13 @@ pubblico.
 
 ## Come scrivere codice qui
 
-Skill `ponytail` (`.agents/skills/ponytail/`): non scrivere codice nuovo se riuso, stdlib,
-piattaforma o una dipendenza già installata bastano; bug fix sulla causa comune, non sul
-sintomo; niente astrazioni non richieste — eccetto quelle già decise in questo file
-(`SeasonRepository`, adapter, lookup table mirate); semplificazioni intenzionali marcate
-con commento `ponytail:` che nomina il limite e il percorso di upgrade.
+Skill `ponytail` (personale, generica — non vive in questo repo, riusabile in altri
+progetti): non scrivere codice nuovo se riuso, stdlib, piattaforma o una dipendenza già
+installata bastano; bug fix sulla causa comune, non sul sintomo; niente astrazioni non
+richieste; semplificazioni intenzionali marcate con commento `ponytail:` che nomina il
+limite e il percorso di upgrade. Le eccezioni/istanze specifiche di questo progetto
+(`SeasonRepository`, adapter, lookup table mirate, script investigativi one-off) sono
+nella skill `fantatopa-dev`, non qui.
 
 ## Convenzioni
 

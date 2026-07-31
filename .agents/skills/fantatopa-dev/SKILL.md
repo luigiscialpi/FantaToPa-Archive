@@ -1,6 +1,6 @@
 ---
 name: fantatopa-dev
-description: Guida allo sviluppo dell'Archivio Storico FantaTopa (Next.js/TS/Supabase). Usa SEMPRE questa skill quando si lavora su schema dati, migrazioni, RLS, adapter di ingestion (xlsx/OCR), pagine Classifica/Formazioni/Statistiche/Albo d'Oro, o quando serve una decisione già presa nel piano invece di reinventarla. Fai scattare questa skill anche per domande generiche tipo "perché è fatto così" o "dove va questo codice" su questo progetto.
+description: Guida allo sviluppo dell'Archivio Storico FantaTopa (Next.js/TS/Supabase). Usa SEMPRE questa skill quando si lavora su schema dati, migrazioni, RLS, adapter di ingestion (xlsx/OCR), pagine Classifica/Formazioni/Statistiche/Albo d'Oro, o quando serve una decisione già presa nel piano invece di reinventarla. Fai scattare questa skill anche per domande generiche tipo "perché è fatto così" o "dove va questo codice" su questo progetto, o quando la skill generica `ponytail` lascia un dubbio su un'eccezione/istanza specifica di questo repo (astrazioni pre-decise, script investigativi one-off).
 ---
 
 # FantaTopa — router verso il piano
@@ -40,3 +40,34 @@ come se fosse decisa.
 Se il task tocca dati (classifica, rose, formazioni...), la query non va scritta ad-hoc
 nel componente React. Va in `apps/web/lib/queries/<dominio>.ts`, e ritorna un tipo di
 dominio (non la riga grezza di Supabase) — vedi sezione 6, nota su Dependency Inversion.
+
+## `ponytail` applicato qui
+
+La skill `ponytail` (personale, generica, non versionata in questo repo) copre la
+filosofia "lazy senior dev". Queste sono le eccezioni/istanze concrete negoziate per
+questo progetto — quando sembrano in conflitto con una regola generica di `ponytail`,
+queste vincono:
+
+- **"Fewest files possible" e "un componente = un file" (AGENTS.md) non sono in
+  tensione.** La seconda regola definisce il confine naturale (un file per
+  componente/concern). La prima vieta di andare *oltre* quel confine — niente
+  `Component.types.ts` + `Component.constants.ts` + `Component.utils.ts` per un
+  componente che non lo richiede. Nessuna delle due dice "accorpa cose diverse per
+  avere meno file."
+- **"No abstractions that weren't explicitly requested" non si applica a
+  `SeasonRepository`, agli adapter di ingestion, o alle lookup table
+  (`competition_kinds`, `import_source_types`...).** Quelle astrazioni sono già la
+  richiesta esplicita: negoziate e decise nel piano (sezioni 6-7), non lasciate alla
+  discrezione di chi tocca il codice in quel momento. Lazy qui vuol dire non
+  aggiungerne altre non richieste, non smontare quelle già concordate perché "si
+  potrebbe scrivere con meno codice".
+- **Script investigativi one-off** (il pattern generico è in `ponytail`): qui vuol
+  dire `packages/ingestion/scripts/tmp-*.ts` che riusa gli adapter/schema già
+  esistenti (mai reimplementare il parsing xlsx per un controllo estemporaneo),
+  eseguito una volta contro i file/il DB reali, poi eliminato — mai un tool
+  permanente per un dubbio one-off. Validato più volte su dati reali: alias
+  "Marin R." (2024-25), Milinkovic-Savic/Bastoni (2021-22), "Radu" (2020-21).
+- **Esempio concreto di commento `ponytail:` in questo stack**: un parser che assume
+  un solo layout di colonne per un xlsx e non gestisce varianti mai viste —
+  `// ponytail: layout fisso, non gestisce varianti xlsx non ancora osservate
+  (sezione 7 del piano)`.
