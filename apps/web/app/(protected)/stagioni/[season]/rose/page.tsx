@@ -13,6 +13,7 @@ import { getSessionState } from '../../../../../lib/auth/session';
 import { RosterJumpBar } from '../../../../../components/rose/RosterJumpBar';
 import { TeamRosterHeader } from '../../../../../components/rose/TeamRosterHeader';
 import { RosterTable } from '../../../../../components/rose/RosterTable';
+import { DataGapNotice } from '../../../../../components/shared/DataGapNotice';
 
 type RosePageProps = {
   params: Promise<{ season: string }>;
@@ -64,6 +65,10 @@ export default async function RosePage({ params }: RosePageProps) {
       <div className="p-4">
         <h1 className="font-serif font-bold text-xl text-brand-950 mb-1">{season.label}</h1>
         <p className="text-sm text-stone-500 mb-4">Rose</p>
+
+        {season.slug === '2022-23' && (
+          <DataGapNotice message="Per questa stagione non esiste un file rose originale della lega: le rose sono state ricostruite dalle formazioni di campionato (giornate 31-38) e potrebbero non coincidere esattamente con la rosa di fine stagione." />
+        )}
 
         <div className="mb-6">
           <RosterJumpBar teams={teams} defaultTeamSlug={defaultTeam.slug} />
