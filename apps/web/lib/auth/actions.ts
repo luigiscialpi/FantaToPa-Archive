@@ -18,6 +18,9 @@ export async function signIn(_prevState: LoginFormState, formData: FormData): Pr
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    if (error.code === 'email_not_confirmed') {
+      return { error: 'Email non ancora confermata: controlla la posta (anche lo spam) e clicca il link di conferma ricevuto in fase di registrazione.' };
+    }
     return { error: 'Credenziali non valide.' };
   }
 
