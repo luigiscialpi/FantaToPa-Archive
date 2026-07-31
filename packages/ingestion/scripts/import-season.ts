@@ -40,45 +40,59 @@ async function ensureSeason(client: SupabaseClient, config: SeasonConfig): Promi
 }
 
 async function ensureLookups(client: SupabaseClient): Promise<void> {
-  await client.from('competition_kinds').upsert([
+  const { error: kindsError } = await client.from('competition_kinds').upsert([
     { code: 'campionato', label: 'Campionato' },
     { code: 'coppa_girone', label: 'Coppa - Girone' },
     { code: 'coppa_fase_finale', label: 'Coppa - Fase Finale' },
     { code: 'coppa_spareggio', label: 'Coppa - Spareggio' },
   ]);
-  await client.from('competition_formats').upsert([
+  if (kindsError) throw new Error(`Errore upsert competition_kinds: ${kindsError.message}`);
+
+  const { error: formatsError } = await client.from('competition_formats').upsert([
     { code: 'girone_unico', label: 'Girone unico' },
     { code: 'gironi', label: 'Gironi' },
     { code: 'eliminazione_diretta', label: 'Eliminazione diretta' },
   ]);
-  await client.from('roles').upsert([
+  if (formatsError) throw new Error(`Errore upsert competition_formats: ${formatsError.message}`);
+
+  // ruleset esplicito su OGNI riga (anche dove combacia col default 'mantra'
+  // della colonna): un batch upsert con colonne eterogenee tra le righe fa sì
+  // che PostgREST scriva `null` esplicito per le righe che omettono una
+  // colonna presente in altre righe dello stesso batch, invece di lasciare
+  // applicare il default — con `ruleset not null` questo fa fallire l'INTERO
+  // batch (bug reale osservato: le righe 'classico' non venivano mai scritte).
+  const { error: rolesError } = await client.from('roles').upsert([
     // Mantra (2023-24 in poi, e 2025-26): il fatto che il 2023-24 non usi
     // "B" non richiede nulla qui, semplicemente quella riga non viene mai
     // referenziata da player_roles per quella stagione.
-    { code: 'Por', label: 'Portiere' },
-    { code: 'Dc', label: 'Difensore centrale' },
-    { code: 'Ds', label: 'Difensore sinistro' },
-    { code: 'Dd', label: 'Difensore destro' },
-    { code: 'B', label: 'Terzino' },
-    { code: 'E', label: 'Esterno' },
-    { code: 'M', label: 'Mediano' },
-    { code: 'C', label: 'Centrocampista' },
-    { code: 'W', label: 'Ala' },
-    { code: 'T', label: 'Trequartista' },
-    { code: 'A', label: 'Attaccante' },
-    { code: 'Pc', label: 'Prima punta' },
+    { code: 'Por', label: 'Portiere', ruleset: 'mantra' },
+    { code: 'Dc', label: 'Difensore centrale', ruleset: 'mantra' },
+    { code: 'Ds', label: 'Difensore sinistro', ruleset: 'mantra' },
+    { code: 'Dd', label: 'Difensore destro', ruleset: 'mantra' },
+    { code: 'B', label: 'Terzino', ruleset: 'mantra' },
+    { code: 'E', label: 'Esterno', ruleset: 'mantra' },
+    { code: 'M', label: 'Mediano', ruleset: 'mantra' },
+    { code: 'C', label: 'Centrocampista', ruleset: 'mantra' },
+    { code: 'W', label: 'Ala', ruleset: 'mantra' },
+    { code: 'T', label: 'Trequartista', ruleset: 'mantra' },
+    { code: 'A', label: 'Attaccante', ruleset: 'mantra' },
+    { code: 'Pc', label: 'Prima punta', ruleset: 'mantra' },
     // Classico (2020-21, 2021-22, 2022-23): "C" e "A" hanno lo stesso
     // significato che in Mantra (Centrocampista/Attaccante), niente riga
     // duplicata per quei due codici — servono solo "P" e "D" in più.
     { code: 'P', label: 'Portiere', ruleset: 'classico' },
     { code: 'D', label: 'Difensore', ruleset: 'classico' },
   ]);
-  await client.from('import_source_types').upsert([
+  if (rolesError) throw new Error(`Errore upsert roles: ${rolesError.message}`);
+
+  const { error: sourceTypesError } = await client.from('import_source_types').upsert([
     { code: 'xlsx', label: 'Excel' },
     { code: 'ocr_image', label: 'OCR da immagine' },
     { code: 'html_legacy', label: 'HTML legacy' },
     { code: 'manual', label: 'Manuale' },
   ]);
+  if (sourceTypesError) throw new Error(`Errore upsert import_source_types: ${sourceTypesError.message}`);
+
   console.log('Lookup tables popolate');
 }
 
