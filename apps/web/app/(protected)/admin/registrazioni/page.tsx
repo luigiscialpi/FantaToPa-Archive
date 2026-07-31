@@ -1,6 +1,7 @@
 import { createClient } from '../../../../lib/supabase/server';
 import { getPendingRegistrationRequests } from '../../../../lib/queries/registration';
 import { approveRegistration, rejectRegistration } from '../../../../lib/admin/actions';
+import { ResendConfirmationForm } from '../../../../components/admin/ResendConfirmationForm';
 
 export default async function AdminRegistrazioniPage() {
   const supabase = await createClient();
@@ -9,6 +10,8 @@ export default async function AdminRegistrazioniPage() {
   return (
     <main className="p-4 space-y-4 max-w-2xl mx-auto">
       <h1 className="font-serif font-bold text-lg text-brand-950">Richieste di registrazione</h1>
+
+      <ResendConfirmationForm />
 
       {requests.length === 0 ? (
         <p className="text-sm text-stone-500">Nessuna richiesta in attesa.</p>

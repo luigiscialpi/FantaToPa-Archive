@@ -2,7 +2,19 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createClient } from '../supabase/server';
+
+// Origine (protocollo+host) della richiesta corrente, usata come
+// emailRedirectTo per Supabase Auth: senza, Supabase userebbe il Site URL
+// fisso configurato in dashboard, che se lasciato su localhost (residuo di
+// sviluppo) rompe la conferma email in produzione — causa reale di un
+// account approvato ma mai confermato.
+export async function siteOrigin(): Promise<string> {
+  const host = (await headers()).get('host');
+  const protocol = host?.startsWith('localhost') || host?.startsWith('127.0.0.1') ? 'http' : 'https';
+  return `${protocol}://${host}`;
+}
 
 export type LoginFormState = { error: string | null };
 
@@ -66,6 +78,7 @@ export async function signUp(_prevState: RegisterFormState, formData: FormData):
     email,
     password,
     options: {
+      emailRedirectTo: await siteOrigin(),
       data: {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
