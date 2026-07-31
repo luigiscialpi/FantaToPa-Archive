@@ -26,8 +26,11 @@ export const TEAM_REGISTRY: TeamIdentity[] = [
   { canonicalName: 'Biancoceleste Athletic Club', aliases: [] },
   { canonicalName: 'Carloparola Fc', aliases: [] },
   { canonicalName: 'Monster', aliases: [] },
-  { canonicalName: 'Prozalpi S.F.', aliases: [] },
   { canonicalName: 'Real Cocu 2003 Fc', aliases: [] },
+
+  // Il nome nei dati (rosa/classifica) non cambia mai: l'alias serve solo per
+  // i file immagine 2023-24 ("ProZalpi.png", senza "S.F."), non per un rename reale.
+  { canonicalName: 'Prozalpi S.F.', aliases: ['ProZalpi'] },
 
   // Rename confermati dall'utente.
   {
