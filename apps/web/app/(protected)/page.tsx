@@ -7,15 +7,23 @@ import {
   getAllTimeTitleCounts,
   getLatestMatchdayResults,
   getLeagueRecords,
+  getLongestUnbeatenStreak,
   getMostFieldedPlayers,
   getMostTitledTeam,
   getPersonalRecords,
   getRivalryHighlight,
+  getRosterLoyalty,
+  getRosterStandout,
   getSeasonGallery,
+  getStandingHistory,
   type FieldedPlayer,
   type MatchHighlight,
   type RivalryHighlight,
+  type RosterLoyaltyEntry,
+  type RosterStandout,
+  type StandingHistoryPoint,
   type TitleCounts,
+  type UnbeatenStreak,
 } from '../../lib/queries/home';
 import { TeamPanel } from '../../components/home/TeamPanel';
 import { LeagueShowcase } from '../../components/home/LeagueShowcase';
@@ -58,19 +66,27 @@ export default async function HomePage() {
     teamName: string;
     logoUrl: string | null;
     standing: { position: number | null; points: number | null; leaderPoints: number | null } | null;
+    standingHistory: StandingHistoryPoint[];
     titles: TitleCounts;
     rivalry: RivalryHighlight | null;
     records: { best: MatchHighlight | null; worst: MatchHighlight | null };
     keyPlayers: FieldedPlayer[];
+    loyalty: RosterLoyaltyEntry[];
+    standout: RosterStandout | null;
+    streak: UnbeatenStreak | null;
   } | null = null;
 
   if (profile?.teamId) {
     const teamId = profile.teamId;
-    const [titleCounts, rivalry, records, keyPlayers, branding, teamRow] = await Promise.all([
+    const [titleCounts, rivalry, records, keyPlayers, standingHistory, loyalty, standout, streak, branding, teamRow] = await Promise.all([
       getAllTimeTitleCounts(supabase),
       getRivalryHighlight(supabase, teamId),
       getPersonalRecords(supabase, teamId),
       getMostFieldedPlayers(supabase, teamId),
+      getStandingHistory(supabase, teamId),
+      getRosterLoyalty(supabase, teamId),
+      getRosterStandout(supabase, teamId),
+      getLongestUnbeatenStreak(supabase, teamId),
       getTeamBranding(supabase, latestSeason.id, [teamId]),
       supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
     ]);
@@ -88,10 +104,14 @@ export default async function HomePage() {
       standing: ownStanding
         ? { position: ownStanding.position, points: ownStanding.points, leaderPoints: leaderStanding?.points ?? null }
         : null,
+      standingHistory,
       titles: titleCounts.get(teamId) ?? { campionati: 0, coppe: 0 },
       rivalry,
       records,
       keyPlayers,
+      loyalty,
+      standout,
+      streak,
     };
   }
 
@@ -104,10 +124,14 @@ export default async function HomePage() {
             logoUrl={teamPanel.logoUrl}
             seasonSlug={latestSeason.slug}
             standing={teamPanel.standing}
+            standingHistory={teamPanel.standingHistory}
             titles={teamPanel.titles}
             rivalry={teamPanel.rivalry}
             records={teamPanel.records}
             keyPlayers={teamPanel.keyPlayers}
+            loyalty={teamPanel.loyalty}
+            standout={teamPanel.standout}
+            streak={teamPanel.streak}
           />
         </div>
       )}

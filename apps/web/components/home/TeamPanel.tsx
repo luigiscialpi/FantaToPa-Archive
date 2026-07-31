@@ -9,7 +9,20 @@ import { Trophy, Swords, TrendingUp } from 'lucide-react';
 import { Crest } from '../shared/Crest';
 import { StatCard } from './StatCard';
 import { KeyPlayersCard } from './KeyPlayersCard';
-import type { TitleCounts, RivalryHighlight, MatchHighlight, FieldedPlayer } from '../../lib/queries/home';
+import { StandingSparkline } from './StandingSparkline';
+import { RosterLoyaltyCard } from './RosterLoyaltyCard';
+import { RosterStandoutCard } from './RosterStandoutCard';
+import { UnbeatenStreakCard } from './UnbeatenStreakCard';
+import type {
+  TitleCounts,
+  RivalryHighlight,
+  MatchHighlight,
+  FieldedPlayer,
+  StandingHistoryPoint,
+  RosterLoyaltyEntry,
+  RosterStandout,
+  UnbeatenStreak,
+} from '../../lib/queries/home';
 
 type CurrentStanding = {
   position: number | null;
@@ -22,10 +35,14 @@ type TeamPanelProps = {
   logoUrl: string | null;
   seasonSlug: string;
   standing: CurrentStanding | null;
+  standingHistory: StandingHistoryPoint[];
   titles: TitleCounts;
   rivalry: RivalryHighlight | null;
   records: { best: MatchHighlight | null; worst: MatchHighlight | null };
   keyPlayers: FieldedPlayer[];
+  loyalty: RosterLoyaltyEntry[];
+  standout: RosterStandout | null;
+  streak: UnbeatenStreak | null;
 };
 
 function formatMatchdayLink(record: MatchHighlight) {
@@ -37,7 +54,20 @@ function formatMatchdayLink(record: MatchHighlight) {
   );
 }
 
-export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, rivalry, records, keyPlayers }: TeamPanelProps) {
+export function TeamPanel({
+  teamName,
+  logoUrl,
+  seasonSlug,
+  standing,
+  standingHistory,
+  titles,
+  rivalry,
+  records,
+  keyPlayers,
+  loyalty,
+  standout,
+  streak,
+}: TeamPanelProps) {
   const gap =
     standing && standing.leaderPoints !== null && standing.points !== null ? standing.leaderPoints - standing.points : null;
 
@@ -49,7 +79,7 @@ export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, riv
           {teamName}
         </h2>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard
           label="Ultima stagione"
           href={`/stagioni/${seasonSlug}/classifica`}
@@ -64,6 +94,7 @@ export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, riv
                 {gap !== null && gap > 0 && <> · a {gap} dalla vetta</>}
                 {gap === 0 && <> · in vetta</>}
               </div>
+              <StandingSparkline history={standingHistory} />
             </>
           ) : (
             <div className="text-sm text-stone-400">Ancora nessun dato</div>
@@ -124,6 +155,12 @@ export function TeamPanel({ teamName, logoUrl, seasonSlug, standing, titles, riv
         </StatCard>
 
         <KeyPlayersCard players={keyPlayers} />
+
+        <RosterLoyaltyCard loyalty={loyalty} />
+
+        <RosterStandoutCard standout={standout} />
+
+        <UnbeatenStreakCard streak={streak} />
       </div>
     </section>
   );

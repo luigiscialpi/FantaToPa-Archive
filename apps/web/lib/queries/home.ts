@@ -361,16 +361,10 @@ export type FieldedPlayer = { playerName: string; appearances: number };
 // partite di tutte le squadre): con 6 stagioni quella lista di partite non
 // filtrate per squadra supera la lunghezza URL accettata da Supabase per un
 // filtro `.in()` e la query fallisce con "Bad Request".
-// Il costo della query non dipende da `limit`: la paginazione qui sotto
-// scorre comunque TUTTE le lineup_players campionato della squadra per
-// contare le presenze di ognuno, `limit` taglia solo l'array già ordinato
-// alla fine. Il chiamante può quindi chiedere fino a 30 (il tetto della
-// tendina "quanti mostrare" in KeyPlayersCard) senza query aggiuntive.
-export async function getMostFieldedPlayers(
-  supabase: TypedSupabaseClient,
-  teamId: string,
-  limit = 30,
-): Promise<FieldedPlayer[]> {
+// Condiviso da getMostFieldedPlayers e getRosterStandout: stessa identica
+// catena lineups→matches→matchdays→competitions per isolare le sole
+// formazioni di campionato (mai coppa) di una squadra.
+async function getCampionatoLineupIds(supabase: TypedSupabaseClient, teamId: string): Promise<string[]> {
   const { data: lineups, error: lineupsError } = await supabase
     .from('lineups')
     .select('id, match_id')
@@ -415,7 +409,20 @@ export async function getMostFieldedPlayers(
   const campionatoMatchIds = new Set(
     matches.filter((match) => campionatoMatchdayIds.has(match.matchday_id)).map((match) => match.id),
   );
-  const lineupIds = lineups.filter((lineup) => campionatoMatchIds.has(lineup.match_id)).map((lineup) => lineup.id);
+  return lineups.filter((lineup) => campionatoMatchIds.has(lineup.match_id)).map((lineup) => lineup.id);
+}
+
+// Il costo della query non dipende da `limit`: la paginazione qui sotto
+// scorre comunque TUTTE le lineup_players campionato della squadra per
+// contare le presenze di ognuno, `limit` taglia solo l'array già ordinato
+// alla fine. Il chiamante può quindi chiedere fino a 30 (il tetto della
+// tendina "quanti mostrare" in KeyPlayersCard) senza query aggiuntive.
+export async function getMostFieldedPlayers(
+  supabase: TypedSupabaseClient,
+  teamId: string,
+  limit = 30,
+): Promise<FieldedPlayer[]> {
+  const lineupIds = await getCampionatoLineupIds(supabase, teamId);
   if (lineupIds.length === 0) {
     return [];
   }
@@ -622,4 +629,313 @@ export async function getSeasonGallery(supabase: TypedSupabaseClient): Promise<S
       championName: !inProgress && winnerTeamId ? (teamNameById.get(winnerTeamId) ?? null) : null,
     };
   });
+}
+
+export type StandingHistoryPoint = { seasonSlug: string; seasonLabel: string; position: number };
+
+// Andamento storico del piazzamento in campionato (mai coppa), una tessera
+// per stagione: stesso pattern anti-URL-troppo-lunga di getMostFieldedPlayers,
+// si parte da standings già filtrate per team_id (poche righe, una per
+// competizione a cui la squadra ha partecipato) e non da "tutte le
+// competizioni campionato di tutte le stagioni".
+export async function getStandingHistory(supabase: TypedSupabaseClient, teamId: string): Promise<StandingHistoryPoint[]> {
+  const { data: standingsRows, error: standingsError } = await supabase
+    .from('standings')
+    .select('position, competition_id')
+    .eq('team_id', teamId);
+  if (standingsError) {
+    throw new Error(`Impossibile leggere le classifiche: ${standingsError.message}`);
+  }
+  if (standingsRows.length === 0) {
+    return [];
+  }
+
+  const competitionIds = [...new Set(standingsRows.map((row) => row.competition_id))];
+  const { data: competitions, error: competitionsError } = await supabase
+    .from('competitions')
+    .select('id, season_id, kind_code')
+    .in('id', competitionIds);
+  if (competitionsError) {
+    throw new Error(`Impossibile leggere le competizioni: ${competitionsError.message}`);
+  }
+
+  const seasonIdByCompetition = new Map(
+    competitions.filter((competition) => competition.kind_code === 'campionato').map((competition) => [competition.id, competition.season_id]),
+  );
+  if (seasonIdByCompetition.size === 0) {
+    return [];
+  }
+
+  const seasonIds = [...new Set(seasonIdByCompetition.values())];
+  const { data: seasons, error: seasonsError } = await supabase
+    .from('seasons')
+    .select('id, slug, label, starts_on')
+    .in('id', seasonIds);
+  if (seasonsError) {
+    throw new Error(`Impossibile leggere le stagioni: ${seasonsError.message}`);
+  }
+
+  const seasonById = new Map(seasons.map((season) => [season.id, season]));
+
+  const points = standingsRows.flatMap((row) => {
+    const seasonId = seasonIdByCompetition.get(row.competition_id);
+    const season = seasonId ? seasonById.get(seasonId) : undefined;
+    if (!season || row.position === null) {
+      return [];
+    }
+    return [{ seasonSlug: season.slug, seasonLabel: season.label, position: row.position, startsOn: season.starts_on ?? '' }];
+  });
+
+  points.sort((a, b) => a.startsOn.localeCompare(b.startsOn));
+
+  return points.map(({ seasonSlug, seasonLabel, position }) => ({ seasonSlug, seasonLabel, position }));
+}
+
+export type RosterLoyaltyEntry = { playerName: string; seasonsCount: number };
+
+// "Fedeltà": in quante stagioni (anche NON consecutive) un giocatore è stato
+// in rosa per QUESTA squadra — non una striscia, un totale.
+//
+// La 2022-23 non ha mai avuto Rose_fantatopa.xlsx (season-configs.ts:
+// rosterFolder undefined, nessuna squadra ha righe `rosters` quell'anno):
+// non contribuisce al conteggio di nessun giocatore, ma è un trattamento
+// uguale per tutti (nessuno "vede" quella stagione), quindi non serve
+// scoprire quali stagioni abbiano dati come andrebbe fatto per una striscia
+// consecutiva — un semplice conteggio per player_id basta.
+export async function getRosterLoyalty(supabase: TypedSupabaseClient, teamId: string, minSeasons = 2, limit = 30): Promise<RosterLoyaltyEntry[]> {
+  const { data: rosterRows, error: rosterError } = await supabase
+    .from('rosters')
+    .select('player_id, season_id')
+    .eq('team_id', teamId);
+  if (rosterError) {
+    throw new Error(`Impossibile leggere le rose: ${rosterError.message}`);
+  }
+
+  const seasonIdsByPlayer = new Map<string, Set<string>>();
+  for (const row of rosterRows) {
+    const set = seasonIdsByPlayer.get(row.player_id) ?? new Set<string>();
+    set.add(row.season_id);
+    seasonIdsByPlayer.set(row.player_id, set);
+  }
+
+  const counts = [...seasonIdsByPlayer.entries()]
+    .map(([playerId, seasonIds]) => ({ playerId, seasonsCount: seasonIds.size }))
+    .filter((entry) => entry.seasonsCount >= minSeasons);
+  if (counts.length === 0) {
+    return [];
+  }
+
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id, canonical_name')
+    .in(
+      'id',
+      counts.map((entry) => entry.playerId),
+    );
+  if (playersError) {
+    throw new Error(`Impossibile leggere i giocatori: ${playersError.message}`);
+  }
+
+  const nameById = new Map(players.map((player) => [player.id, player.canonical_name]));
+
+  return counts
+    .map((entry) => ({
+      playerName: nameById.get(entry.playerId) ?? '—',
+      seasonsCount: entry.seasonsCount,
+    }))
+    .sort((a, b) => b.seasonsCount - a.seasonsCount || a.playerName.localeCompare(b.playerName))
+    .slice(0, limit);
+}
+
+export type RosterStandout = { playerName: string; averageFantavoto: number; appearances: number };
+
+// "Fuoriclasse della rosa": media fantavoto più alta fra i titolari/subentrati
+// che contano per il totale squadra. `counts_for_total`, non `slot`: un
+// panchinaro subentrato può contare (counts_for_total=true, slot='panchina'
+// comunque), un titolare non sostituito che non gioca la partita successiva
+// non c'entra qui — è la stessa distinzione già documentata nella migrazione
+// che ha introdotto la colonna. Soglia minima di presenze per non far
+// vincere un exploit da una sola giornata.
+const MIN_APPEARANCES_FOR_STANDOUT = 10;
+
+export async function getRosterStandout(supabase: TypedSupabaseClient, teamId: string): Promise<RosterStandout | null> {
+  const lineupIds = await getCampionatoLineupIds(supabase, teamId);
+  if (lineupIds.length === 0) {
+    return null;
+  }
+
+  // Stessa cautela di paginazione di getMostFieldedPlayers: 6 stagioni di
+  // campionato superano le 1000 righe di default per risposta.
+  const totalsByPlayer = new Map<string, { sum: number; count: number }>();
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data: page, error: pageError } = await supabase
+      .from('lineup_players')
+      .select('player_id, fantavoto')
+      .in('lineup_id', lineupIds)
+      .eq('counts_for_total', true)
+      .range(from, from + pageSize - 1);
+    if (pageError) {
+      throw new Error(`Impossibile leggere i fantavoti: ${pageError.message}`);
+    }
+    for (const row of page) {
+      if (row.fantavoto === null) continue;
+      const entry = totalsByPlayer.get(row.player_id) ?? { sum: 0, count: 0 };
+      entry.sum += row.fantavoto;
+      entry.count += 1;
+      totalsByPlayer.set(row.player_id, entry);
+    }
+    if (page.length < pageSize) break;
+  }
+
+  const best = [...totalsByPlayer.entries()]
+    .map(([playerId, { sum, count }]) => ({ playerId, average: sum / count, appearances: count }))
+    .filter((entry) => entry.appearances >= MIN_APPEARANCES_FOR_STANDOUT)
+    .sort((a, b) => b.average - a.average)[0];
+  if (!best) {
+    return null;
+  }
+
+  const { data: player, error: playerError } = await supabase
+    .from('players')
+    .select('canonical_name')
+    .eq('id', best.playerId)
+    .maybeSingle();
+  if (playerError) {
+    throw new Error(`Impossibile leggere il giocatore: ${playerError.message}`);
+  }
+
+  return {
+    playerName: player?.canonical_name ?? '—',
+    averageFantavoto: Math.round(best.average * 100) / 100,
+    appearances: best.appearances,
+  };
+}
+
+export type UnbeatenStreak = {
+  length: number;
+  fromSeasonLabel: string;
+  fromMatchdayNumber: number;
+  toSeasonLabel: string;
+  toMatchdayNumber: number;
+};
+
+// "Serie utile": striscia più lunga di partite consecutive senza sconfitta
+// (vittoria o pareggio) di sempre. Solo campionato, mai coppa: `matches` non
+// ha una data reale per partita, solo matchday_id → number relativo alla
+// competizione, quindi non c'è modo affidabile di intrecciare
+// cronologicamente giornate di gironi/fase finale di coppa con quelle di
+// campionato nella stessa stagione — stesso perimetro di Andamento
+// storico/Giocatori chiave. Riusa home_result_points/away_result_points
+// (3/1/0, già derivati in fase di import) invece di ricalcolare
+// vittoria/pareggio/sconfitta confrontando home_score/away_score a mano.
+export async function getLongestUnbeatenStreak(supabase: TypedSupabaseClient, teamId: string): Promise<UnbeatenStreak | null> {
+  const selection = 'matchday_id, home_team_id, away_team_id, home_result_points, away_result_points';
+  const [homeResult, awayResult] = await Promise.all([
+    supabase.from('matches').select(selection).eq('home_team_id', teamId),
+    supabase.from('matches').select(selection).eq('away_team_id', teamId),
+  ]);
+  if (homeResult.error) {
+    throw new Error(`Impossibile leggere le partite: ${homeResult.error.message}`);
+  }
+  if (awayResult.error) {
+    throw new Error(`Impossibile leggere le partite: ${awayResult.error.message}`);
+  }
+
+  const matches = [
+    ...homeResult.data.map((match) => ({ matchdayId: match.matchday_id, points: match.home_result_points })),
+    ...awayResult.data.map((match) => ({ matchdayId: match.matchday_id, points: match.away_result_points })),
+  ];
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const matchdayIds = [...new Set(matches.map((match) => match.matchdayId))];
+  const { data: matchdays, error: matchdaysError } = await supabase
+    .from('matchdays')
+    .select('id, number, competition_id')
+    .in('id', matchdayIds);
+  if (matchdaysError) {
+    throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+  }
+
+  const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
+  const { data: competitions, error: competitionsError } = await supabase
+    .from('competitions')
+    .select('id, kind_code, season_id')
+    .in('id', competitionIds);
+  if (competitionsError) {
+    throw new Error(`Impossibile leggere le competizioni: ${competitionsError.message}`);
+  }
+
+  const seasonIdByCampionatoCompetition = new Map(
+    competitions.filter((competition) => competition.kind_code === 'campionato').map((competition) => [competition.id, competition.season_id]),
+  );
+
+  const seasonIds = [...new Set(seasonIdByCampionatoCompetition.values())];
+  const { data: seasons, error: seasonsError } = await supabase.from('seasons').select('id, label, starts_on').in('id', seasonIds);
+  if (seasonsError) {
+    throw new Error(`Impossibile leggere le stagioni: ${seasonsError.message}`);
+  }
+  const seasonById = new Map(seasons.map((season) => [season.id, season]));
+  const matchdayById = new Map(matchdays.map((matchday) => [matchday.id, matchday]));
+
+  type ChronoMatch = { startsOn: string; matchdayNumber: number; seasonLabel: string; points: number };
+  const chronoMatches: ChronoMatch[] = [];
+  for (const match of matches) {
+    if (match.points === null) continue;
+    const matchday = matchdayById.get(match.matchdayId);
+    if (!matchday) continue;
+    const seasonId = seasonIdByCampionatoCompetition.get(matchday.competition_id);
+    if (!seasonId) continue;
+    const season = seasonById.get(seasonId);
+    if (!season) continue;
+    chronoMatches.push({
+      startsOn: season.starts_on ?? '',
+      matchdayNumber: matchday.number,
+      seasonLabel: season.label,
+      points: match.points,
+    });
+  }
+  chronoMatches.sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.matchdayNumber - b.matchdayNumber);
+
+  let bestLength = 0;
+  let bestStart = -1;
+  let bestEnd = -1;
+  let currentLength = 0;
+  let currentStart = 0;
+  for (let i = 0; i < chronoMatches.length; i++) {
+    const current = chronoMatches[i];
+    if (!current) continue;
+    if (current.points > 0) {
+      if (currentLength === 0) {
+        currentStart = i;
+      }
+      currentLength += 1;
+      if (currentLength > bestLength) {
+        bestLength = currentLength;
+        bestStart = currentStart;
+        bestEnd = i;
+      }
+    } else {
+      currentLength = 0;
+    }
+  }
+  if (bestStart === -1 || bestEnd === -1) {
+    return null;
+  }
+
+  const from = chronoMatches[bestStart];
+  const to = chronoMatches[bestEnd];
+  if (!from || !to) {
+    return null;
+  }
+
+  return {
+    length: bestLength,
+    fromSeasonLabel: from.seasonLabel,
+    fromMatchdayNumber: from.matchdayNumber,
+    toSeasonLabel: to.seasonLabel,
+    toMatchdayNumber: to.matchdayNumber,
+  };
 }
