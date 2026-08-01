@@ -40,7 +40,13 @@ export function StandingSparkline({ history }: { history: StandingHistoryPoint[]
 
   return (
     <div className="mt-2.5">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none" className="h-11 w-full overflow-visible">
+      {/* aspect-ratio = WIDTH/HEIGHT: l'altezza segue la larghezza (piena, w-full)
+          invece di restare fissa, così il disegno scala senza mai stirarsi. */}
+      <svg
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        className="w-full overflow-visible"
+        style={{ aspectRatio: `${WIDTH} / ${HEIGHT}` }}
+      >
         <polyline
           points={linePoints}
           fill="none"
