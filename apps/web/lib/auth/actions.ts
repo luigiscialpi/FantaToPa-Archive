@@ -4,6 +4,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '../supabase/server';
+import { notifyAdminNewRegistration } from '../notifications/telegram';
 
 // Origine (protocollo+host) della richiesta corrente, usata come
 // emailRedirectTo per Supabase Auth: senza, Supabase userebbe il Site URL
@@ -73,6 +74,8 @@ export async function signUp(_prevState: RegisterFormState, formData: FormData):
     return { error: 'Le password non coincidono.', success: false };
   }
 
+  const requestedTeamIdValue = typeof requestedTeamId === 'string' ? requestedTeamId : '';
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -84,7 +87,7 @@ export async function signUp(_prevState: RegisterFormState, formData: FormData):
         last_name: lastName.trim(),
         // handle_new_user (schema_iniziale.sql) fa nullif('') -> null:
         // stringa vuota qui equivale a "nessuna squadra".
-        requested_team_id: typeof requestedTeamId === 'string' ? requestedTeamId : '',
+        requested_team_id: requestedTeamIdValue,
       },
     },
   });
@@ -97,6 +100,17 @@ export async function signUp(_prevState: RegisterFormState, formData: FormData):
         : 'Registrazione non riuscita. Riprova.';
     return { error: message, success: false };
   }
+
+  let teamName: string | null = null;
+  if (requestedTeamIdValue) {
+    const { data: team } = await supabase
+      .from('teams')
+      .select('canonical_name')
+      .eq('id', requestedTeamIdValue)
+      .maybeSingle();
+    teamName = team?.canonical_name ?? null;
+  }
+  await notifyAdminNewRegistration({ firstName: firstName.trim(), lastName: lastName.trim(), teamName });
 
   // Se le conferme email sono disabilitate, signUp crea subito una sessione:
   // in quel caso si passa dal layout protetto, che mostra già lo stato
