@@ -21,6 +21,8 @@ puntare ai file giusti invece che alle sezioni.
 |---|---|
 | Nuova tabella, modifica schema, migrazione | Sezione 6 (Modello dati) |
 | Import di una stagione, parser xlsx, alias squadre/giocatori | Sezione 7 (Pipeline di ingestion) |
+| Bonus/malus per giornata (gol, assist, cartellini...) | Sezione 7.1 |
+| Dati legacy da sito HTML vecchio (mirror scaricato, non immagine) | Sezione 7.2 |
 | Dati legacy in immagine, OCR | Sezione 8 |
 | Login, registrazione, RLS, ruoli | Sezione 9 (Autenticazione) |
 | Qualsiasi pagina (Classifica, Formazioni, Statistiche, Albo d'Oro, Home) | Sezione 10 — include la mappa pagine completa e le decisioni UX già prese |

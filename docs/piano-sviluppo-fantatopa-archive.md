@@ -3,6 +3,8 @@
 > Working title. Sito che raccoglie e presenta tutte le edizioni storiche della lega fantacalcio, a partire dai dati in `Fantacalcio.zip` (stagioni 2020-21, 2021-22, 2022-23, 2023-24, 2024-25, 2025-26) più le edizioni ancora più vecchie salvate come siti interi scaricati, per cui l'approccio si deciderà più avanti.
 >
 > **Aggiornamento**: la 2022-23 — indicata più sotto come "confermata mancante" nella stesura originale di questo piano — è stata in realtà recuperata separatamente ed è oggi una sesta stagione importabile come le altre, con alcune lacune reali proprie (niente `Rose_fantatopa.xlsx`, dati Coppa gironi/Fase Finale incompleti) ma non un buco totale. Vedi sezione 8 per il quadro aggiornato delle lacune dati per stagione.
+>
+> **Aggiornamento (stagione 2018-19)**: le "edizioni ancora più vecchie salvate come siti interi scaricati" hanno ora un primo caso reale — un mirror statico del vecchio sito "Leghe Fantagazzetta", importato con un adapter dedicato (non OCR: i dati sono già in HTML/JS embedded, non immagini). Vedi sezione 7.2 per il meccanismo e le lacune specifiche di questa fonte.
 
 ## Indice
 
@@ -580,9 +582,99 @@ Altri due accorgimenti operativi, minori ma concreti:
 
 Un'ultima cosa che vale la pena rendere esplicita come principio: **i file grezzi originali (xlsx, immagini, in futuro gli HTML) restano l'unica fonte di verità definitiva**, conservati per sempre in Storage e collegati a ogni `import_batches`. Il database è una proiezione ricostruibile da quei file, non il contrario — se tra due anni lo schema canonico deve cambiare forma, puoi ri-eseguire gli adapter sui sorgenti archiviati invece di dover recuperare dati che esistono solo nel DB.
 
+### 7.1 Bonus/malus granulari per giornata (Campionato 2025-26, con derivazione Coppa)
+
+Per la stagione 2025-26 esiste una fonte aggiuntiva rispetto alle xlsx: 37 pagine HTML
+("Voti" di leghe.fantacalcio.it, `docs/html/001.html`...`037.html`, una per giornata di
+Campionato) che riportano bonus/malus reali per giocatore (gol fatto/subito, assist,
+ammonizione, espulsione, autogol, rigori, portiere imbattuto, player of the match).
+`lineup_players` resta invariata (niente colonne bonus lì, vedi `AGENTS.md`): questi dati
+vivono in tabelle dedicate, introdotte con la migrazione `20260731090000`:
+
+- `bonus_kinds` (code/label) — 13 tipi, elenco chiuso.
+- `player_matchday_bonuses` (`matchday_id, player_id, kind_code, position_order`) —
+  chiave `(matchday_id, player_id)`, **non** `lineup_player_id`: un evento reale di
+  Serie A non va duplicato se più squadre fantacalcio schierano lo stesso giocatore la
+  stessa giornata. Nessun campo "punti": il fantavoto già corretto arriva dall'xlsx,
+  questi bonus sono solo per la visualizzazione.
+- `matchday_bonus_sources` (`matchday_id primary key, source_matchday_id`) — mappa una
+  giornata di Coppa alla giornata di Campionato "gemella" (stesso turno reale di Serie
+  A). Una giornata senza riga qui semplicemente non mostra bonus, nessun errore. La
+  derivazione dei bonus di Coppa è quindi un JOIN a query-time, zero import aggiuntivo.
+
+**Ingestion**: `HtmlVotiBonusAdapter` (`packages/ingestion/adapters/html-voti/bonus.ts`,
+regex-based come `html-legacy/`, nessuna libreria di parsing HTML nel repo) produce un
+`BonusImport` per giornata; `SeasonRepository.upsertMatchdayBonuses` fa upsert
+idempotente (delete+insert per giornata). Script di orchestrazione:
+`packages/ingestion/scripts/import-bonus-2025-26.ts`, uno per tutti i 37 file.
+
+**Mappatura Coppa 2025-26 confermata dall'utente** (popolata una tantum in
+`matchday_bonus_sources`, non da uno script ripetibile): Girone A/B giornate 1-5 →
+Campionato giornate 5,8,11,14,17 (stesse per entrambi i gironi); Fase Finale giornate
+1-5 → Campionato giornate 22,25,28,31,33.
+
+**Frontend**: `apps/web/lib/queries/formazioni.ts` risolve, per la giornata richiesta, la
+giornata "sorgente" bonus via `matchday_bonus_sources` (o usa la giornata stessa se non
+mappata) e allega un array `bonuses: {code, label}[]` a ogni `LineupPlayerRow`;
+`PlayerRow.tsx` li mostra come piccole icone con tooltip (mappa `code -> emoji`, elenco
+chiuso di 13 voci, niente libreria icone).
+
+### 7.2 Fonte HTML legacy (stagione 2018-19, mirror Fantagazzetta)
+
+Prima stagione con fonte diversa da xlsx: non un'immagine da OCRizzare (sezione 8), ma un
+mirror statico del vecchio sito "Leghe Fantagazzetta" — un sito scaricato, il caso già
+previsto in fondo alla sezione 8. Tre meccanismi di embedding dati nella stessa fonte,
+utile controllarli in quest'ordine quando si valuta se una pagina è recuperabile:
+
+1. **Blob in variabili JS globali** (`__.dp('base64')` → decode base64 → JSON, oppure un
+   oggetto letterale già JSON-valido da estrarre con un balanced-brace scanner che rispetta
+   stringhe ed escape, non un `indexOf` naive della prima `}`) — usato per classifica,
+   calendario, rose e i metadati di branding (`packages/ingestion/adapters/html-legacy/decode.ts`).
+2. **HTML letterale server-renderizzato** (tabelle e commenti reali dentro `home.html`) —
+   recuperabile solo quando il markup è HTML/valori letterali, non quando è sintassi
+   Handlebars `{{...}}` mai eseguita in un mirror statico: la presenza di `{{#each}}`/`{{var}}`
+   non popolati è il segnale affidabile che quella sezione non è recuperabile.
+3. **Template Handlebars lato client** — mai popolati in un mirror statico: le formazioni di
+   questa stagione sono per questo motivo irrecuperabili, gap accettato con l'utente (banner
+   `DataGapNotice` in Calendario/Formazioni, stesso pattern delle lacune di altre stagioni).
+
+**Lezione generale sul recupero da un mirror legacy**: non assumere che due cartelle-
+competizione con lo stesso nome file (`home.html` ovunque) siano ugualmente vuote solo
+perché una lo è — ogni pagina può avere sezioni server-renderizzate diverse. Un marcatore
+esplicito nella fonte (qui, `<!-- TIPO COMPETIZIONE: N -->`) va sempre controllato prima di
+assumere la semantica di una competizione dal solo nome cartella: in questa stagione i
+gironi di Coppa sono un formato a punteggio cumulato, non a scontri diretti, coerente col
+layout `'reduced'` già usato sopra per le classifiche gironi xlsx.
+
+Adapter nuovi (`packages/ingestion/adapters/html-legacy/{standings,calendar,roster}.ts`)
+seguono lo stesso contratto `SourceAdapter<T>` degli adapter xlsx — lo stesso principio di
+sostituibilità (Liskov, visto sopra) vale anche per una fonte completamente diversa. Script
+di orchestrazione one-off (`import-season-2018-19.ts`, non generalizzato: un'unica stagione
+con questa fonte), che riusa `ensureSeason`/`ensureLookups`/`ensureCompetitions` e le
+funzioni di branding esportate da `import-season.ts` invece di duplicarle.
+
+**Pattern riusabile per qualunque futuro script di orchestrazione**: uno script CLI il cui
+blocco top-level deve girare solo quando invocato direttamente, mai quando un altro script
+ne importa le funzioni esportate — guardia `if (import.meta.url ===
+pathToFileURL(process.argv[1] ?? '').href)` attorno al blocco CLI. Necessaria perché
+`import-season.ts` esporta funzioni riusate da `import-season-2018-19.ts`: senza la
+guardia, importarle da un altro entry-point rieseguiva comunque il suo blocco CLI, leggendo
+gli argv del chiamante.
+
+Risultato: 4 competizioni (campionato, coppa-girone-a, coppa-girone-b, coppa-fase-finale),
+classifiche e calendario campionato completi, dati Coppa parziali dove la fonte stessa è
+uno snapshot a metà stagione (importati così come sono, senza inventare una classifica
+finale fittizia), branding completo (10/10 loghi e maglie). Nessuna formazione (gap noto).
+Identità squadra cross-stagione risolta con lo stesso principio "chiedi, non indovinare"
+già visto per gli alias giocatore (sopra): dove il nome 2018-19 non trovava un alias
+esistente nel registro squadre, la corrispondenza è stata confermata dall'utente invece di
+dedotta.
+
 ## 8. Dati legacy e OCR
 
 > **Aggiornamento (fase di import reale)**: lanciando gli adapter xlsx reali su tutti i file di 2020-21/2021-22 (non solo guardando i nomi file), è emerso che Classifica/Calendario Campionato, Rose e Formazioni sono xlsx puliti, già coperti dagli adapter esistenti — nessun OCR necessario per quella parte. L'unico dato realmente solo-immagine è il calendario dei gironi di Coppa di quelle 2 stagioni (pochi file, non 10-15): un gap stretto, trattato come lacuna dati accettata e segnalata esplicitamente in UI (stesso pattern delle lacune di 2022-23), non un motivo per costruire la pipeline OCR sotto. La ricerca che segue resta comunque un riferimento valido per le edizioni pre-2020 ("siti interi scaricati", sezione 12), quando/se verranno recuperate.
+>
+> **Aggiornamento (stagione 2018-19)**: le edizioni pre-2020 di cui sopra hanno ora un primo caso reale e completato — non serviva OCR (i dati sono embedded in HTML/JS, non immagini) ma un adapter dedicato con un proprio meccanismo di decodifica. Vedi sezione 7.2 per i dettagli; questa sezione resta il riferimento per un eventuale futuro caso davvero basato su immagini/screenshot.
 
 Le immagini da gestire (2020-21, 2021-22) sono circa 10-15 file: screenshot puliti presi direttamente dal sito fantacalcio.it, non foto di carta — tabelle con bordi netti, font digitale. È un caso relativamente facile per l'OCR strutturato.
 
@@ -751,6 +843,9 @@ Supabase Auth, ruoli, RLS, upload → anteprima → conferma import. Registrazio
 
 **Fase 5 — Dati legacy (immagini 2020-21/2021-22)** *(ridimensionata — vedi sezione 8)*
 Si ipotizzava un adapter OCR completo (img2table + eventuale cross-check vision LLM). Verificato invece che quasi tutti i dati di quelle 2 stagioni sono xlsx puliti, già coperti dalla Fase 1 generalizzata; resta solo il calendario dei gironi di Coppa come gap immagine-soltanto, trattato come lacuna dati accettata (stesso pattern di 2022-23) finché non risulterà davvero necessario recuperarlo.
+
+**Estensione — Stagione 2018-19 da mirror HTML legacy** *(completata, vedi sezione 7.2)*
+Prima stagione precedente al 2020-21 recuperata: fonte diversa (sito scaricato, non xlsx né immagini), adapter `html-legacy` dedicato. Importata e verificata: 4 competizioni, classifiche/calendario campionato completi, Coppa parziale dove la fonte stessa è uno snapshot a metà stagione, branding completo, nessuna formazione (gap di fonte, non di importazione).
 
 **Fase 6 — Siti storici scaricati (edizioni pre-2020)**
 Adapter `html-legacy` quando i file sono disponibili, stesso schema canonico, nessuna modifica al resto del sistema.

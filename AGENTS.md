@@ -22,8 +22,12 @@ pubblico.
   Il confronto con `matches` è un controllo di qualità in fase di import, non un dato
   gemello salvato — due "fonti di verità" nella stessa tabella creano solo ambiguità.
 - **`lineup_players` ha solo `voto`/`fantavoto`, niente bonus/malus granulari** (gol,
-  assist, cartellini): la fonte dati (xlsx) non li riporta. Non aggiungere quei campi
-  finché non esiste una fonte reale da cui popolarli.
+  assist, cartellini): la fonte xlsx non li riporta. Dove esiste una fonte HTML dedicata
+  (Campionato 2025-26, `docs/html/`), i bonus/malus vivono in `player_matchday_bonuses`
+  (chiave `matchday_id, player_id`, non `lineup_player_id` — un evento reale non va
+  duplicato se più squadre fantacalcio schierano lo stesso giocatore), con derivazione
+  Coppa via `matchday_bonus_sources` (mapping a giornata di Campionato). Non aggiungere
+  quei campi a `lineup_players` per le stagioni che non hanno questa fonte.
 - **Lookup table (`competition_kinds`, `import_source_types`...) solo dove c'è
   variabilità già osservata nei dati**, non ovunque per principio — altrove restano
   `check` semplici. Estendibilità mirata, non generalizzata a caso.
