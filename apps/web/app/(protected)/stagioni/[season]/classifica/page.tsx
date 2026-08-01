@@ -74,7 +74,7 @@ export default async function ClassificaPage({ params, searchParams }: Classific
             to={toMatchday ?? bounds.max}
           />
         )}
-        <ClassificaTable key={`classifica-table-${activeCompetition.slug}`} rows={standings} />
+        <ClassificaTable key={`classifica-table-${activeCompetition.slug}`} rows={standings} seasonSlug={season.slug} />
       </div>
     </main>
   );

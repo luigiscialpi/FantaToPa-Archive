@@ -53,7 +53,14 @@ export default async function CalendarioPage({ params, searchParams }: Calendari
         {matchdays.length === 0 ? (
           <p className="text-sm text-stone-500">Calendario non disponibile per questa competizione.</p>
         ) : (
-          matchdays.map((matchday) => <MatchdayGroup key={matchday.id} matchday={matchday} />)
+          matchdays.map((matchday) => (
+            <MatchdayGroup
+              key={matchday.id}
+              matchday={matchday}
+              seasonSlug={season.slug}
+              competitionSlug={activeCompetition.slug}
+            />
+          ))
         )}
       </div>
     </main>

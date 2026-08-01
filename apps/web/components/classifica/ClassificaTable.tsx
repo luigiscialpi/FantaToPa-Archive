@@ -23,7 +23,7 @@ const COLUMNS: { key: SortKey; label: string; title: string }[] = [
   { key: 'totalFantapoints', label: 'Pt Totali', title: 'Fantapunti totali' },
 ];
 
-export function ClassificaTable({ rows }: { rows: StandingsRow[] }) {
+export function ClassificaTable({ rows, seasonSlug }: { rows: StandingsRow[]; seasonSlug: string }) {
   const [sortKey, setSortKey] = useState<SortKey>('position');
   const [ascending, setAscending] = useState(true);
 
@@ -90,7 +90,7 @@ export function ClassificaTable({ rows }: { rows: StandingsRow[] }) {
         </thead>
         <tbody>
           {sortedRows.map((row) => (
-            <ClassificaRow key={row.teamSlug || row.teamName} row={row} />
+            <ClassificaRow key={row.teamSlug || row.teamName} row={row} seasonSlug={seasonSlug} />
           ))}
         </tbody>
       </table>

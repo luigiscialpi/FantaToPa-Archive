@@ -1,4 +1,5 @@
 // apps/web/components/classifica/ClassificaRow.tsx
+import Link from 'next/link';
 import { Crest } from '../shared/Crest';
 import type { StandingsRow } from '../../lib/queries/classifica';
 
@@ -12,7 +13,7 @@ function StatCell({ value }: { value: number | null }) {
   return <td className="px-2 py-2 text-center tabular-nums text-stone-600">{value ?? '–'}</td>;
 }
 
-export function ClassificaRow({ row }: { row: StandingsRow }) {
+export function ClassificaRow({ row, seasonSlug }: { row: StandingsRow; seasonSlug: string }) {
   const medal = row.position !== null && row.position <= 3 ? MEDAL_STYLES[row.position - 1] : null;
   const goalDiffLabel = row.goalDiff !== null ? `${row.goalDiff > 0 ? '+' : ''}${row.goalDiff}` : '–';
 
@@ -28,10 +29,13 @@ export function ClassificaRow({ row }: { row: StandingsRow }) {
         </div>
       </td>
       <td className="px-2 py-2">
-        <div className="flex items-center gap-2 whitespace-nowrap">
+        <Link
+          href={`/stagioni/${seasonSlug}/rose#squadra-${row.teamSlug}`}
+          className="flex items-center gap-2 whitespace-nowrap hover:text-brand-700"
+        >
           <Crest name={row.teamName} imageUrl={row.jerseyUrl} />
           <span className="text-sm font-semibold text-stone-800">{row.teamName}</span>
-        </div>
+        </Link>
       </td>
       <StatCell value={row.played} />
       <StatCell value={row.won} />

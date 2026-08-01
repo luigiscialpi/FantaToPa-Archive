@@ -17,7 +17,9 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import type { CompetitionOption } from '../../lib/queries/seasons';
 
-const COMPETITION_SCOPED_SEGMENTS = ['classifica', 'calendario', 'formazioni'];
+// Esportato: PageTabs (components/layout/) lo riusa per preservare il
+// torneo attivo quando si cambia tab, invece di duplicare l'elenco.
+export const COMPETITION_SCOPED_SEGMENTS = ['classifica', 'calendario', 'formazioni'];
 
 type CompetitionSwitcherProps = {
   competitions: CompetitionOption[];

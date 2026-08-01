@@ -29,6 +29,11 @@ export function RosterJumpBar({ teams, defaultTeamSlug }: RosterJumpBarProps) {
   useEffect(() => {
     if (hasScrolledOnMount.current) return;
     hasScrolledOnMount.current = true;
+    // Un hash già in URL (es. /rose#squadra-<slug> linkato da Classifica)
+    // indica un punto di arrivo esplicito: non sovrascriverlo con la squadra
+    // di default, altrimenti il link mirato smette di funzionare. In quel
+    // caso ci pensa ScrollToAnchor, montato in RosePage.
+    if (window.location.hash) return;
     // 'auto' (non 'smooth'): al caricamento si vuole arrivare già
     // posizionati, non guardare un'animazione lungo tutta la pagina.
     scrollToTeam(defaultTeamSlug, 'auto');

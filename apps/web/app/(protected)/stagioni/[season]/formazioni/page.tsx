@@ -5,15 +5,16 @@ import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons'
 import { getFormazioni, getMatchdayOptions } from '../../../../../lib/queries/formazioni';
 import { MatchdaySelector } from '../../../../../components/formazioni/MatchdaySelector';
 import { FormazioniList } from '../../../../../components/formazioni/FormazioniList';
+import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
 
 type FormazioniPageProps = {
   params: Promise<{ season: string }>;
-  searchParams: Promise<{ competizione?: string; giornata?: string }>;
+  searchParams: Promise<{ competizione?: string; giornata?: string; partita?: string }>;
 };
 
 export default async function FormazioniPage({ params, searchParams }: FormazioniPageProps) {
   const { season: seasonSlug } = await params;
-  const { competizione, giornata } = await searchParams;
+  const { competizione, giornata, partita } = await searchParams;
 
   const supabase = await createClient();
   const seasons = await getSeasons(supabase);
@@ -56,9 +57,14 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
   }
 
   const matches = await getFormazioni(supabase, activeMatchday.id, season.id);
+  // Se ?partita= non corrisponde a nessuna partita di questa giornata
+  // (link stantio, o giornata cambiata), si ricade sul default (prima
+  // partita) invece di ignorare silenziosamente il match del tutto.
+  const activeMatchId = partita && matches.some((match) => match.matchId === partita) ? partita : null;
 
   return (
     <main>
+      <ScrollToAnchor />
       <div className="p-4">
         <div className="flex flex-row items-center justify-between gap-3 mb-4">
           <div>
@@ -77,7 +83,7 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
         {matches.length === 0 ? (
           <p className="text-sm text-stone-500">Nessuna formazione disponibile per questa giornata.</p>
         ) : (
-          <FormazioniList matches={matches} />
+          <FormazioniList matches={matches} initialExpandedMatchId={activeMatchId} />
         )}
       </div>
     </main>

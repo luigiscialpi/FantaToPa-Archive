@@ -32,9 +32,13 @@ export default async function SeasonLayout({ children, params }: SeasonLayoutPro
 
   return (
     <div>
-      <div className="bg-white border-b border-stone-200/90 px-4 flex items-center gap-3 sticky top-[57px] sm:top-[69px] z-10">
-        <PageTabs seasonSlug={season.slug} />
-      </div>
+      <Suspense fallback={
+        <div className="bg-white border-b border-stone-200/90 px-4 h-[41px] sticky top-[57px] sm:top-[69px] z-10" aria-hidden="true" />
+      }>
+        <div className="bg-white border-b border-stone-200/90 px-4 flex items-center gap-3 sticky top-[57px] sm:top-[69px] z-10">
+          <PageTabs seasonSlug={season.slug} />
+        </div>
+      </Suspense>
       <Suspense fallback={
         competitions.length > 1
           ? <div className="bg-stone-100/90 px-4 py-2 border-b border-stone-200/80 h-[37px]" aria-hidden="true" />

@@ -14,6 +14,7 @@ import { RosterJumpBar } from '../../../../../components/rose/RosterJumpBar';
 import { TeamRosterHeader } from '../../../../../components/rose/TeamRosterHeader';
 import { RosterTable } from '../../../../../components/rose/RosterTable';
 import { DataGapNotice } from '../../../../../components/shared/DataGapNotice';
+import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
 
 type RosePageProps = {
   params: Promise<{ season: string }>;
@@ -62,6 +63,7 @@ export default async function RosePage({ params }: RosePageProps) {
 
   return (
     <main>
+      <ScrollToAnchor />
       <div className="p-4">
         <h1 className="font-serif font-bold text-xl text-brand-950 mb-1">{season.label}</h1>
         <p className="text-sm text-stone-500 mb-4">Rose</p>

@@ -2,7 +2,13 @@
 import { MatchRow } from './MatchRow';
 import type { MatchdayGroup as MatchdayGroupData } from '../../lib/queries/calendario';
 
-export function MatchdayGroup({ matchday }: { matchday: MatchdayGroupData }) {
+type MatchdayGroupProps = {
+  matchday: MatchdayGroupData;
+  seasonSlug: string;
+  competitionSlug: string;
+};
+
+export function MatchdayGroup({ matchday, seasonSlug, competitionSlug }: MatchdayGroupProps) {
   return (
     <div
       id={`giornata-${matchday.number}`}
@@ -16,7 +22,13 @@ export function MatchdayGroup({ matchday }: { matchday: MatchdayGroupData }) {
       ) : (
         <div className="divide-y divide-stone-100">
           {matchday.matches.map((match) => (
-            <MatchRow key={match.id} match={match} />
+            <MatchRow
+              key={match.id}
+              match={match}
+              seasonSlug={seasonSlug}
+              competitionSlug={competitionSlug}
+              matchdayNumber={matchday.number}
+            />
           ))}
         </div>
       )}

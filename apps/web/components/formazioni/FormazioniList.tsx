@@ -9,8 +9,17 @@ import { useState } from 'react';
 import { MatchCard } from './MatchCard';
 import type { FormazioniMatch } from '../../lib/queries/formazioni';
 
-export function FormazioniList({ matches }: { matches: FormazioniMatch[] }) {
-  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(matches[0]?.matchId ?? null);
+type FormazioniListProps = {
+  matches: FormazioniMatch[];
+  // Dalla query ?partita=, quando si arriva da un link puntuale (es. una
+  // partita in Calendario): apre quella invece della prima di default.
+  initialExpandedMatchId?: string | null;
+};
+
+export function FormazioniList({ matches, initialExpandedMatchId }: FormazioniListProps) {
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(
+    initialExpandedMatchId ?? matches[0]?.matchId ?? null,
+  );
 
   return (
     <div>

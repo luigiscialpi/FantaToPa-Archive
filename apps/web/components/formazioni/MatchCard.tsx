@@ -18,7 +18,7 @@ export function MatchCard({ match, expanded, onToggle }: MatchCardProps) {
   const { home, away } = match;
 
   return (
-    <div className="mb-4 rounded-xl bg-white border border-stone-200 overflow-hidden">
+    <div id={`match-${match.matchId}`} className="mb-4 rounded-xl bg-white border border-stone-200 overflow-hidden scroll-mt-28">
       <button
         type="button"
         onClick={onToggle}

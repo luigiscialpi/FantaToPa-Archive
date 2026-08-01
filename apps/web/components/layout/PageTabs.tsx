@@ -3,11 +3,14 @@
 // Tab tra le pagine di dominio di una stagione (Classifica, Calendario, e
 // in futuro Rose/Formazioni) — distinto dal selettore stagione/competizione
 // nel layout: quello sceglie il contesto, questo cosa vedere in quel
-// contesto. Client component per usePathname() (evidenzia il tab attivo).
+// contesto. Client component per usePathname() (evidenzia il tab attivo) e
+// useSearchParams() (preserva ?competizione= cambiando tab, altrimenti si
+// resetterebbe al primo torneo della lista sulla pagina di destinazione).
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { COMPETITION_SCOPED_SEGMENTS } from '../classifica/CompetitionSwitcher';
 
 const TABS = [
   { segment: 'classifica', label: 'Classifica' },
@@ -18,12 +21,16 @@ const TABS = [
 
 export function PageTabs({ seasonSlug }: { seasonSlug: string }) {
   const pathname = usePathname();
+  const activeCompetitionSlug = useSearchParams().get('competizione');
 
   return (
     <div className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-none min-w-0 flex-1">
       {TABS.map((tab) => {
-        const href = `/stagioni/${seasonSlug}/${tab.segment}`;
-        const active = pathname.startsWith(href);
+        const preserveCompetition = activeCompetitionSlug && COMPETITION_SCOPED_SEGMENTS.includes(tab.segment);
+        const href = preserveCompetition
+          ? `/stagioni/${seasonSlug}/${tab.segment}?competizione=${activeCompetitionSlug}`
+          : `/stagioni/${seasonSlug}/${tab.segment}`;
+        const active = pathname.startsWith(`/stagioni/${seasonSlug}/${tab.segment}`);
 
         return (
           <Link
