@@ -19,6 +19,67 @@ const TITLE_KIND_CODES = ['campionato', 'coppa_fase_finale'] as const;
 
 export type TitleCounts = { campionati: number; coppe: number };
 
+// La fase finale di Coppa è un tabellone a eliminazione diretta: non produce
+// mai una riga standings (non esiste una "classifica" per un bracket — verificato
+// query alla mano, 0 righe in ogni stagione). "Chi ha vinto" si deduce
+// dall'ultima giornata (numero più alto per quella competizione), che nei dati
+// reali è sempre una finale a partita secca, mai andata/ritorno come quarti e
+// semifinali. Condivisa da getAllTimeTitleCounts e getSeasonGallery: unica
+// fonte per "vincitore Coppa", non duplicare altrove.
+async function getCupFinalWinners(supabase: TypedSupabaseClient, cupCompetitionIds: string[]): Promise<Map<string, string>> {
+  const winners = new Map<string, string>();
+  if (cupCompetitionIds.length === 0) {
+    return winners;
+  }
+
+  const { data: matchdays, error: matchdaysError } = await supabase
+    .from('matchdays')
+    .select('id, number, competition_id')
+    .in('competition_id', cupCompetitionIds);
+
+  if (matchdaysError) {
+    throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+  }
+
+  const finalMatchdayByCompetition = new Map<string, { id: string; number: number }>();
+  for (const matchday of matchdays) {
+    const current = finalMatchdayByCompetition.get(matchday.competition_id);
+    if (!current || matchday.number > current.number) {
+      finalMatchdayByCompetition.set(matchday.competition_id, { id: matchday.id, number: matchday.number });
+    }
+  }
+
+  const competitionByFinalMatchday = new Map(
+    [...finalMatchdayByCompetition].map(([competitionId, matchday]) => [matchday.id, competitionId]),
+  );
+  const finalMatchdayIds = [...competitionByFinalMatchday.keys()];
+  if (finalMatchdayIds.length === 0) {
+    return winners;
+  }
+
+  const { data: finals, error: finalsError } = await supabase
+    .from('matches')
+    .select('matchday_id, home_team_id, away_team_id, home_score, away_score, home_result_points, away_result_points')
+    .in('matchday_id', finalMatchdayIds);
+
+  if (finalsError) {
+    throw new Error(`Impossibile leggere le finali: ${finalsError.message}`);
+  }
+
+  for (const match of finals) {
+    const competitionId = competitionByFinalMatchday.get(match.matchday_id);
+    if (!competitionId) continue;
+    const homePoints = match.home_result_points ?? 0;
+    const awayPoints = match.away_result_points ?? 0;
+    // Mai osservato un pareggio punti in finale nei dati reali; a parità usa
+    // il fantavoto come spareggio invece di assegnare sempre alla casa.
+    const homeWins = homePoints !== awayPoints ? homePoints > awayPoints : (match.home_score ?? 0) >= (match.away_score ?? 0);
+    winners.set(competitionId, homeWins ? match.home_team_id : match.away_team_id);
+  }
+
+  return winners;
+}
+
 // cache(): sia la Home (Bacheca personale) sia getMostTitledTeam (vetrina
 // generale) la invocano nella stessa render request — stesso motivo di
 // getSeasons/getSessionState (AGENTS.md).
@@ -33,33 +94,34 @@ export const getAllTimeTitleCounts = cache(async (supabase: TypedSupabaseClient)
   }
 
   const counts = new Map<string, TitleCounts>();
-  const competitionIds = competitions.map((competition) => competition.id);
 
-  if (competitionIds.length === 0) {
-    return counts;
+  function addTitle(teamId: string, kind: keyof TitleCounts) {
+    const existing = counts.get(teamId) ?? { campionati: 0, coppe: 0 };
+    existing[kind] += 1;
+    counts.set(teamId, existing);
   }
 
-  const kindByCompetition = new Map(competitions.map((competition) => [competition.id, competition.kind_code]));
+  const campionatoCompetitionIds = competitions.filter((competition) => competition.kind_code === 'campionato').map((competition) => competition.id);
+  if (campionatoCompetitionIds.length > 0) {
+    const { data: winners, error: winnersError } = await supabase
+      .from('standings')
+      .select('team_id')
+      .eq('position', 1)
+      .in('competition_id', campionatoCompetitionIds);
 
-  const { data: winners, error: winnersError } = await supabase
-    .from('standings')
-    .select('team_id, competition_id')
-    .eq('position', 1)
-    .in('competition_id', competitionIds);
-
-  if (winnersError) {
-    throw new Error(`Impossibile leggere i vincitori: ${winnersError.message}`);
-  }
-
-  for (const winner of winners) {
-    const kind = kindByCompetition.get(winner.competition_id);
-    const existing = counts.get(winner.team_id) ?? { campionati: 0, coppe: 0 };
-    if (kind === 'campionato') {
-      existing.campionati += 1;
-    } else if (kind === 'coppa_fase_finale') {
-      existing.coppe += 1;
+    if (winnersError) {
+      throw new Error(`Impossibile leggere i vincitori: ${winnersError.message}`);
     }
-    counts.set(winner.team_id, existing);
+
+    for (const winner of winners) {
+      addTitle(winner.team_id, 'campionati');
+    }
+  }
+
+  const coppaCompetitionIds = competitions.filter((competition) => competition.kind_code === 'coppa_fase_finale').map((competition) => competition.id);
+  const cupWinners = await getCupFinalWinners(supabase, coppaCompetitionIds);
+  for (const teamId of cupWinners.values()) {
+    addTitle(teamId, 'coppe');
   }
 
   return counts;
@@ -549,84 +611,193 @@ export async function getLatestMatchdayResults(
   };
 }
 
+export type GalleryTeam = {
+  teamId: string;
+  name: string;
+  logoUrl: string | null;
+  isUserTeam: boolean;
+};
+
+// Posizioni del podio, come GalleryTeam[] ordinato [1°, 2°, 3°]. null per le
+// stagioni in corso o in assenza di classifica importata: senza standings non
+// c'è nulla da mostrare, non si inventa un podio parziale.
 export type SeasonGalleryEntry = {
   id: string;
   slug: string;
   label: string;
   inProgress: boolean;
-  championName: string | null;
+  podium: GalleryTeam[] | null;
+  // Vincitore Coppa: posizione 1 della fase finale. Le altre fasi (girone,
+  // spareggio) sono qualificazione, non il titolo — stesso filtro di
+  // getAllTimeTitleCounts, fonte unica per "chi ha vinto la coppa".
+  cupWinner: GalleryTeam | null;
 };
 
-export async function getSeasonGallery(supabase: TypedSupabaseClient): Promise<SeasonGalleryEntry[]> {
+export async function getSeasonGallery(
+  supabase: TypedSupabaseClient,
+  userTeamId?: string | null,
+): Promise<SeasonGalleryEntry[]> {
   const seasons: SeasonOption[] = await getSeasons(supabase);
   if (seasons.length === 0) {
     return [];
   }
 
+  // Competizioni che assegnano un trofeo: campionato (per il podio) e coppa
+  // fase finale (per il vincitore coppa). Stesso insieme di TITLE_KIND_CODES.
   const { data: competitions, error: competitionsError } = await supabase
     .from('competitions')
-    .select('id, season_id')
-    .eq('kind_code', 'campionato')
+    .select('id, season_id, kind_code')
     .in(
       'season_id',
       seasons.map((season) => season.id),
-    );
+    )
+    .in('kind_code', [...TITLE_KIND_CODES]);
 
   if (competitionsError) {
     throw new Error(`Impossibile leggere le competizioni: ${competitionsError.message}`);
   }
 
-  const competitionIdBySeason = new Map(competitions.map((competition) => [competition.season_id, competition.id]));
-  const competitionIds = competitions.map((competition) => competition.id);
-
-  const winnerTeamIdByCompetition = new Map<string, string>();
-  const teamNameById = new Map<string, string>();
-
-  if (competitionIds.length > 0) {
-    const { data: winners, error: winnersError } = await supabase
-      .from('standings')
-      .select('team_id, competition_id')
-      .eq('position', 1)
-      .in('competition_id', competitionIds);
-
-    if (winnersError) {
-      throw new Error(`Impossibile leggere i vincitori: ${winnersError.message}`);
-    }
-
-    for (const winner of winners) {
-      winnerTeamIdByCompetition.set(winner.competition_id, winner.team_id);
-    }
-
-    const winnerTeamIds = [...new Set(winners.map((winner) => winner.team_id))];
-    if (winnerTeamIds.length > 0) {
-      const { data: teams, error: teamsError } = await supabase
-        .from('teams')
-        .select('id, canonical_name')
-        .in('id', winnerTeamIds);
-
-      if (teamsError) {
-        throw new Error(`Impossibile leggere le squadre: ${teamsError.message}`);
-      }
-
-      for (const team of teams) {
-        teamNameById.set(team.id, team.canonical_name);
-      }
+  const campionatoBySeason = new Map<string, string>();
+  const coppaBySeason = new Map<string, string>();
+  for (const competition of competitions) {
+    if (competition.kind_code === 'campionato') {
+      campionatoBySeason.set(competition.season_id, competition.id);
+    } else if (competition.kind_code === 'coppa_fase_finale') {
+      coppaBySeason.set(competition.season_id, competition.id);
     }
   }
 
   const today = new Date();
 
+  // Podio campionato: posizioni 1-3 per competizione, in una sola query
+  // invece di tre (la classifica è piccola: 10-12 righe a stagione).
+  const standingsByCompetition = new Map<string, Map<number, string>>();
+  const teamIdsNeeded = new Set<string>();
+
+  const campionatoCompetitionIds = [...campionatoBySeason.values()];
+  if (campionatoCompetitionIds.length > 0) {
+    const { data: standingsRows, error: standingsError } = await supabase
+      .from('standings')
+      .select('position, team_id, competition_id')
+      .in('competition_id', campionatoCompetitionIds)
+      .in('position', [1, 2, 3]);
+
+    if (standingsError) {
+      throw new Error(`Impossibile leggere la classifica: ${standingsError.message}`);
+    }
+
+    for (const row of standingsRows) {
+      if (row.position === null) continue;
+      let byPosition = standingsByCompetition.get(row.competition_id);
+      if (!byPosition) {
+        byPosition = new Map();
+        standingsByCompetition.set(row.competition_id, byPosition);
+      }
+      byPosition.set(row.position, row.team_id);
+      teamIdsNeeded.add(row.team_id);
+    }
+  }
+
+  // Vincitore Coppa: dedotto dalla finale (vedi getCupFinalWinners), mai da
+  // standings — un bracket a eliminazione diretta non ne produce righe.
+  const coppaCompetitionIds = [...coppaBySeason.values()];
+  const cupWinnerByCompetition = await getCupFinalWinners(supabase, coppaCompetitionIds);
+  for (const teamId of cupWinnerByCompetition.values()) {
+    teamIdsNeeded.add(teamId);
+  }
+
+  // Nomi canonici delle squadre coinvolte (fallback quando team_seasons non
+  // ha il display_name stagionale).
+  const teamNameById = new Map<string, string>();
+  if (teamIdsNeeded.size > 0) {
+    const { data: teams, error: teamsError } = await supabase
+      .from('teams')
+      .select('id, canonical_name')
+      .in('id', [...teamIdsNeeded]);
+
+    if (teamsError) {
+      throw new Error(`Impossibile leggere le squadre: ${teamsError.message}`);
+    }
+
+    for (const team of teams) {
+      teamNameById.set(team.id, team.canonical_name);
+    }
+  }
+
+  // Raggruppa gli id squadra per stagione, per sfruttare getTeamBranding
+  // (logo/maglia/nome) con una chiamata per stagione invece di una per team.
+  const seasonTeamIds = new Map<string, Set<string>>();
+  for (const [seasonId, campionatoCompId] of campionatoBySeason) {
+    const byPosition = standingsByCompetition.get(campionatoCompId);
+    if (byPosition && byPosition.size > 0) {
+      const set = seasonTeamIds.get(seasonId) ?? new Set<string>();
+      seasonTeamIds.set(seasonId, set);
+      for (const teamId of byPosition.values()) {
+        set.add(teamId);
+      }
+    }
+  }
+  for (const [seasonId, coppaCompId] of coppaBySeason) {
+    const teamId = cupWinnerByCompetition.get(coppaCompId);
+    if (teamId) {
+      const set = seasonTeamIds.get(seasonId) ?? new Set<string>();
+      seasonTeamIds.set(seasonId, set);
+      set.add(teamId);
+    }
+  }
+
+  const seasonTeamEntries = [...seasonTeamIds.entries()];
+  const brandingResults = await Promise.all(
+    seasonTeamEntries.map(([seasonId, teamIds]) => getTeamBranding(supabase, seasonId, [...teamIds])),
+  );
+  const brandingBySeason = new Map(seasonTeamEntries.map((entry, i) => [entry[0], brandingResults[i]]));
+
+  function resolveTeam(teamId: string, seasonId: string): GalleryTeam {
+    const branding = brandingBySeason.get(seasonId);
+    const info = branding ? brandingFor(branding, teamId) : { displayName: null, logoUrl: null };
+    return {
+      teamId,
+      name: info.displayName ?? teamNameById.get(teamId) ?? '—',
+      logoUrl: info.logoUrl,
+      isUserTeam: userTeamId === teamId,
+    };
+  }
+
   return seasons.map((season) => {
-    const competitionId = competitionIdBySeason.get(season.id);
-    const winnerTeamId = competitionId ? winnerTeamIdByCompetition.get(competitionId) : undefined;
     const inProgress = season.endsOn === null || new Date(season.endsOn) > today;
+
+    if (inProgress) {
+      return {
+        id: season.id,
+        slug: season.slug,
+        label: season.label,
+        inProgress,
+        podium: null,
+        cupWinner: null,
+      };
+    }
+
+    const campionatoCompId = campionatoBySeason.get(season.id);
+    const byPosition = campionatoCompId ? standingsByCompetition.get(campionatoCompId) : undefined;
+    const podium: GalleryTeam[] = [];
+    if (byPosition) {
+      for (let pos = 1; pos <= 3; pos++) {
+        const teamId = byPosition.get(pos);
+        if (teamId) podium.push(resolveTeam(teamId, season.id));
+      }
+    }
+
+    const coppaCompId = coppaBySeason.get(season.id);
+    const cupTeamId = coppaCompId ? cupWinnerByCompetition.get(coppaCompId) : undefined;
+    const cupWinner = cupTeamId ? resolveTeam(cupTeamId, season.id) : null;
 
     return {
       id: season.id,
       slug: season.slug,
       label: season.label,
       inProgress,
-      championName: !inProgress && winnerTeamId ? (teamNameById.get(winnerTeamId) ?? null) : null,
+      podium: podium.length > 0 ? podium : null,
+      cupWinner,
     };
   });
 }

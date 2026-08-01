@@ -1,33 +1,12 @@
+import { Suspense } from 'react';
 import { createClient } from '../../lib/supabase/server';
 import { getSessionState } from '../../lib/auth/session';
 import { getCompetitions, getSeasons } from '../../lib/queries/seasons';
 import { getStandings } from '../../lib/queries/classifica';
-import { getTeamBranding, brandingFor } from '../../lib/queries/team-branding';
-import {
-  getAllTimeTitleCounts,
-  getLatestMatchdayResults,
-  getLeagueRecords,
-  getLongestUnbeatenStreak,
-  getMostFieldedPlayers,
-  getMostTitledTeam,
-  getPersonalRecords,
-  getRivalryHighlight,
-  getRosterLoyalty,
-  getRosterStandout,
-  getSeasonGallery,
-  getStandingHistory,
-  type FieldedPlayer,
-  type MatchHighlight,
-  type RivalryHighlight,
-  type RosterLoyaltyEntry,
-  type RosterStandout,
-  type StandingHistoryPoint,
-  type TitleCounts,
-  type UnbeatenStreak,
-} from '../../lib/queries/home';
-import { TeamPanel } from '../../components/home/TeamPanel';
-import { LeagueShowcase } from '../../components/home/LeagueShowcase';
-import { SeasonGallery } from '../../components/home/SeasonGallery';
+import { TeamPanelSection } from '../../components/home/TeamPanelSection';
+import { SeasonGallerySection } from '../../components/home/SeasonGallerySection';
+import { LeagueShowcaseSection } from '../../components/home/LeagueShowcaseSection';
+import { TeamPanelSkeleton, SeasonGallerySkeleton, LeagueShowcaseSkeleton } from '../../components/home/HomeSkeletons';
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -49,105 +28,51 @@ export default async function HomePage() {
   const competitions = await getCompetitions(supabase, latestSeason.id);
   const campionato = competitions.find((competition) => competition.kindCode === 'campionato') ?? null;
 
-  const [standings, latestMatchday, leagueRecords, mostTitled, seasonGallery] = await Promise.all([
-    campionato ? getStandings(supabase, campionato.id, latestSeason.id) : Promise.resolve([]),
-    campionato ? getLatestMatchdayResults(supabase, campionato.id, latestSeason.id) : Promise.resolve(null),
-    getLeagueRecords(supabase),
-    getMostTitledTeam(supabase),
-    getSeasonGallery(supabase),
-  ]);
-
+  // Classifica dell'ultima stagione: leggera (una sola competizione, poche
+  // righe), resta eager qui — serve sia al pannello squadra sia alla vetrina
+  // generale, e duplicarla in due sezioni <Suspense> indipendenti costerebbe
+  // una query in più senza benefici di percezione (non è lei il collo di
+  // bottiglia: le query pesanti sono quelle su tutte le stagioni, isolate
+  // nelle 3 sezioni sotto).
+  const standings = campionato ? await getStandings(supabase, campionato.id, latestSeason.id) : [];
   const standingsTop3 = standings.slice(0, 3);
   const userStandingRow = profile?.teamId
     ? (standings.find((row) => row.teamId === profile.teamId && !standingsTop3.includes(row)) ?? null)
     : null;
+  const ownStanding = profile?.teamId ? (standings.find((row) => row.teamId === profile.teamId) ?? null) : null;
+  const leaderStanding = standings.find((row) => row.position === 1) ?? null;
 
-  let teamPanel: {
-    teamName: string;
-    logoUrl: string | null;
-    standing: { position: number | null; points: number | null; leaderPoints: number | null } | null;
-    standingHistory: StandingHistoryPoint[];
-    titles: TitleCounts;
-    rivalry: RivalryHighlight | null;
-    records: { best: MatchHighlight | null; worst: MatchHighlight | null };
-    keyPlayers: FieldedPlayer[];
-    loyalty: RosterLoyaltyEntry[];
-    standout: RosterStandout | null;
-    streak: UnbeatenStreak | null;
-  } | null = null;
-
-  if (profile?.teamId) {
-    const teamId = profile.teamId;
-    const [titleCounts, rivalry, records, keyPlayers, standingHistory, loyalty, standout, streak, branding, teamRow] = await Promise.all([
-      getAllTimeTitleCounts(supabase),
-      getRivalryHighlight(supabase, teamId),
-      getPersonalRecords(supabase, teamId),
-      getMostFieldedPlayers(supabase, teamId),
-      getStandingHistory(supabase, teamId),
-      getRosterLoyalty(supabase, teamId),
-      getRosterStandout(supabase, teamId),
-      getLongestUnbeatenStreak(supabase, teamId),
-      getTeamBranding(supabase, latestSeason.id, [teamId]),
-      supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
-    ]);
-
-    if (teamRow.error) {
-      throw new Error(`Impossibile leggere la squadra: ${teamRow.error.message}`);
-    }
-
-    const ownStanding = standings.find((row) => row.teamId === teamId) ?? null;
-    const leaderStanding = standings.find((row) => row.position === 1) ?? null;
-
-    teamPanel = {
-      teamName: teamRow.data?.canonical_name ?? ownStanding?.teamName ?? 'La tua squadra',
-      logoUrl: brandingFor(branding, teamId).logoUrl,
-      standing: ownStanding
-        ? { position: ownStanding.position, points: ownStanding.points, leaderPoints: leaderStanding?.points ?? null }
-        : null,
-      standingHistory,
-      titles: titleCounts.get(teamId) ?? { campionati: 0, coppe: 0 },
-      rivalry,
-      records,
-      keyPlayers,
-      loyalty,
-      standout,
-      streak,
-    };
-  }
-
+  // Le 3 sezioni sotto sono Server Component asincroni indipendenti, ognuna
+  // con le proprie query e il proprio confine <Suspense>: possono comparire
+  // in streaming man mano che i rispettivi dati sono pronti, invece di
+  // bloccare l'intera pagina finché la più lenta non finisce (in
+  // precedenza tutte le query — comprese quelle su tutte le stagioni per
+  // bacheca/galleria/vetrina — erano in un unico await prima del render).
   return (
     <main>
-      {teamPanel && (
-        <div className="border-b border-stone-200 p-4">
-          <TeamPanel
-            teamName={teamPanel.teamName}
-            logoUrl={teamPanel.logoUrl}
+      {profile?.teamId && (
+        <Suspense fallback={<TeamPanelSkeleton />}>
+          <TeamPanelSection
+            teamId={profile.teamId}
+            seasonId={latestSeason.id}
             seasonSlug={latestSeason.slug}
-            standing={teamPanel.standing}
-            standingHistory={teamPanel.standingHistory}
-            titles={teamPanel.titles}
-            rivalry={teamPanel.rivalry}
-            records={teamPanel.records}
-            keyPlayers={teamPanel.keyPlayers}
-            loyalty={teamPanel.loyalty}
-            standout={teamPanel.standout}
-            streak={teamPanel.streak}
+            ownStanding={ownStanding}
+            leaderStanding={leaderStanding}
           />
-        </div>
+        </Suspense>
       )}
-      <div className="p-4">
-        <SeasonGallery seasons={seasonGallery} />
-      </div>
-      <div className="border-b border-stone-200 p-4">
-        <LeagueShowcase
+      <Suspense fallback={<SeasonGallerySkeleton />}>
+        <SeasonGallerySection userTeamId={profile?.teamId} />
+      </Suspense>
+      <Suspense fallback={<LeagueShowcaseSkeleton />}>
+        <LeagueShowcaseSection
+          seasonId={latestSeason.id}
           seasonSlug={latestSeason.slug}
-          latestMatchday={latestMatchday}
+          campionatoId={campionato?.id ?? null}
           standingsTop3={standingsTop3}
           userStandingRow={userStandingRow}
-          leagueRecords={leagueRecords}
-          mostTitled={mostTitled}
         />
-      </div>
+      </Suspense>
     </main>
   );
 }
