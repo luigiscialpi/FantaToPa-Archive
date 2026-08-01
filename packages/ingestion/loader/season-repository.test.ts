@@ -4,12 +4,14 @@ import { describe, it, expect } from 'vitest';
 import { InMemorySeasonRepository } from './season-repository.js';
 import { XlsxStandingsAdapter } from '../adapters/xlsx/standings.js';
 import { XlsxRosterAdapter } from '../adapters/xlsx/roster.js';
+import { HtmlVotiBonusAdapter } from '../adapters/html-voti/bonus.js';
 
 // Stessa fixture reale usata in standings.test.ts, nessun path esterno al repo.
 const REAL_FILE = fileURLToPath(
   new URL('../adapters/xlsx/__fixtures__/Classifica_CAMPIONATO-FANTATOPA-2025-2026.xlsx', import.meta.url),
 );
 const ROSTER_FILE = fileURLToPath(new URL('../adapters/xlsx/__fixtures__/Rose_fantatopa.xlsx', import.meta.url));
+const BONUS_FILE = fileURLToPath(new URL('../adapters/html-voti/__fixtures__/001.html', import.meta.url));
 
 describe('InMemorySeasonRepository', () => {
   it('importa la classifica reale e la rilancia due volte senza duplicare (idempotenza)', async () => {
@@ -71,5 +73,20 @@ describe('InMemorySeasonRepository', () => {
 
     const credits = await repo.getTeamCredits('2025-26');
     expect(credits).toHaveLength(10);
+  });
+
+  it('importa i bonus/malus reali di una giornata e li rilancia senza duplicare (idempotenza)', async () => {
+    const adapter = new HtmlVotiBonusAdapter('2025-26', 'campionato');
+    const repo = new InMemorySeasonRepository();
+
+    const parsed = await adapter.parse(BONUS_FILE);
+    await repo.upsertMatchdayBonuses(parsed);
+    await repo.upsertMatchdayBonuses(parsed); // rilancio intenzionale
+
+    const stored = await repo.getMatchdayBonuses('campionato', 1);
+    expect(stored).toHaveLength(parsed.players.length); // non raddoppiato
+
+    const meret = stored.find((p) => p.playerName === 'Meret');
+    expect(meret?.bonusCodes).toEqual(['portiere_imbattuto']);
   });
 });

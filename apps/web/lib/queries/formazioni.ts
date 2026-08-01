@@ -42,6 +42,11 @@ export async function getMatchdayOptions(
   return data;
 }
 
+export type PlayerBonus = {
+  code: string;
+  label: string;
+};
+
 export type LineupPlayerRow = {
   playerId: string;
   playerName: string;
@@ -53,6 +58,7 @@ export type LineupPlayerRow = {
   // avere un voto reale e comunque non contare, o viceversa sostituire un
   // titolare e contare pur restando in panchina.
   countsForTotal: boolean;
+  bonuses: PlayerBonus[];
 };
 
 export type TeamLineup = {
@@ -156,6 +162,55 @@ export async function getFormazioni(
       }
     }
 
+    // Bonus/malus: una giornata di Coppa non ha bonus propri (la fonte HTML
+    // copre solo Campionato), ma "eredita" quelli della giornata di
+    // Campionato corrispondente tramite matchday_bonus_sources — se non
+    // c'è mapping (Coppa non ancora collegata, o giornata futura), niente
+    // bonus mostrati, nessun errore.
+    const { data: bonusSourceRow, error: bonusSourceError } = await supabase
+      .from('matchday_bonus_sources')
+      .select('source_matchday_id')
+      .eq('matchday_id', matchdayId)
+      .maybeSingle();
+    if (bonusSourceError) {
+      throw new Error(`Impossibile leggere la corrispondenza bonus: ${bonusSourceError.message}`);
+    }
+    const bonusMatchdayId = bonusSourceRow?.source_matchday_id ?? matchdayId;
+
+    const bonusesByPlayer = new Map<string, PlayerBonus[]>();
+    if (playerIds.length > 0) {
+      const [bonusRowsResult, bonusKindsResult] = await Promise.all([
+        supabase
+          .from('player_matchday_bonuses')
+          .select('player_id, kind_code, position_order')
+          .eq('matchday_id', bonusMatchdayId)
+          .in('player_id', playerIds)
+          .order('position_order', { ascending: true }),
+        supabase.from('bonus_kinds').select('code, label'),
+      ]);
+      if (bonusRowsResult.error) {
+        throw new Error(`Impossibile leggere i bonus/malus: ${bonusRowsResult.error.message}`);
+      }
+      if (bonusKindsResult.error) {
+        throw new Error(`Impossibile leggere i tipi di bonus/malus: ${bonusKindsResult.error.message}`);
+      }
+
+      const labelByCode = new Map<string, string>();
+      for (const kind of bonusKindsResult.data) {
+        labelByCode.set(kind.code, kind.label);
+      }
+
+      for (const row of bonusRowsResult.data) {
+        const bonus: PlayerBonus = { code: row.kind_code, label: labelByCode.get(row.kind_code) ?? row.kind_code };
+        const bucket = bonusesByPlayer.get(row.player_id);
+        if (bucket) {
+          bucket.push(bonus);
+        } else {
+          bonusesByPlayer.set(row.player_id, [bonus]);
+        }
+      }
+    }
+
     for (const row of lineupPlayersRows) {
       const playerRow: LineupPlayerRow = {
         playerId: row.player_id,
@@ -164,6 +219,7 @@ export async function getFormazioni(
         voto: row.voto,
         fantavoto: row.fantavoto,
         countsForTotal: row.counts_for_total,
+        bonuses: bonusesByPlayer.get(row.player_id) ?? [],
       };
       const bucket = playersByLineup.get(row.lineup_id);
       if (bucket) {

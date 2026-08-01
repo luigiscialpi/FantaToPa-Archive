@@ -10,6 +10,7 @@ import type {
   PlayerSeed,
 } from './season-repository.js';
 import type {
+  BonusImport,
   CalendarImport,
   LineupImport,
   RosterImport,
@@ -413,6 +414,48 @@ export class SupabaseSeasonRepository implements SeasonRepository {
   }
 
   // ============================================================
+  // Bonus/malus per giornata
+  // ============================================================
+
+  async upsertMatchdayBonuses(input: BonusImport): Promise<void> {
+    const seasonId = await this.getSeasonId(input.seasonSlug);
+    const competitionId = await this.getCompetitionId(seasonId, input.competitionSlug);
+
+    const { data: matchdayRow, error: matchdayError } = await this.client
+      .from('matchdays')
+      .upsert(
+        { competition_id: competitionId, number: input.matchdayNumber },
+        { onConflict: 'competition_id, number' },
+      )
+      .select('id')
+      .single();
+    if (matchdayError || !matchdayRow) throw new Error(`Errore upsert giornata bonus: ${matchdayError?.message ?? 'riga assente'}`);
+
+    // Cancella i bonus precedenti per questa giornata e reinserisce — stesso
+    // pattern di upsertLineupTeam per lineup_players: più semplice di un
+    // upsert posizionale e garantisce coerenza se il file sorgente viene
+    // ri-parsato (es. dopo un fix dell'adapter).
+    const { error: deleteError } = await this.client
+      .from('player_matchday_bonuses')
+      .delete()
+      .eq('matchday_id', matchdayRow.id);
+    if (deleteError) throw new Error(`Errore cancellazione bonus precedenti: ${deleteError.message}`);
+
+    const rows: { matchday_id: string; player_id: string; kind_code: string; position_order: number }[] = [];
+    for (const player of input.players) {
+      const playerId = await this.resolvePlayerId(player.playerName);
+      if (!playerId) throw new Error(`Giocatore non trovato per i bonus: "${player.playerName}"`);
+      player.bonusCodes.forEach((code, index) => {
+        rows.push({ matchday_id: matchdayRow.id, player_id: playerId, kind_code: code, position_order: index + 1 });
+      });
+    }
+    if (rows.length > 0) {
+      const { error } = await this.client.from('player_matchday_bonuses').insert(rows);
+      if (error) throw new Error(`Errore inserimento bonus: ${error.message}`);
+    }
+  }
+
+  // ============================================================
   // Helpers di lettura per i test
   // ============================================================
 
@@ -436,6 +479,10 @@ export class SupabaseSeasonRepository implements SeasonRepository {
   }
 
   async getLineup(competitionSlug: string, matchdayNumber: number): Promise<LineupImport['matches']> {
+    return [];
+  }
+
+  async getMatchdayBonuses(competitionSlug: string, matchdayNumber: number): Promise<BonusImport['players']> {
     return [];
   }
   /* eslint-enable @typescript-eslint/no-unused-vars */

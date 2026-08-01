@@ -151,3 +151,33 @@ export type LineupImport = z.infer<typeof LineupImportSchema>;
 // passato a LineupImportSchema.parse(...).
 export type LineupImportInput = z.input<typeof LineupImportSchema>;
 
+// Bonus/malus granulari per giocatore reale, dalla pagina "Voti" di
+// leghe.fantacalcio.it (fonte distinta dagli xlsx Formazioni — vedi
+// migrazione 20260731090000). L'adapter mappa già le etichette italiane
+// della fonte (es. "Gol segnato (+3)") sui `code` di bonus_kinds prima di
+// arrivare qui: niente z.enum per non duplicare l'elenco codici già nella
+// migrazione, un code non riconosciuto fallisce rumorosamente nell'adapter
+// (messaggio con il testo esatto della fonte), non con una FK violation
+// generica a valle nel loader.
+export const BonusPlayerImportSchema = z.object({
+  playerName: z.string().min(1),
+  // Codici bonus_kinds nell'ordine in cui appaiono nella fonte (un
+  // giocatore può avere più eventi dello stesso tipo, es. doppietta).
+  bonusCodes: z.array(z.string()),
+});
+export type BonusPlayerImport = z.infer<typeof BonusPlayerImportSchema>;
+
+export const BonusImportSchema = z.object({
+  seasonSlug: z.string(),
+  competitionSlug: z.string(),
+  matchdayNumber: z.number().int().positive(),
+  // Un giocatore reale per riga: se la stessa giornata lo schiera più di
+  // una squadra fantacalcio, la fonte lo ripete più volte nello stesso file
+  // (una volta per formazione) — l'adapter deduplica per nome, verificando
+  // che le occorrenze ripetute abbiano lo stesso set di bonus (altrimenti è
+  // un bug del parser, non un dato realmente divergente: è lo stesso evento
+  // reale di Serie A).
+  players: z.array(BonusPlayerImportSchema),
+});
+export type BonusImport = z.infer<typeof BonusImportSchema>;
+

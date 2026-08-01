@@ -1,5 +1,36 @@
 // apps/web/components/formazioni/PlayerRow.tsx
-import type { LineupPlayerRow } from '../../lib/queries/formazioni';
+import type { LineupPlayerRow, PlayerBonus } from '../../lib/queries/formazioni';
+
+// Emoji come scorciatoia visiva compatta (niente libreria icone per 13
+// codici fissi): elenco chiuso, coerente con bonus_kinds della migrazione.
+const BONUS_ICON: Record<string, string> = {
+  gol_fatto: '⚽',
+  gol_subito: '🥅',
+  assist: '🅰️',
+  assist_soft: '🅰️',
+  assist_gold: '🅰️',
+  ammonizione: '🟨',
+  espulsione: '🟥',
+  autogol: '🙃',
+  rigore_segnato: '⚽',
+  rigore_sbagliato: '❌',
+  rigore_parato: '🧤',
+  portiere_imbattuto: '🛡️',
+  player_of_the_match: '⭐',
+};
+
+function BonusBadges({ bonuses }: { bonuses: PlayerBonus[] }) {
+  if (bonuses.length === 0) return null;
+  return (
+    <span className="flex items-center gap-0.5 shrink-0">
+      {bonuses.map((bonus, index) => (
+        <span key={`${bonus.code}-${index}`} className="text-xs" title={bonus.label}>
+          {BONUS_ICON[bonus.code] ?? '•'}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 // Evidenzia lo scarto voto→fantavoto solo se marcato (soglia ±2, come nel
 // mockup di riferimento): bonus/malus reali del fantacalcio, non un
@@ -36,6 +67,7 @@ export function PlayerRow({ player }: { player: LineupPlayerRow }) {
         {player.playerName}
       </span>
       <div className="flex items-center gap-2 ml-auto sm:contents">
+        {!muted && <BonusBadges bonuses={player.bonuses} />}
         <span className={`text-xs w-6 text-right tabular-nums shrink-0 ${votoColor}`}>{player.voto ?? '–'}</span>
         <span className={`text-xs w-8 text-right tabular-nums shrink-0 ${fantavotoColor}`}>
           {player.fantavoto ?? '–'}

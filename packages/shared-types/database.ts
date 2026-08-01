@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      bonus_kinds: {
+        Row: {
+          code: string
+          label: string
+        }
+        Insert: {
+          code: string
+          label: string
+        }
+        Update: {
+          code?: string
+          label?: string
+        }
+        Relationships: []
+      }
       competition_formats: {
         Row: {
           code: string
@@ -317,6 +332,36 @@ export type Database = {
           },
         ]
       }
+      matchday_bonus_sources: {
+        Row: {
+          matchday_id: string
+          source_matchday_id: string
+        }
+        Insert: {
+          matchday_id: string
+          source_matchday_id: string
+        }
+        Update: {
+          matchday_id?: string
+          source_matchday_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matchday_bonus_sources_matchday_id_fkey"
+            columns: ["matchday_id"]
+            isOneToOne: true
+            referencedRelation: "matchdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matchday_bonus_sources_source_matchday_id_fkey"
+            columns: ["source_matchday_id"]
+            isOneToOne: false
+            referencedRelation: "matchdays"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matchdays: {
         Row: {
           competition_id: string
@@ -426,6 +471,52 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "player_aliases_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_matchday_bonuses: {
+        Row: {
+          id: string
+          kind_code: string
+          matchday_id: string
+          player_id: string
+          position_order: number
+        }
+        Insert: {
+          id?: string
+          kind_code: string
+          matchday_id: string
+          player_id: string
+          position_order?: number
+        }
+        Update: {
+          id?: string
+          kind_code?: string
+          matchday_id?: string
+          player_id?: string
+          position_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_matchday_bonuses_kind_code_fkey"
+            columns: ["kind_code"]
+            isOneToOne: false
+            referencedRelation: "bonus_kinds"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "player_matchday_bonuses_matchday_id_fkey"
+            columns: ["matchday_id"]
+            isOneToOne: false
+            referencedRelation: "matchdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_matchday_bonuses_player_id_fkey"
             columns: ["player_id"]
             isOneToOne: false
             referencedRelation: "players"

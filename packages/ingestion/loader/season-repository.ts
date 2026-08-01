@@ -5,6 +5,7 @@
 // e risoluzione alias senza rete né DB reale.
 import { normalizeName } from '../lib/normalize-name.js';
 import type {
+  BonusImport,
   CalendarImport,
   LineupImport,
   RosterImport,
@@ -43,6 +44,11 @@ export interface SeasonRepository {
   upsertStandings(input: StandingsImport): Promise<void>;
   upsertCalendar(input: CalendarImport): Promise<void>;
   upsertLineup(input: LineupImport): Promise<void>;
+  // Bonus/malus granulari per giocatore reale (fonte HTML "Voti", distinta
+  // dagli xlsx Formazioni — vedi schema/imports.ts). Idempotente sulla
+  // chiave naturale (competitionSlug, matchdayNumber): rilanciare l'import
+  // rimpiazza i bonus di quella giornata, non li duplica.
+  upsertMatchdayBonuses(input: BonusImport): Promise<void>;
 
   // Helpers di lettura per i test.
   getStandings(competitionSlug: string): Promise<StandingsImport['rows']>;
@@ -51,6 +57,7 @@ export interface SeasonRepository {
   getCalendar(competitionSlug: string): Promise<CalendarImport['matchdays']>;
   getLineup(competitionSlug: string, matchdayNumber: number): Promise<LineupImport['matches']>;
   getTeamSeasonDisplayName(teamId: string, seasonId: string): Promise<string | undefined>;
+  getMatchdayBonuses(competitionSlug: string, matchdayNumber: number): Promise<BonusImport['players']>;
 }
 
 // ponytail: implementazione in memoria sufficiente per testare logica di
@@ -68,6 +75,7 @@ export class InMemorySeasonRepository implements SeasonRepository {
   private teamCredits = new Map<string, RosterImport['teamCredits']>();
   private calendars = new Map<string, CalendarImport['matchdays']>();
   private lineups = new Map<string, LineupImport['matches']>();
+  private matchdayBonuses = new Map<string, BonusImport['players']>(); // `${competitionSlug}:${matchdayNumber}`
 
   private nextId(prefix: string): string {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -138,6 +146,11 @@ export class InMemorySeasonRepository implements SeasonRepository {
     this.lineups.set(key, input.matches);
   }
 
+  async upsertMatchdayBonuses(input: BonusImport): Promise<void> {
+    const key = `${input.competitionSlug}:${input.matchdayNumber}`;
+    this.matchdayBonuses.set(key, input.players);
+  }
+
   async getStandings(competitionSlug: string): Promise<StandingsImport['rows']> {
     return this.standings.get(competitionSlug) ?? [];
   }
@@ -156,5 +169,9 @@ export class InMemorySeasonRepository implements SeasonRepository {
 
   async getLineup(competitionSlug: string, matchdayNumber: number): Promise<LineupImport['matches']> {
     return this.lineups.get(`${competitionSlug}:${matchdayNumber}`) ?? [];
+  }
+
+  async getMatchdayBonuses(competitionSlug: string, matchdayNumber: number): Promise<BonusImport['players']> {
+    return this.matchdayBonuses.get(`${competitionSlug}:${matchdayNumber}`) ?? [];
   }
 }
