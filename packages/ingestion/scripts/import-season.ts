@@ -21,11 +21,18 @@ import { findXlsxByPrefix, listXlsxByPrefix } from '../lib/discover-files.js';
 import { getSeasonConfig, type SeasonConfig } from './season-configs.js';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { normalizeName } from '../lib/normalize-name.js';
 
 type SupabaseClient = ReturnType<typeof createIngestionClient>;
 
-async function ensureSeason(client: SupabaseClient, config: SeasonConfig): Promise<string> {
+// Firma allargata a Pick<...> (invece di SeasonConfig per intero): riusata
+// anche da script di import non-xlsx (es. html-legacy) che non hanno le
+// altre proprietà di SeasonConfig (cartelle xlsx).
+export async function ensureSeason(
+  client: SupabaseClient,
+  config: Pick<SeasonConfig, 'slug' | 'label' | 'startsOn' | 'endsOn'>,
+): Promise<string> {
   const { data } = await client.from('seasons').select('id').eq('slug', config.slug).maybeSingle();
   if (data) return data.id;
 
@@ -39,7 +46,7 @@ async function ensureSeason(client: SupabaseClient, config: SeasonConfig): Promi
   return created.id;
 }
 
-async function ensureLookups(client: SupabaseClient): Promise<void> {
+export async function ensureLookups(client: SupabaseClient): Promise<void> {
   const { error: kindsError } = await client.from('competition_kinds').upsert([
     { code: 'campionato', label: 'Campionato' },
     { code: 'coppa_girone', label: 'Coppa - Girone' },
@@ -96,7 +103,11 @@ async function ensureLookups(client: SupabaseClient): Promise<void> {
   console.log('Lookup tables popolate');
 }
 
-async function ensureCompetitions(client: SupabaseClient, seasonId: string, config: SeasonConfig): Promise<void> {
+export async function ensureCompetitions(
+  client: SupabaseClient,
+  seasonId: string,
+  config: Pick<SeasonConfig, 'coppa'>,
+): Promise<void> {
   const competitions: { slug: string; name: string; kind_code: string; format_code: string }[] = [
     { slug: 'campionato', name: 'Campionato FantaTopa', kind_code: 'campionato', format_code: 'girone_unico' },
   ];
@@ -192,15 +203,19 @@ async function collectSeasonTeamNames(config: SeasonConfig): Promise<Set<string>
   return names;
 }
 
-async function seedTeams(config: SeasonConfig, seasonId: string, repo: SupabaseSeasonRepository): Promise<void> {
-  // Il registro squadre (identità persistenti tra stagioni, alias inclusi)
-  // vive nel database (teams/team_aliases), seminato una tantum con
-  // seed-team-registry.ts — import-season.ts non lo tocca più, si limita a
-  // risolvere i nomi di QUESTA stagione contro quello che c'è già.
-  const teamNames = await collectSeasonTeamNames(config);
-
+// Risolve (o crea, se non nel registro) le squadre di una stagione contro
+// teams/team_aliases esistenti, poi registra il nome REALE usato in quella
+// stagione (team_seasons.display_name) — diverso da teams.canonical_name se
+// la squadra ha cambiato nome dopo. Esportata perché riusata anche da script
+// di import non-xlsx (es. html-legacy), che calcolano teamNames diversamente
+// ma condividono questa stessa logica di risoluzione/registrazione.
+export async function seedTeamsFromNames(
+  seasonId: string,
+  teamNames: Set<string>,
+  repo: SupabaseSeasonRepository,
+): Promise<void> {
   // Fallback per nomi di questa stagione non ancora noti al database (non
-  // dovrebbe succedere per le 6 stagioni note, protegge da sorprese).
+  // dovrebbe succedere per le stagioni xlsx note, protegge da sorprese).
   const unresolved: string[] = [];
   for (const name of teamNames) {
     if (!(await repo.resolveTeamId(name))) unresolved.push(name);
@@ -210,13 +225,20 @@ async function seedTeams(config: SeasonConfig, seasonId: string, repo: SupabaseS
     console.log(`Squadre non nel registro (aggiunte come nuove): ${unresolved.join(', ')}`);
   }
 
-  // Nome REALE usato in questa stagione (prima della risoluzione alias):
-  // diverso da teams.canonical_name se la squadra ha cambiato nome dopo.
   for (const name of teamNames) {
     const teamId = await repo.resolveTeamId(name);
     if (!teamId) throw new Error(`Impossibile risolvere la squadra "${name}" dopo il seed`);
     await repo.upsertTeamSeasonDisplayName(teamId, seasonId, name);
   }
+}
+
+async function seedTeams(config: SeasonConfig, seasonId: string, repo: SupabaseSeasonRepository): Promise<void> {
+  // Il registro squadre (identità persistenti tra stagioni, alias inclusi)
+  // vive nel database (teams/team_aliases), seminato una tantum con
+  // seed-team-registry.ts — import-season.ts non lo tocca più, si limita a
+  // risolvere i nomi di QUESTA stagione contro quello che c'è già.
+  const teamNames = await collectSeasonTeamNames(config);
+  await seedTeamsFromNames(seasonId, teamNames, repo);
   console.log(`Seed squadre: ${teamNames.size} squadre per ${config.slug}`);
 }
 
@@ -232,7 +254,7 @@ const BRANDING_SUFFIX_PATTERN = /[ _-]?(maglia|logo)$/i;
 type BrandingKind = 'logo' | 'jersey';
 type BrandingTeam = { id: string; slug: string; canonicalName: string };
 
-async function buildTeamBrandingLookup(client: SupabaseClient): Promise<Map<string, BrandingTeam>> {
+export async function buildTeamBrandingLookup(client: SupabaseClient): Promise<Map<string, BrandingTeam>> {
   const { data: teams, error: teamsError } = await client.from('teams').select('id, slug, canonical_name');
   if (teamsError) throw new Error(`Errore lettura squadre: ${teamsError.message}`);
   const { data: aliases, error: aliasError } = await client.from('team_aliases').select('team_id, alias_normalized');
@@ -250,7 +272,7 @@ async function buildTeamBrandingLookup(client: SupabaseClient): Promise<Map<stri
   return lookup;
 }
 
-async function uploadBrandingAsset(
+export async function uploadBrandingAsset(
   client: SupabaseClient,
   seasonId: string,
   seasonSlug: string,
@@ -553,12 +575,22 @@ async function importSeason(slug: string): Promise<void> {
 }
 
 const seasonSlug = process.argv[2];
-if (!seasonSlug) {
-  console.error('Uso: tsx import-season.ts <slug-stagione> (es. 2024-25)');
-  process.exit(1);
-}
 
-importSeason(seasonSlug).catch((err: unknown) => {
-  console.error(`Import ${seasonSlug} fallito:`, err);
-  process.exit(1);
-});
+// Guardia entry-point: senza questo check, un ALTRO script che importa una
+// funzione esportata da questo file (es. import-season-2018-19.ts, che usa
+// ensureSeason/ensureLookups/ensureCompetitions/seedTeamsFromNames) farebbe
+// eseguire anche questo blocco come effetto collaterale dell'import — bug
+// reale osservato: process.argv[2] del chiamante veniva letto come slug
+// stagione, facendo fallire l'import con un errore fuorviante ("Stagione
+// ... non configurata"). Eseguire solo se il file è l'entry point diretto.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  if (!seasonSlug) {
+    console.error('Uso: tsx import-season.ts <slug-stagione> (es. 2024-25)');
+    process.exit(1);
+  }
+
+  importSeason(seasonSlug).catch((err: unknown) => {
+    console.error(`Import ${seasonSlug} fallito:`, err);
+    process.exit(1);
+  });
+}

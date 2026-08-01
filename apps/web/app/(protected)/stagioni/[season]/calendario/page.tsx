@@ -5,6 +5,7 @@ import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons'
 import { getCalendario } from '../../../../../lib/queries/calendario';
 import { MatchdayGroup } from '../../../../../components/calendario/MatchdayGroup';
 import { MatchdayJumpBar } from '../../../../../components/calendario/MatchdayJumpBar';
+import { DataGapNotice } from '../../../../../components/shared/DataGapNotice';
 import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
 
 type CalendarioPageProps = {
@@ -51,7 +52,7 @@ export default async function CalendarioPage({ params, searchParams }: Calendari
           )}
         </div>
         {matchdays.length === 0 ? (
-          <p className="text-sm text-stone-500">Calendario non disponibile per questa competizione.</p>
+          <DataGapNotice message="Il calendario di questa competizione non è disponibile: i dati sorgente per questa stagione non lo includono." />
         ) : (
           matchdays.map((matchday) => (
             <MatchdayGroup

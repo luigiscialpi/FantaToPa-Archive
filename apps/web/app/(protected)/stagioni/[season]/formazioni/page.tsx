@@ -5,6 +5,7 @@ import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons'
 import { getFormazioni, getMatchdayOptions } from '../../../../../lib/queries/formazioni';
 import { MatchdaySelector } from '../../../../../components/formazioni/MatchdaySelector';
 import { FormazioniList } from '../../../../../components/formazioni/FormazioniList';
+import { DataGapNotice } from '../../../../../components/shared/DataGapNotice';
 import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
 
 type FormazioniPageProps = {
@@ -41,7 +42,7 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
         <div className="p-4">
           <h1 className="font-serif font-bold text-xl text-brand-950 mb-1">{season.label}</h1>
           <p className="text-sm text-stone-500 mb-4">{activeCompetition.name}</p>
-          <p className="text-sm text-stone-500">Formazioni non disponibili per questa competizione.</p>
+          <DataGapNotice message="Le formazioni di questa competizione non sono disponibili: i dati sorgente per questa stagione non le includono." />
         </div>
       </main>
     );
@@ -81,7 +82,7 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
           </div>
         </div>
         {matches.length === 0 ? (
-          <p className="text-sm text-stone-500">Nessuna formazione disponibile per questa giornata.</p>
+          <DataGapNotice message="Le formazioni di questa giornata non sono disponibili: i dati sorgente per questa stagione non le includono." />
         ) : (
           <FormazioniList matches={matches} initialExpandedMatchId={activeMatchId} />
         )}
