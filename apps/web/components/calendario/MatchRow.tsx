@@ -33,8 +33,14 @@ export function MatchRow({ match, seasonSlug, competitionSlug, matchdayNumber }:
         )}
       </div>
       <div className="flex-1 min-w-0 flex items-center gap-2 justify-end">
-        <span className="text-sm font-semibold text-stone-800 truncate text-right">{match.awayTeamName}</span>
-        <Crest name={match.awayTeamName} imageUrl={match.awayJerseyUrl} />
+        {match.awayTeamName ? (
+          <>
+            <span className="text-sm font-semibold text-stone-800 truncate text-right">{match.awayTeamName}</span>
+            <Crest name={match.awayTeamName} imageUrl={match.awayJerseyUrl} />
+          </>
+        ) : (
+          <span className="text-sm text-stone-400 truncate text-right">Riposo</span>
+        )}
       </div>
     </Link>
   );

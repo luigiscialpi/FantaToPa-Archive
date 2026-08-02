@@ -66,6 +66,18 @@ function looksLikeTeamName(raw: unknown): boolean {
   if (/^\d+(?:-\d+)*\s*(?:\(|$)/.test(s)) return false;
   // I ruoli giocatore sono brevi token separati da ; (es. "Ds;Dc", "M;C", "Por").
   if (/^[A-Z][a-z]*(?:;[A-Z][a-z]*)*$/.test(s)) return false;
+  // ponytail: i nomi squadra in questo formato file sono sempre TUTTO
+  // MAIUSCOLO (convenzione osservata su ogni squadra di ogni fixture nota,
+  // impostata a monte dall'app di origine). Qualunque lettera minuscola
+  // esclude testo libero come la legenda fissa in cima al file ("In verde i
+  // fantavoti che portano punteggio alla squadra", riga 2 di ogni file), che
+  // altrimenti supererebbe tutti i controlli precedenti e verrebbe scambiata
+  // per un blocco partita "solo" (un solo lato popolato, come un girone
+  // dispari con squadra senza avversario) — bug reale osservato: la legenda
+  // diventava una 6ª partita fantasma in un file Campionato che non ne ha
+  // mai una. Se una stagione futura avesse nomi squadra non interamente
+  // maiuscoli, va rivisto qui, non aggirato a valle.
+  if (s !== s.toUpperCase()) return false;
   return true;
 }
 
@@ -75,6 +87,23 @@ function looksLikeMatchStart(row: unknown[]): boolean {
   const home = row[HOME_START];
   const away = row[AWAY_START];
   return looksLikeTeamName(home) && looksLikeTeamName(away);
+}
+
+function isBlankCell(raw: unknown): boolean {
+  return raw === null || raw === undefined || String(raw).trim() === '';
+}
+
+// Gironi di Coppa (5 squadre, numero dispari): ogni giornata una squadra
+// resta senza avversario e il file la stampa in un blocco con un solo lato
+// popolato (nome squadra pieno, formazione, titolari...) e l'altro lato
+// vuoto per l'intero blocco. Ritorna quale lato è popolato, o null se la
+// riga non è l'inizio né di un blocco "solo" né di un blocco normale.
+function looksLikeSoloMatchStart(row: unknown[]): 'home' | 'away' | null {
+  const home = row[HOME_START];
+  const away = row[AWAY_START];
+  if (looksLikeTeamName(home) && isBlankCell(away)) return 'home';
+  if (looksLikeTeamName(away) && isBlankCell(home)) return 'away';
+  return null;
 }
 
 function parseTotal(raw: unknown): number | undefined {
@@ -246,6 +275,25 @@ function applyTeamCell(
   return false;
 }
 
+// Normalizza una squadra parsata nella forma attesa da LineupMatchImportSchema.
+// Usata sia per un lato di un blocco normale, sia per l'unica squadra di un
+// blocco "solo" (girone dispari) — in quel caso finisce sempre in `home`
+// dell'output, indipendentemente dalla colonna sorgente (home o away): non
+// è mai un vantaggio/svantaggio campo reale, solo un dettaglio di
+// impaginazione del file, quindi non va portato a valle.
+function toTeamImport(team: PartialLineupTeam) {
+  return {
+    teamName: team.teamName,
+    formation: team.formation,
+    defenseModifier: team.defenseModifier,
+    fieldAdvantage: team.fieldAdvantage,
+    total: team.total ?? 0,
+    submittedVia: team.submittedVia,
+    submittedAt: team.submittedAt,
+    players: team.players,
+  };
+}
+
 export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
   constructor(
     private readonly seasonSlug: string,
@@ -278,27 +326,32 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
 
     while (r < rowCount) {
       const row = raw(r);
-      if (!looksLikeMatchStart(row)) {
+      const soloSide = looksLikeSoloMatchStart(row);
+      if (!looksLikeMatchStart(row) && !soloSide) {
         r++;
         continue;
       }
 
-      const homeTeamName = String(row[HOME_START]).trim();
-      const awayTeamName = String(row[AWAY_START]).trim();
+      const hasHome = soloSide !== 'away';
+      const hasAway = soloSide !== 'home';
+      const homeTeamName = hasHome ? String(row[HOME_START]).trim() : '';
+      const awayTeamName = hasAway ? String(row[AWAY_START]).trim() : '';
       const home: PartialLineupTeam = { teamName: homeTeamName, players: [] };
       const away: PartialLineupTeam = { teamName: awayTeamName, players: [] };
 
       // Formazione
       const formationRow = raw(r + 1);
-      if (formationRow[HOME_START]) home.formation = String(formationRow[HOME_START]).trim();
-      if (formationRow[AWAY_START]) away.formation = String(formationRow[AWAY_START]).trim();
+      if (hasHome && formationRow[HOME_START]) home.formation = String(formationRow[HOME_START]).trim();
+      if (hasAway && formationRow[AWAY_START]) away.formation = String(formationRow[AWAY_START]).trim();
 
       let slot: 'titolare' | 'panchina' = 'titolare';
       // Ognuna diventa true quando la riga "Inserita via..." di QUEL lato è
       // stata letta — vedi applyTeamCell per il perché vanno tracciate in
       // modo indipendente invece che con un singolo continue/break condiviso.
-      let homeDone = false;
-      let awayDone = false;
+      // Il lato assente in un blocco "solo" parte già a true: non c'è niente
+      // da leggere per quel lato.
+      let homeDone = !hasHome;
+      let awayDone = !hasAway;
 
       for (let dr = 2; dr + r < rowCount; dr++) {
         const dataRowIndex0 = r + dr;
@@ -307,10 +360,15 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
         const homeCell0 = dataRow[HOME_START];
         const awayCell0 = dataRow[AWAY_START];
 
-        // Panchina può apparire solo nella colonna away in alcuni file Coppa;
-        // i titolari sono sempre esattamente 11 per entrambe le squadre,
-        // quindi questa riga cade sempre allineata per le due colonne.
-        if (typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('panchina')) {
+        // Panchina può apparire solo su un lato (alcuni file Coppa la
+        // omettono sull'altro; in un blocco "solo" l'altro lato è sempre
+        // vuoto) — i titolari sono sempre esattamente 11 per entrambe le
+        // squadre, quindi questa riga cade sempre allineata: basta trovarla
+        // su uno qualunque dei due lati.
+        if (
+          (typeof homeCell0 === 'string' && homeCell0.toLowerCase().includes('panchina')) ||
+          (typeof awayCell0 === 'string' && awayCell0.toLowerCase().includes('panchina'))
+        ) {
           slot = 'panchina';
           continue;
         }
@@ -320,7 +378,11 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
         // — altrimenti una riga come "TOTALE: N" (che looksLikeTeamName
         // considera un possibile nome squadra) verrebbe scambiata per l'inizio
         // di una nuova partita prima ancora di leggerne il valore.
-        if (!isTerminalMarkerCell(homeCell0) && !isTerminalMarkerCell(awayCell0) && looksLikeMatchStart(dataRow)) {
+        if (
+          !isTerminalMarkerCell(homeCell0) &&
+          !isTerminalMarkerCell(awayCell0) &&
+          (looksLikeMatchStart(dataRow) || looksLikeSoloMatchStart(dataRow) !== null)
+        ) {
           break;
         }
 
@@ -347,28 +409,13 @@ export class XlsxLineupAdapter implements SourceAdapter<LineupImport> {
         }
       }
 
-      matches.push({
-        home: {
-          teamName: home.teamName,
-          formation: home.formation,
-          defenseModifier: home.defenseModifier,
-          fieldAdvantage: home.fieldAdvantage,
-          total: home.total ?? 0,
-          submittedVia: home.submittedVia,
-          submittedAt: home.submittedAt,
-          players: home.players,
-        },
-        away: {
-          teamName: away.teamName,
-          formation: away.formation,
-          defenseModifier: away.defenseModifier,
-          fieldAdvantage: away.fieldAdvantage,
-          total: away.total ?? 0,
-          submittedVia: away.submittedVia,
-          submittedAt: away.submittedAt,
-          players: away.players,
-        },
-      });
+      if (hasHome && hasAway) {
+        matches.push({ home: toTeamImport(home), away: toTeamImport(away) });
+      } else {
+        // Blocco "solo": l'unica squadra presente finisce sempre in `home`
+        // nell'output, qualunque sia la colonna sorgente — vedi toTeamImport.
+        matches.push({ home: toTeamImport(hasHome ? home : away) });
+      }
 
       // Avanza alla fine di questa partita: cerca la prima riga vuota.
       r++;

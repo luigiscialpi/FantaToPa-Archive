@@ -134,7 +134,10 @@ export type LineupTeamImport = z.infer<typeof LineupTeamImportSchema>;
 
 export const LineupMatchImportSchema = z.object({
   home: LineupTeamImportSchema,
-  away: LineupTeamImportSchema,
+  // Assente per il blocco "solo" di un girone con numero dispari di squadre
+  // (vedi adapters/xlsx/lineup.ts): quella giornata la squadra in home non
+  // ha avversario, il file la stampa senza colonna away.
+  away: LineupTeamImportSchema.optional(),
 });
 export type LineupMatchImport = z.infer<typeof LineupMatchImportSchema>;
 

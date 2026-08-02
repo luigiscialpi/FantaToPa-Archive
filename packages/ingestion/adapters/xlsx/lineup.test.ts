@@ -17,7 +17,7 @@ describe('XlsxLineupAdapter, contro il file reale 2025-26 (giornata 1)', () => {
 
     for (const match of result.matches) {
       const homeStarters = match.home.players.filter((p) => p.slot === 'titolare');
-      const awayStarters = match.away.players.filter((p) => p.slot === 'titolare');
+      const awayStarters = (match.away?.players ?? []).filter((p) => p.slot === 'titolare');
       expect(homeStarters).toHaveLength(11);
       expect(awayStarters).toHaveLength(11);
     }
@@ -29,21 +29,21 @@ describe('XlsxLineupAdapter, contro il file reale 2025-26 (giornata 1)', () => {
 
     const firstMatch = result.matches[0];
     expect(firstMatch?.home.teamName).not.toMatch(/ $/);
-    expect(firstMatch?.away.teamName).not.toMatch(/ $/);
+    expect(firstMatch?.away?.teamName).not.toMatch(/ $/);
     expect(firstMatch?.home.formation).toBeTruthy();
-    expect(firstMatch?.away.formation).toBeTruthy();
+    expect(firstMatch?.away?.formation).toBeTruthy();
     expect(firstMatch?.home.total).toBeGreaterThan(0);
-    expect(firstMatch?.away.total).toBeGreaterThan(0);
+    expect(firstMatch?.away?.total).toBeGreaterThan(0);
   });
 
   it('splitta ruoli multipli e converte "-"/"sv" in voto null', async () => {
     const adapter = new XlsxLineupAdapter('2025-26', 'campionato');
     const result = await adapter.parse(REAL_FILE);
 
-    const multiRole = result.matches.flatMap((m) => [...m.home.players, ...m.away.players]).find((p) => p.roles.length > 1);
+    const multiRole = result.matches.flatMap((m) => [...m.home.players, ...(m.away?.players ?? [])]).find((p) => p.roles.length > 1);
     expect(multiRole).toBeDefined();
 
-    const nullVoto = result.matches.flatMap((m) => [...m.home.players, ...m.away.players]).find((p) => p.voto === null);
+    const nullVoto = result.matches.flatMap((m) => [...m.home.players, ...(m.away?.players ?? [])]).find((p) => p.voto === null);
     expect(nullVoto).toBeDefined();
   });
 
@@ -53,11 +53,11 @@ describe('XlsxLineupAdapter, contro il file reale 2025-26 (giornata 1)', () => {
 
     const firstMatch = result.matches[0];
     expect(firstMatch?.home.defenseModifier).toBe(1);
-    expect(firstMatch?.away.defenseModifier).toBe(1);
+    expect(firstMatch?.away?.defenseModifier).toBe(1);
     expect(firstMatch?.home.submittedVia).toBe('app');
     expect(firstMatch?.home.submittedAt).toBe('2025-08-29T18:06:24');
-    expect(firstMatch?.away.submittedVia).toBe('web');
-    expect(firstMatch?.away.submittedAt).toBe('2025-08-29T14:10:55');
+    expect(firstMatch?.away?.submittedVia).toBe('web');
+    expect(firstMatch?.away?.submittedAt).toBe('2025-08-29T14:10:55');
   });
 
   it('legge countsForTotal dal colore del fantavoto, non dal solo voto/slot', async () => {
@@ -108,21 +108,21 @@ describe('XlsxLineupAdapter, quando una squadra non ha modificatore difesa (gior
     const result = await adapter.parse(NO_DEFENSE_MODIFIER_FILE);
 
     const match = result.matches.find(
-      (m) => m.home.teamName.startsWith('PROZALPI') && m.away.teamName.startsWith('CARLOPAROLA'),
+      (m) => m.home.teamName.startsWith('PROZALPI') && m.away?.teamName.startsWith('CARLOPAROLA'),
     );
     expect(match).toBeDefined();
-    expect(match?.away.defenseModifier).toBe(0);
-    expect(match?.away.total).toBe(61.5);
+    expect(match?.away?.defenseModifier).toBe(0);
+    expect(match?.away?.total).toBe(61.5);
     expect(match?.home.total).toBe(65.5);
 
     // Stesso schema, seconda partita della stessa giornata: prova che non è
     // un caso isolato del primo match, ma un pattern ricorrente nel file.
     const secondMatch = result.matches.find(
-      (m) => m.home.teamName.startsWith('UNIONE SPORTIVA NERITINA') && m.away.teamName.startsWith('REAL COCU'),
+      (m) => m.home.teamName.startsWith('UNIONE SPORTIVA NERITINA') && m.away?.teamName.startsWith('REAL COCU'),
     );
     expect(secondMatch).toBeDefined();
-    expect(secondMatch?.away.defenseModifier).toBe(0);
-    expect(secondMatch?.away.total).toBe(66);
+    expect(secondMatch?.away?.defenseModifier).toBe(0);
+    expect(secondMatch?.away?.total).toBe(66);
   });
 });
 
@@ -146,13 +146,13 @@ describe('XlsxLineupAdapter, quando è HOME a non avere modificatore difesa (gio
     const result = await adapter.parse(HOME_MISSING_DEFENSE_MODIFIER_FILE);
 
     const match = result.matches.find(
-      (m) => m.home.teamName.startsWith('MR EKO') && m.away.teamName.startsWith('LOS CIENTOQUATTROS'),
+      (m) => m.home.teamName.startsWith('MR EKO') && m.away?.teamName.startsWith('LOS CIENTOQUATTROS'),
     );
     expect(match).toBeDefined();
     expect(match?.home.defenseModifier).toBe(0);
     expect(match?.home.total).toBe(64.5);
-    expect(match?.away.defenseModifier).toBe(1);
-    expect(match?.away.total).toBe(68.5);
+    expect(match?.away?.defenseModifier).toBe(1);
+    expect(match?.away?.total).toBe(68.5);
   });
 });
 
@@ -176,15 +176,51 @@ describe('XlsxLineupAdapter, riga "Fattore campo" di Coppa Fase Finale (giornata
     const result = await adapter.parse(FASE_FINALE_FATTORE_CAMPO_FILE);
 
     const match = result.matches.find(
-      (m) => m.home.teamName.startsWith('PROZALPI') && m.away.teamName.startsWith('REAL COCU'),
+      (m) => m.home.teamName.startsWith('PROZALPI') && m.away?.teamName.startsWith('REAL COCU'),
     );
     expect(match).toBeDefined();
     expect(match?.home.total).toBe(72.5);
-    expect(match?.away.total).toBe(74.5);
+    expect(match?.away?.total).toBe(74.5);
     // Prozalpi ha il vantaggio campo in questo turno: il bonus (+1, già
     // incluso nel totale sopra) va anche salvato a parte per poterlo
     // mostrare in UI, esattamente come defenseModifier.
     expect(match?.home.fieldAdvantage).toBe(1);
-    expect(match?.away.fieldAdvantage).toBe(0);
+    expect(match?.away?.fieldAdvantage).toBe(0);
+  });
+});
+
+const COPPA_GIRONE_A_FILE = fileURLToPath(
+  new URL('./__fixtures__/Formazioni_COPPA_GIRONE_A_1_giornata.xlsx', import.meta.url),
+);
+
+describe('XlsxLineupAdapter, girone con numero dispari di squadre (Coppa Girone A, giornata 1)', () => {
+  it('legge la squadra senza avversario come partita "solo" (away assente), non la scarta', async () => {
+    // Bug reale: un girone da 5 squadre ha, ogni giornata, 2 partite normali
+    // (4 squadre) + 1 squadra senza avversario ("solo", qui Monster). Il
+    // vecchio codice richiedeva che ENTRAMBE le colonne home/away
+    // sembrassero un nome squadra per riconoscere l'inizio di una partita:
+    // con la colonna away interamente vuota per tutto il blocco, quel
+    // blocco non veniva mai riconosciuto come partita e i suoi dati (11
+    // titolari, panchina, totale) sparivano silenziosamente, senza errori
+    // né anomalie rilevabili da una scansione aggregata (il blocco non
+    // entrava mai nel parsing).
+    const adapter = new XlsxLineupAdapter('2025-26', 'coppa-girone-a');
+    const result = await adapter.parse(COPPA_GIRONE_A_FILE);
+
+    expect(result.matches).toHaveLength(3);
+
+    const soloMatch = result.matches.find((m) => m.away === undefined);
+    expect(soloMatch).toBeDefined();
+    expect(soloMatch?.home.teamName).toMatch(/MONSTER/i);
+    expect(soloMatch?.home.players.filter((p) => p.slot === 'titolare')).toHaveLength(11);
+    expect(soloMatch?.home.total).toBeGreaterThan(0);
+
+    // Le altre 2 partite restano normali coppie home/away, invariate.
+    const pairedMatches = result.matches.filter((m) => m.away !== undefined);
+    expect(pairedMatches).toHaveLength(2);
+    for (const match of pairedMatches) {
+      expect(match.home.players.filter((p) => p.slot === 'titolare')).toHaveLength(11);
+      expect(match.away?.players.filter((p) => p.slot === 'titolare')).toHaveLength(11);
+    }
   });
 });

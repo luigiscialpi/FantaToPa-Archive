@@ -44,6 +44,12 @@ pubblico.
   cella home (o assumendo che home e away siano sulla stessa riga) ha causato 3 bug reali
   di totali azzerati — qualsiasi nuovo tipo di riga scoperto va riconosciuto ed escluso
   per entrambe le colonne separatamente.
+- **`matches.away_team_id` è nullable**: i gironi di Coppa con un numero dispari di
+  squadre hanno sempre una squadra senza avversario ("solo") quella giornata, sempre
+  normalizzata nello slot home. Unicità garantita da un indice parziale
+  (`matches_solo_home_team_unique`), non dal vincolo unique a tre colonne (NULL ≠ NULL
+  per un unique standard). Qualsiasi nuova query/adapter su `matches` deve gestire
+  `away_team_id is null` esplicitamente, non assumere sempre una coppia di squadre.
 - **Funzioni Postgres usate in policy RLS: sempre `plpgsql`, mai `sql`** — una funzione
   `sql security definer` può venire inlined dal query planner e perdere il privilegio
   elevato, riportando la ricorsione che dovrebbe evitare.

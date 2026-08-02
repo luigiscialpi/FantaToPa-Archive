@@ -62,6 +62,7 @@ export type LineupPlayerRow = {
 };
 
 export type TeamLineup = {
+  teamId: string;
   teamName: string;
   logoUrl: string | null;
   jerseyUrl: string | null;
@@ -80,7 +81,10 @@ export type FormazioniMatch = {
   homeGoals: number | null;
   awayGoals: number | null;
   home: TeamLineup;
-  away: TeamLineup;
+  // null per il blocco "solo" di un girone con numero dispari di squadre
+  // (vedi adapters/xlsx/lineup.ts): quella giornata la squadra home non ha
+  // avversario.
+  away: TeamLineup | null;
 };
 
 export async function getFormazioni(
@@ -102,7 +106,11 @@ export async function getFormazioni(
   }
 
   const matchIds = matchesRows.map((match) => match.id);
-  const teamIds = [...new Set(matchesRows.flatMap((match) => [match.home_team_id, match.away_team_id]))];
+  const teamIds = [
+    ...new Set(
+      matchesRows.flatMap((match) => [match.home_team_id, match.away_team_id]).filter((id): id is string => id !== null),
+    ),
+  ];
 
   const [teamsResult, lineupsResult] = await Promise.all([
     supabase.from('teams').select('id, canonical_name').in('id', teamIds),
@@ -236,6 +244,7 @@ export async function getFormazioni(
     const teamBranding = brandingFor(branding, teamId);
 
     return {
+      teamId,
       teamName: teamBranding.displayName ?? teamNameById.get(teamId) ?? '—',
       logoUrl: teamBranding.logoUrl,
       jerseyUrl: teamBranding.jerseyUrl,
@@ -255,6 +264,26 @@ export async function getFormazioni(
     homeGoals: match.home_goals,
     awayGoals: match.away_goals,
     home: buildTeamLineup(match.id, match.home_team_id, match.home_score),
-    away: buildTeamLineup(match.id, match.away_team_id, match.away_score),
+    away: match.away_team_id ? buildTeamLineup(match.id, match.away_team_id, match.away_score) : null,
   }));
+}
+
+// Coppa Girone A/B (competitions.format_code = 'gironi'): il file sorgente
+// accoppia le squadre a due a due solo per impaginazione (stesso export di
+// Campionato/Fase Finale), ma non è un incontro 1-contro-1 — ogni giornata è
+// "formula uno", punteggio cumulato dell'intero girone (vedi AGENTS.md).
+// Si riusa getFormazioni per il fetch (stesso merge bonus/branding) e si
+// appiattiscono le coppie in righe singole, ordinate per punteggio di
+// giornata invece che a coppie.
+export async function getGironeFormazioni(
+  supabase: TypedSupabaseClient,
+  matchdayId: string,
+  seasonId: string,
+): Promise<TeamLineup[]> {
+  const matches = await getFormazioni(supabase, matchdayId, seasonId);
+  const teams = matches.flatMap((match) => (match.away ? [match.home, match.away] : [match.home]));
+
+  teams.sort((a, b) => (b.totalScore ?? -Infinity) - (a.totalScore ?? -Infinity));
+
+  return teams;
 }

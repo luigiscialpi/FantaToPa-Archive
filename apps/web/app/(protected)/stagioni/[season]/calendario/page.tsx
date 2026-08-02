@@ -1,9 +1,11 @@
 // apps/web/app/(protected)/stagioni/[season]/calendario/page.tsx
 import { notFound } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { createClient } from '../../../../../lib/supabase/server';
 import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons';
-import { getCalendario } from '../../../../../lib/queries/calendario';
+import { getCalendario, getGironeCalendario } from '../../../../../lib/queries/calendario';
 import { MatchdayGroup } from '../../../../../components/calendario/MatchdayGroup';
+import { GironeMatchdayGroup } from '../../../../../components/calendario/GironeMatchdayGroup';
 import { MatchdayJumpBar } from '../../../../../components/calendario/MatchdayJumpBar';
 import { DataGapNotice } from '../../../../../components/shared/DataGapNotice';
 import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
@@ -34,7 +36,49 @@ export default async function CalendarioPage({ params, searchParams }: Calendari
     notFound();
   }
 
-  const matchdays = await getCalendario(supabase, activeCompetition.id, season.id);
+  const emptyMessage = 'Il calendario di questa competizione non è disponibile: i dati sorgente per questa stagione non lo includono.';
+
+  // Coppa Girone A/B (format_code 'gironi'): "formula uno", non sfide 1v1 —
+  // vedi getGironeCalendario. Il resto delle competizioni (campionato, fase
+  // finale) mantiene le MatchRow a coppie di sempre.
+  let matchdaysCount: number;
+  let content: ReactNode;
+  let jumpBarMatchdays: { id: string; number: number; label: string | null }[];
+  if (activeCompetition.formatCode === 'gironi') {
+    const matchdays = await getGironeCalendario(supabase, activeCompetition.id, season.id);
+    matchdaysCount = matchdays.length;
+    jumpBarMatchdays = matchdays;
+    content =
+      matchdays.length === 0 ? (
+        <DataGapNotice message={emptyMessage} />
+      ) : (
+        matchdays.map((matchday) => (
+          <GironeMatchdayGroup
+            key={matchday.id}
+            matchday={matchday}
+            seasonSlug={season.slug}
+            competitionSlug={activeCompetition.slug}
+          />
+        ))
+      );
+  } else {
+    const matchdays = await getCalendario(supabase, activeCompetition.id, season.id);
+    matchdaysCount = matchdays.length;
+    jumpBarMatchdays = matchdays;
+    content =
+      matchdays.length === 0 ? (
+        <DataGapNotice message={emptyMessage} />
+      ) : (
+        matchdays.map((matchday) => (
+          <MatchdayGroup
+            key={matchday.id}
+            matchday={matchday}
+            seasonSlug={season.slug}
+            competitionSlug={activeCompetition.slug}
+          />
+        ))
+      );
+  }
 
   return (
     <main>
@@ -45,24 +89,13 @@ export default async function CalendarioPage({ params, searchParams }: Calendari
             <h1 className="font-serif font-bold text-xl text-brand-950 mb-0.5">{season.label}</h1>
             <p className="text-xs sm:text-sm text-stone-500">{activeCompetition.name}</p>
           </div>
-          {matchdays.length > 0 && (
+          {matchdaysCount > 0 && (
             <div className="shrink-0 flex justify-end">
-              <MatchdayJumpBar matchdays={matchdays} />
+              <MatchdayJumpBar matchdays={jumpBarMatchdays} />
             </div>
           )}
         </div>
-        {matchdays.length === 0 ? (
-          <DataGapNotice message="Il calendario di questa competizione non è disponibile: i dati sorgente per questa stagione non lo includono." />
-        ) : (
-          matchdays.map((matchday) => (
-            <MatchdayGroup
-              key={matchday.id}
-              matchday={matchday}
-              seasonSlug={season.slug}
-              competitionSlug={activeCompetition.slug}
-            />
-          ))
-        )}
+        {content}
       </div>
     </main>
   );

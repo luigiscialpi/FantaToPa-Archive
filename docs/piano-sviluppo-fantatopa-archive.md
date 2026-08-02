@@ -259,6 +259,20 @@ create table matches (
 -- SENZA somma. Nessuna tabella nuova — è un caso in cui il modello dati
 -- pensato per Formazioni/Calendario regge bene una richiesta arrivata dopo.
 
+> **Aggiornamento (bug gironi Coppa dispari)**: `away_team_id` qui sopra è
+> disegnato `not null`, ma alcuni gironi di Coppa hanno un numero dispari di
+> squadre (5): una squadra resta senza avversario quella giornata ("solo"),
+> sempre normalizzata nello slot home dagli adapter. Il piano originale non
+> prevedeva questo caso — è emerso lanciando il parser sui file xlsx reali,
+> non nei dati di test — e il primo adapter scartava silenziosamente quella
+> riga, azzerando una squadra su 5 in Formazioni/Calendario per quei gironi.
+> Fix (migrazione `20260801000000_matches_away_team_optional.sql`):
+> `away_team_id` reso nullable + indice unique parziale
+> `matches_solo_home_team_unique on matches(matchday_id, home_team_id) where
+> away_team_id is null` (l'unique originale su tre colonne non basta a
+> prevenire duplicati quando `away_team_id` è null, perché NULL non è mai
+> uguale a NULL in un vincolo unique standard).
+
 create table lineups (
   id uuid primary key default gen_random_uuid(),
   match_id uuid not null references matches(id),

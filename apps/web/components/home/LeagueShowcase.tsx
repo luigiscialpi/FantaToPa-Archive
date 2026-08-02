@@ -62,7 +62,7 @@ export function LeagueShowcase({
                     {match.homeGoals ?? "–"} - {match.awayGoals ?? "–"}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-right text-stone-700">
-                    {match.awayTeamName}
+                    {match.awayTeamName ?? "—"}
                   </span>
                 </div>
               ))}

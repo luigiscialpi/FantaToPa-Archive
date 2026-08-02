@@ -69,6 +69,10 @@ async function getCupFinalWinners(supabase: TypedSupabaseClient, cupCompetitionI
   for (const match of finals) {
     const competitionId = competitionByFinalMatchday.get(match.matchday_id);
     if (!competitionId) continue;
+    // Una finale a eliminazione diretta ha sempre 2 squadre: un away_team_id
+    // nullo qui sarebbe un'anomalia dati, non un caso atteso (a differenza
+    // dei gironi) — nessun vincitore deducibile, si salta senza inventare.
+    if (!match.away_team_id) continue;
     const homePoints = match.home_result_points ?? 0;
     const awayPoints = match.away_result_points ?? 0;
     // Mai osservato un pareggio punti in finale nei dati reali; a parità usa
@@ -188,6 +192,9 @@ export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId:
   }
 
   for (const match of homeResult.data) {
+    // Girone con numero dispari di squadre: nessun avversario quella
+    // giornata (squadra "solo") — niente da tallare per questa partita.
+    if (!match.away_team_id) continue;
     tally(match.away_team_id, match.home_result_points);
   }
   for (const match of awayResult.data) {
@@ -233,7 +240,7 @@ export type MatchHighlight = {
 type RawMatch = {
   matchday_id: string;
   home_team_id: string;
-  away_team_id: string;
+  away_team_id: string | null;
   home_score: number | null;
   away_score: number | null;
 };
@@ -249,6 +256,11 @@ async function enrichMatch(
 ): Promise<MatchHighlight | null> {
   const isHome = match.home_team_id === focusTeamId;
   const opponentId = isHome ? match.away_team_id : match.home_team_id;
+  // Girone con numero dispari di squadre: nessun avversario quella giornata
+  // (squadra "solo") — non è un record contro un avversario reale.
+  if (!opponentId) {
+    return null;
+  }
   const score = isHome ? match.home_score : match.away_score;
 
   if (score === null) {
@@ -540,7 +552,8 @@ export async function getMostFieldedPlayers(
 
 export type LatestMatchdayResult = {
   homeTeamName: string;
-  awayTeamName: string;
+  // null per il blocco "solo" di un girone con numero dispari di squadre.
+  awayTeamName: string | null;
   homeJerseyUrl: string | null;
   awayJerseyUrl: string | null;
   homeGoals: number | null;
@@ -582,7 +595,11 @@ export async function getLatestMatchdayResults(
     throw new Error(`Impossibile leggere le partite: ${matchesError.message}`);
   }
 
-  const teamIds = [...new Set(matches.flatMap((match) => [match.home_team_id, match.away_team_id]))];
+  const teamIds = [
+    ...new Set(
+      matches.flatMap((match) => [match.home_team_id, match.away_team_id]).filter((id): id is string => id !== null),
+    ),
+  ];
   if (teamIds.length === 0) {
     return { number: matchday.number, matches: [] };
   }
@@ -602,9 +619,9 @@ export async function getLatestMatchdayResults(
     number: matchday.number,
     matches: matches.map((match) => ({
       homeTeamName: nameById.get(match.home_team_id) ?? '—',
-      awayTeamName: nameById.get(match.away_team_id) ?? '—',
+      awayTeamName: match.away_team_id ? (nameById.get(match.away_team_id) ?? '—') : null,
       homeJerseyUrl: brandingFor(branding, match.home_team_id).jerseyUrl,
-      awayJerseyUrl: brandingFor(branding, match.away_team_id).jerseyUrl,
+      awayJerseyUrl: match.away_team_id ? brandingFor(branding, match.away_team_id).jerseyUrl : null,
       homeGoals: match.home_goals,
       awayGoals: match.away_goals,
     })),

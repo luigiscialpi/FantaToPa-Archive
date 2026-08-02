@@ -115,7 +115,8 @@ async function checkSeason(config: SeasonConfig, registry: TeamIdentity[]): Prom
         const lineup = await new XlsxLineupAdapter(config.slug, group.competitionSlug).parse(file);
         for (const m of lineup.matches) {
           matches += 1;
-          for (const side of [m.home, m.away]) {
+          const sides = m.away ? [m.home, m.away] : [m.home];
+          for (const side of sides) {
             teamNames.add(side.teamName.trim());
             if (side.players.filter((p) => p.slot === 'titolare').length !== 11 || side.total === 0) anomalies += 1;
           }

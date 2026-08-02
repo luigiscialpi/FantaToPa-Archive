@@ -32,26 +32,43 @@ export function MatchCard({ match, expanded, onToggle }: MatchCardProps) {
         </div>
 
         <div className="shrink-0 flex flex-col items-center px-1">
-          <div className="font-serif font-bold text-2xl text-amber-300 tabular-nums whitespace-nowrap">
-            {match.homeGoals ?? '–'} - {match.awayGoals ?? '–'}
-          </div>
-          <div className="text-xs text-brand-100/80 tabular-nums whitespace-nowrap">
-            {home.totalScore ?? '–'} - {away.totalScore ?? '–'}
-          </div>
+          {away ? (
+            <>
+              <div className="font-serif font-bold text-2xl text-amber-300 tabular-nums whitespace-nowrap">
+                {match.homeGoals ?? '–'} - {match.awayGoals ?? '–'}
+              </div>
+              <div className="text-xs text-brand-100/80 tabular-nums whitespace-nowrap">
+                {home.totalScore ?? '–'} - {away.totalScore ?? '–'}
+              </div>
+            </>
+          ) : (
+            // Girone con numero dispari di squadre: nessun avversario questa giornata.
+            <div className="font-serif font-bold text-2xl text-amber-300 tabular-nums whitespace-nowrap">{home.totalScore ?? '–'}</div>
+          )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col items-center gap-1">
-          <TeamCrests name={away.teamName} logoUrl={away.logoUrl} jerseyUrl={away.jerseyUrl} size="lg" />
-          <span className="text-xs font-medium truncate max-w-full">{away.teamName}</span>
-          <span className="text-[11px] text-brand-100/80 tabular-nums">{away.formation ?? '—'}</span>
+          {away ? (
+            <>
+              <TeamCrests name={away.teamName} logoUrl={away.logoUrl} jerseyUrl={away.jerseyUrl} size="lg" />
+              <span className="text-xs font-medium truncate max-w-full">{away.teamName}</span>
+              <span className="text-[11px] text-brand-100/80 tabular-nums">{away.formation ?? '—'}</span>
+            </>
+          ) : (
+            <span className="text-xs text-brand-100/80">Riposo</span>
+          )}
         </div>
       </button>
 
       {expanded && (
         <div className="px-4 py-3 flex flex-row gap-3 sm:gap-6">
           <LineupColumn lineup={home} />
-          <div className="w-px bg-stone-200 shrink-0" />
-          <LineupColumn lineup={away} />
+          {away && (
+            <>
+              <div className="w-px bg-stone-200 shrink-0" />
+              <LineupColumn lineup={away} />
+            </>
+          )}
         </div>
       )}
     </div>

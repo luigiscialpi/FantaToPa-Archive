@@ -195,37 +195,42 @@ export async function getStandingsForRange(
 
   for (const match of matches) {
     const home = ensure(match.home_team_id);
-    const away = ensure(match.away_team_id);
+    // Girone con numero dispari di squadre: nessun avversario quella
+    // giornata (squadra "solo", away_team_id null) — niente da accumulare
+    // sul lato away per questa partita.
+    const away = match.away_team_id ? ensure(match.away_team_id) : null;
 
     home.played += 1;
-    away.played += 1;
     home.points += match.home_result_points ?? 0;
-    away.points += match.away_result_points ?? 0;
     home.totalFantapoints += match.home_score ?? 0;
-    away.totalFantapoints += match.away_score ?? 0;
+    if (away) {
+      away.played += 1;
+      away.points += match.away_result_points ?? 0;
+      away.totalFantapoints += match.away_score ?? 0;
+    }
 
     // V/N/P dai punti 3/1/0 già derivati in ingestion (non dal confronto
     // diretto dei fantavoto): i punti incorporano eventuali modificatori di
     // regolamento (es. difesa), il fantavoto grezzo no.
     if (match.home_result_points === 3) {
       home.won += 1;
-      away.lost += 1;
+      if (away) away.lost += 1;
     } else if (match.home_result_points === 1) {
       home.drawn += 1;
-      away.drawn += 1;
+      if (away) away.drawn += 1;
     } else if (match.home_result_points === 0) {
-      away.won += 1;
+      if (away) away.won += 1;
       home.lost += 1;
     }
 
-    if (match.home_goals !== null && match.away_goals !== null) {
+    if (match.home_goals !== null && match.away_goals !== null && away) {
       home.goalsFor += match.home_goals;
       home.goalsAgainst += match.away_goals;
       away.goalsFor += match.away_goals;
       away.goalsAgainst += match.home_goals;
     } else {
       home.goalsComplete = false;
-      away.goalsComplete = false;
+      if (away) away.goalsComplete = false;
     }
   }
 

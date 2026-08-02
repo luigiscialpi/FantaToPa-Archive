@@ -349,7 +349,8 @@ async function seedPlayersFromLineups(client: SupabaseClient, config: SeasonConf
     for (const file of files) {
       const lineup = await new XlsxLineupAdapter(config.slug, 'x').parse(file);
       for (const match of lineup.matches) {
-        for (const side of [match.home, match.away]) {
+        const sides = match.away ? [match.home, match.away] : [match.home];
+        for (const side of sides) {
           for (const pl of side.players) lineupNames.add(pl.playerName.trim());
         }
       }

@@ -336,28 +336,67 @@ export class SupabaseSeasonRepository implements SeasonRepository {
 
     for (const match of input.matches) {
       const homeTeamId = await this.resolveTeamId(match.home.teamName);
-      const awayTeamId = await this.resolveTeamId(match.away.teamName);
       if (!homeTeamId) throw new Error(`Squadra home non trovata: "${match.home.teamName}"`);
-      if (!awayTeamId) throw new Error(`Squadra away non trovata: "${match.away.teamName}"`);
 
-      const { data: matchRow, error: matchError } = await this.client
-        .from('matches')
-        .upsert(
-          {
-            matchday_id: matchdayRow.id,
-            home_team_id: homeTeamId,
-            away_team_id: awayTeamId,
-            home_score: match.home.total,
-            away_score: match.away.total,
-          },
-          { onConflict: 'matchday_id, home_team_id, away_team_id' },
-        )
-        .select('id')
-        .single();
-      if (matchError || !matchRow) throw new Error(`Errore upsert partita formazioni: ${matchError?.message ?? 'riga assente'}`);
+      let matchId: string;
 
-      await this.upsertLineupTeam(matchRow.id, homeTeamId, match.home);
-      await this.upsertLineupTeam(matchRow.id, awayTeamId, match.away);
+      if (match.away) {
+        const away = match.away;
+        const awayTeamId = await this.resolveTeamId(away.teamName);
+        if (!awayTeamId) throw new Error(`Squadra away non trovata: "${away.teamName}"`);
+
+        const { data: matchRow, error: matchError } = await this.client
+          .from('matches')
+          .upsert(
+            {
+              matchday_id: matchdayRow.id,
+              home_team_id: homeTeamId,
+              away_team_id: awayTeamId,
+              home_score: match.home.total,
+              away_score: away.total,
+            },
+            { onConflict: 'matchday_id, home_team_id, away_team_id' },
+          )
+          .select('id')
+          .single();
+        if (matchError || !matchRow) throw new Error(`Errore upsert partita formazioni: ${matchError?.message ?? 'riga assente'}`);
+        matchId = matchRow.id;
+
+        await this.upsertLineupTeam(matchId, awayTeamId, away);
+      } else {
+        // Girone con numero dispari di squadre: nessun avversario questa
+        // giornata (vedi adapters/xlsx/lineup.ts). L'onConflict di postgrest
+        // non sa risolvere l'indice unique parziale su away_team_id is null
+        // (migrazione 20260801000000): find-or-create manuale, altrimenti un
+        // re-import duplicherebbe la riga a ogni giro invece di aggiornarla.
+        const { data: existing, error: existingError } = await this.client
+          .from('matches')
+          .select('id')
+          .eq('matchday_id', matchdayRow.id)
+          .eq('home_team_id', homeTeamId)
+          .is('away_team_id', null)
+          .maybeSingle();
+        if (existingError) throw new Error(`Errore lettura partita solo formazioni: ${existingError.message}`);
+
+        if (existing) {
+          const { error: updateError } = await this.client
+            .from('matches')
+            .update({ home_score: match.home.total })
+            .eq('id', existing.id);
+          if (updateError) throw new Error(`Errore aggiornamento partita solo formazioni: ${updateError.message}`);
+          matchId = existing.id;
+        } else {
+          const { data: inserted, error: insertError } = await this.client
+            .from('matches')
+            .insert({ matchday_id: matchdayRow.id, home_team_id: homeTeamId, away_team_id: null, home_score: match.home.total })
+            .select('id')
+            .single();
+          if (insertError || !inserted) throw new Error(`Errore inserimento partita solo formazioni: ${insertError?.message ?? 'riga assente'}`);
+          matchId = inserted.id;
+        }
+      }
+
+      await this.upsertLineupTeam(matchId, homeTeamId, match.home);
     }
   }
 

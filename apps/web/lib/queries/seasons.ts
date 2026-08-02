@@ -29,6 +29,7 @@ export type CompetitionOption = {
   slug: string;
   name: string;
   kindCode: string;
+  formatCode: string;
 };
 
 export const getSeasons = cache(async (supabase: TypedSupabaseClient): Promise<SeasonOption[]> => {
@@ -47,7 +48,7 @@ export const getSeasons = cache(async (supabase: TypedSupabaseClient): Promise<S
 export const getCompetitions = cache(async (supabase: TypedSupabaseClient, seasonId: string): Promise<CompetitionOption[]> => {
   const { data, error } = await supabase
     .from('competitions')
-    .select('id, slug, name, kind_code')
+    .select('id, slug, name, kind_code, format_code')
     .eq('season_id', seasonId)
     .order('slug', { ascending: true });
 
@@ -55,5 +56,11 @@ export const getCompetitions = cache(async (supabase: TypedSupabaseClient, seaso
     throw new Error(`Impossibile leggere le competizioni: ${error.message}`);
   }
 
-  return data.map((row) => ({ id: row.id, slug: row.slug, name: row.name, kindCode: row.kind_code }));
+  return data.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    kindCode: row.kind_code,
+    formatCode: row.format_code,
+  }));
 });

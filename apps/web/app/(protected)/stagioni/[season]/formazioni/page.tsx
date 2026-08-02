@@ -1,10 +1,12 @@
 // apps/web/app/(protected)/stagioni/[season]/formazioni/page.tsx
+import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { createClient } from '../../../../../lib/supabase/server';
 import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons';
-import { getFormazioni, getMatchdayOptions } from '../../../../../lib/queries/formazioni';
+import { getFormazioni, getGironeFormazioni, getMatchdayOptions } from '../../../../../lib/queries/formazioni';
 import { MatchdaySelector } from '../../../../../components/formazioni/MatchdaySelector';
 import { FormazioniList } from '../../../../../components/formazioni/FormazioniList';
+import { GironeFormazioniList } from '../../../../../components/formazioni/GironeFormazioniList';
 import { DataGapNotice } from '../../../../../components/shared/DataGapNotice';
 import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
 
@@ -57,11 +59,29 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
     notFound();
   }
 
-  const matches = await getFormazioni(supabase, activeMatchday.id, season.id);
-  // Se ?partita= non corrisponde a nessuna partita di questa giornata
-  // (link stantio, o giornata cambiata), si ricade sul default (prima
-  // partita) invece di ignorare silenziosamente il match del tutto.
-  const activeMatchId = partita && matches.some((match) => match.matchId === partita) ? partita : null;
+  const emptyMessage =
+    'Le formazioni di questa giornata non sono disponibili: i dati sorgente per questa stagione non le includono.';
+
+  // Coppa Girone A/B (format_code 'gironi'): "formula uno", non sfide 1v1 —
+  // vedi getGironeFormazioni. Il resto delle competizioni (campionato,
+  // fase finale) mantiene le MatchCard a coppie di sempre.
+  let content: ReactNode;
+  if (activeCompetition.formatCode === 'gironi') {
+    const teams = await getGironeFormazioni(supabase, activeMatchday.id, season.id);
+    content = teams.length === 0 ? <DataGapNotice message={emptyMessage} /> : <GironeFormazioniList teams={teams} />;
+  } else {
+    const matches = await getFormazioni(supabase, activeMatchday.id, season.id);
+    // Se ?partita= non corrisponde a nessuna partita di questa giornata
+    // (link stantio, o giornata cambiata), si ricade sul default (prima
+    // partita) invece di ignorare silenziosamente il match del tutto.
+    const activeMatchId = partita && matches.some((match) => match.matchId === partita) ? partita : null;
+    content =
+      matches.length === 0 ? (
+        <DataGapNotice message={emptyMessage} />
+      ) : (
+        <FormazioniList matches={matches} initialExpandedMatchId={activeMatchId} />
+      );
+  }
 
   return (
     <main>
@@ -81,11 +101,7 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
             />
           </div>
         </div>
-        {matches.length === 0 ? (
-          <DataGapNotice message="Le formazioni di questa giornata non sono disponibili: i dati sorgente per questa stagione non le includono." />
-        ) : (
-          <FormazioniList matches={matches} initialExpandedMatchId={activeMatchId} />
-        )}
+        {content}
       </div>
     </main>
   );
