@@ -699,11 +699,60 @@ già visto per gli alias giocatore (sopra): dove il nome 2018-19 non trovava un 
 esistente nel registro squadre, la corrispondenza è stata confermata dall'utente invece di
 dedotta.
 
-## 8. Dati legacy e OCR
+### 7.3 Formazioni Coppa Girone/Fase Finale derivate da Campionato (2020-21, 2021-22)
+
+Per queste due stagioni, Coppa Lelle Girone A/B non aveva **nemmeno lo scheletro match**
+(0 matchdays/matches, non solo formazioni assenti): la cartella sorgente è flat, senza
+xlsx Formazioni/Calendario per i gironi. Fase Finale invece esisteva già con partite e
+punteggi reali (da Calendario xlsx), ma senza formazioni (0 lineups). Nessuna fonte Coppa
+indipendente esiste per queste stagioni a livello giocatore — la Coppa condivide gli stessi
+giocatori/voti del Campionato della stessa settimana, solo il "modificatore" cambia perché
+l'avversario è diverso.
+
+**Fonte per i punteggi reali Girone**: l'utente ha fornito screenshot
+(`docs/Fantacalcio <season>/Coppa Lelle/Calendario*.jpg`) con i punteggi reali
+giornata per giornata di Girone A/B, trascritti a mano in
+`packages/ingestion/scripts/derive-coppa-lineups.ts` e verificati esatti (al centesimo)
+contro `standings.total_fantapoints` già importato, sommando le 5 giornate per squadra.
+
+**Derivazione** (script one-off ma permanente, come `import-season-2018-19.ts` — mappatura
+e fonti specifiche di queste due stagioni, non un adapter riutilizzabile): per ogni
+squadra/giornata, formazione/giocatori/voti sono copiati 1:1 dal Campionato della giornata
+mappata (5-8-11-14-17 per i gironi, 22-25-28-31-33 per la fase finale — stessa mappatura di
+sezione 7.1, riusa la stessa tabella `matchday_bonus_sources` anche qui per il mapping
+giornata-Coppa → giornata-Campionato, non solo per i bonus). Il valore mancante
+(`defense_modifier` per i gironi, `field_advantage` per la fase finale — l'altro dei due è
+noto: copiato da Campionato per la fase finale, fissato a 0 per i gironi dove non si
+applica, vedi migrazione `20260729112311`) è calcolato come **plug**: differenza esatta tra
+il punteggio reale già noto e `sum(fantavoto titolari che contano)`, così il dettaglio
+formazione si riconcilia sempre col totale corretto (arrotondato con `Math.round()`, le
+colonne sono `integer`).
+
+**Girone A/B — pairing "solo"**: nessuna fonte reale del pairing per queste due stagioni
+(il pairing nei file veri, dove esiste in altre stagioni, è comunque solo per
+impaginazione, zero valore per il punteggio — vedi `getGironeFormazioni`), quindi ogni
+match è creato come "solo" (`away_team_id=null`, già supportato dallo schema per gironi
+dispari, sezione 6) — cosmeticamente irrilevante perché il punteggio è "formula 1"
+(classifica individuale, non testa a testa).
+
+**Bug scoperto e corretto durante la validazione**: la prima esecuzione ha silenziosamente
+prodotto alcune lineup con `defense_modifier` implausibile (es. `+82`, l'intero punteggio
+reale) e "Formazione non disponibile" — causa: la query `lineup_players` dentro lo script
+non paginava con `.range()` e la risposta (~1080 righe per 5 giornate × 10 squadre) veniva
+troncata silenziosamente a 1000 da PostgREST (stesso bug già visto in
+`apps/web/lib/queries/home.ts`, ora annotato in `AGENTS.md` come pattern trasversale).
+Corretto (paginazione + scarto difensivo di una lineup Campionato con 0 giocatori
+risultanti), dati derivati ripuliti e rigenerati, poi validati non solo sul totale ma su
+**ogni singola lineup derivata** (76 per stagione: riconciliazione esatta col punteggio
+reale, nessun modificatore fuori da un range plausibile).
+
+
 
 > **Aggiornamento (fase di import reale)**: lanciando gli adapter xlsx reali su tutti i file di 2020-21/2021-22 (non solo guardando i nomi file), è emerso che Classifica/Calendario Campionato, Rose e Formazioni sono xlsx puliti, già coperti dagli adapter esistenti — nessun OCR necessario per quella parte. L'unico dato realmente solo-immagine è il calendario dei gironi di Coppa di quelle 2 stagioni (pochi file, non 10-15): un gap stretto, trattato come lacuna dati accettata e segnalata esplicitamente in UI (stesso pattern delle lacune di 2022-23), non un motivo per costruire la pipeline OCR sotto. La ricerca che segue resta comunque un riferimento valido per le edizioni pre-2020 ("siti interi scaricati", sezione 12), quando/se verranno recuperate.
 >
 > **Aggiornamento (stagione 2018-19)**: le edizioni pre-2020 di cui sopra hanno ora un primo caso reale e completato — non serviva OCR (i dati sono embedded in HTML/JS, non immagini) ma un adapter dedicato con un proprio meccanismo di decodifica. Vedi sezione 7.2 per i dettagli; questa sezione resta il riferimento per un eventuale futuro caso davvero basato su immagini/screenshot.
+>
+> **Aggiornamento (Girone Coppa 2020-21/2021-22 chiuso, non più OCR)**: il gap descritto sopra (calendario gironi Coppa solo-immagine) è stato chiuso senza OCR — l'utente ha letto a mano i punteggi reali dagli screenshot e lo script `derive-coppa-lineups.ts` (sezione 7.3) li ha usati per derivare formazioni/modificatori dal Campionato della stessa settimana. Il banner `DataGapNotice` per queste due competizioni sparisce da solo (è data-driven: si basa sul conteggio righe restituite dalle query, zero logica hardcoded per stagione/competizione), nessuna modifica frontend necessaria.
 
 Le immagini da gestire (2020-21, 2021-22) sono circa 10-15 file: screenshot puliti presi direttamente dal sito fantacalcio.it, non foto di carta — tabelle con bordi netti, font digitale. È un caso relativamente facile per l'OCR strutturato.
 

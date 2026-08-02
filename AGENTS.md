@@ -61,6 +61,13 @@ pubblico.
   senza `cache()` partirebbero due volte. La cache è per-request (non cross-utente),
   quindi rispetta la RLS. Query di dominio specifiche (classifica, formazioni...) non
   servono in `cache()` perché chiamate da un solo punto.
+- **Qualunque query Supabase/PostgREST che può restituire più di 1000 righe va paginata
+  esplicitamente con `.range()`**: oltre quella soglia la risposta viene troncata senza
+  errore né warning (visto 3 volte: due in `apps/web/lib/queries/home.ts`, una in
+  `packages/ingestion/scripts/derive-coppa-lineups.ts` — quest'ultima ha prodotto un
+  `defense_modifier` derivato spazzatura passato inosservato da typecheck/lint/test).
+  Tabella più a rischio: `lineup_players` (tante righe per poche lineup). Se serve solo
+  un conteggio, `{ count: 'exact', head: true }` evita il problema a monte.
 - **Ogni route sotto `stagioni/[season]/` ha un `loading.tsx`** con skeleton animato che
   ricalca la struttura della pagina reale. Il layout di stagione (navbar + tab) resta
   visibile durante il caricamento — lo skeleton sostituisce solo `{children}`. Nuove
