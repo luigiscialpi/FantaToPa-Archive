@@ -183,3 +183,139 @@ export class HtmlLegacyFinalMatchAdapter implements SourceAdapter<CalendarImport
     });
   }
 }
+
+// Stagione 2017-18 (mirror flat, pagine HTML statiche — vedi memoria repo
+// legacy-seasons-compat.md): calendario.html del Campionato renderizza tutte
+// le 38 giornate come blocchi <table> distinti (uno per giornata, "1ª
+// GIORNATA - 1ª Serie A" nell'header), non un unico blob "ci" da decodificare
+// come il 2018-19. A differenza del 2018-19, qui non esiste un campo
+// "punti_cla_a/b" esplicito nella fonte: solo il "risultato" (i gol già
+// calcolati dalla piattaforma con la formula fantacalcio a scaglioni, non i
+// fantavoti) — i punti classifica 3/1/0 vanno derivati confrontando i gol,
+// stessa convenzione già usata da HtmlLegacyFinalMatchAdapter per la Fase
+// Finale 2018-19 (mai osservato un pareggio nei punti diverso da gol pari).
+function resultPoints(homeGoals: number, awayGoals: number): { home: number; away: number } {
+  if (homeGoals === awayGoals) return { home: 1, away: 1 };
+  return homeGoals > awayGoals ? { home: 3, away: 0 } : { home: 0, away: 3 };
+}
+
+export class FlatHtmlCalendarAdapter implements SourceAdapter<CalendarImport> {
+  constructor(
+    private readonly seasonSlug: string,
+    private readonly competitionSlug: string,
+  ) {}
+
+  canHandle(input: unknown): boolean {
+    return typeof input === 'string' && input.toLowerCase().endsWith('.html');
+  }
+
+  async parse(input: unknown): Promise<CalendarImport> {
+    if (typeof input !== 'string') {
+      throw new Error('FlatHtmlCalendarAdapter si aspetta un path file (string)');
+    }
+    const html = await readFile(input, 'utf-8');
+
+    // Ogni box giornata: <h4>Nª GIORNATA - ...</h4> nell'header della
+    // tabella, poi <tbody> con una riga <tr> per partita.
+    const matchdayPattern = /<h4>(\d+)ª GIORNATA[^<]*<\/h4><\/th><\/tr><\/thead><tbody>([\s\S]*?)<\/tbody>/g;
+    const rowPattern =
+      /<tr><td class="match"><span class="ssteam tleft"><a[^>]*>([^<]+)<\/a><\/span> <span class="point">([^<]+)<\/span> - <span class="point">([^<]+)<\/span> <span class="ssteam tright"><a[^>]*>([^<]+)<\/a><\/span><\/td><td class="result">([^<]+)<\/td><\/tr>/g;
+
+    const matchdays: CalendarImport['matchdays'] = [];
+    let matchdayMatch: RegExpExecArray | null;
+    while ((matchdayMatch = matchdayPattern.exec(html))) {
+      const number = Number(matchdayMatch[1]);
+      const matches: CalendarImport['matchdays'][number]['matches'] = [];
+      let rowMatch: RegExpExecArray | null;
+      rowPattern.lastIndex = 0;
+      while ((rowMatch = rowPattern.exec(matchdayMatch[2]!))) {
+        const [homeGoals, awayGoals] = rowMatch[5]!.split('-').map(Number);
+        if (homeGoals === undefined || awayGoals === undefined || Number.isNaN(homeGoals) || Number.isNaN(awayGoals)) {
+          throw new Error(`Risultato non parsificabile: "${rowMatch[5]}" (giornata ${number}, ${input})`);
+        }
+        const points = resultPoints(homeGoals, awayGoals);
+        matches.push({
+          homeTeamName: rowMatch[1]!.trim(),
+          awayTeamName: rowMatch[4]!.trim(),
+          homeScore: Number(rowMatch[2]!.replace(',', '.')),
+          awayScore: Number(rowMatch[3]!.replace(',', '.')),
+          homeGoals,
+          awayGoals,
+          homeResultPoints: points.home,
+          awayResultPoints: points.away,
+        });
+      }
+      if (matches.length > 0) matchdays.push({ number, matches });
+    }
+    if (matchdays.length === 0) throw new Error(`Nessuna giornata trovata nel calendario ${input}`);
+
+    return CalendarImportSchema.parse({
+      seasonSlug: this.seasonSlug,
+      competitionSlug: this.competitionSlug,
+      matchdays,
+    });
+  }
+}
+
+// Stessa fonte 2017-18: la Fase Finale (eliminazione diretta, 1 sola
+// partita) non ha una pagina calendario.html propria — solo il widget
+// "ULTIMA GIORNATA" (tabella id="tbultimo") con l'unico risultato che conta,
+// stesso ruolo di HtmlLegacyFinalMatchAdapter per il 2018-19 ma markup
+// diverso: qui gli attributi class sono scritti "Class" (C maiuscola, refuso
+// del sito originale) e le colonne sono team/point/result invece di
+// team-name/team-score/team-fpt — da non confondere con FlatHtmlCalendarAdapter
+// (usato per il calendario Campionato multi-giornata, minuscolo "class").
+export class FlatHtmlFinalMatchAdapter implements SourceAdapter<CalendarImport> {
+  constructor(
+    private readonly seasonSlug: string,
+    private readonly competitionSlug: string,
+  ) {}
+
+  canHandle(input: unknown): boolean {
+    return typeof input === 'string' && input.toLowerCase().endsWith('.html');
+  }
+
+  async parse(input: unknown): Promise<CalendarImport> {
+    if (typeof input !== 'string') {
+      throw new Error('FlatHtmlFinalMatchAdapter si aspetta un path file (string)');
+    }
+    const html = await readFile(input, 'utf-8');
+
+    const widgetMatch = /id="tbultimo"[^>]*>([\s\S]*?)<\/table>/.exec(html);
+    if (!widgetMatch) throw new Error(`Widget "ULTIMA GIORNATA" (id="tbultimo") non trovato in ${input}`);
+
+    const rowMatch =
+      /<td [Cc]lass="match">[\s\S]*?<a[^>]*>([^<]+)<\/a><\/span> <span [Cc]lass="point">([^<]+)<\/span> - <span [Cc]lass="point">([^<]+)<\/span>[\s\S]*?<a[^>]*>([^<]+)<\/a><\/span><\/td><td [Cc]lass="result">([^<]+)<\/td>/.exec(
+        widgetMatch[1]!,
+      );
+    if (!rowMatch) throw new Error(`Partita non trovata nel widget "ULTIMA GIORNATA" di ${input}`);
+
+    const [homeGoals, awayGoals] = rowMatch[5]!.split('-').map(Number);
+    if (homeGoals === undefined || awayGoals === undefined || Number.isNaN(homeGoals) || Number.isNaN(awayGoals)) {
+      throw new Error(`Risultato non parsificabile: "${rowMatch[5]}" (${input})`);
+    }
+    const points = resultPoints(homeGoals, awayGoals);
+
+    return CalendarImportSchema.parse({
+      seasonSlug: this.seasonSlug,
+      competitionSlug: this.competitionSlug,
+      matchdays: [
+        {
+          number: 1,
+          matches: [
+            {
+              homeTeamName: rowMatch[1]!.trim(),
+              awayTeamName: rowMatch[4]!.trim(),
+              homeScore: Number(rowMatch[2]!.replace(',', '.')),
+              awayScore: Number(rowMatch[3]!.replace(',', '.')),
+              homeGoals,
+              awayGoals,
+              homeResultPoints: points.home,
+              awayResultPoints: points.away,
+            },
+          ],
+        },
+      ],
+    });
+  }
+}

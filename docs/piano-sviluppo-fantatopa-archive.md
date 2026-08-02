@@ -596,7 +596,7 @@ Altri due accorgimenti operativi, minori ma concreti:
 
 Un'ultima cosa che vale la pena rendere esplicita come principio: **i file grezzi originali (xlsx, immagini, in futuro gli HTML) restano l'unica fonte di verità definitiva**, conservati per sempre in Storage e collegati a ogni `import_batches`. Il database è una proiezione ricostruibile da quei file, non il contrario — se tra due anni lo schema canonico deve cambiare forma, puoi ri-eseguire gli adapter sui sorgenti archiviati invece di dover recuperare dati che esistono solo nel DB.
 
-### 7.1 Bonus/malus granulari per giornata (Campionato 2025-26, con derivazione Coppa)
+### 7.1 Bonus/malus granulari per giornata (Campionato 2025-26 e 2017-18, con derivazione Coppa solo per il 2025-26)
 
 Per la stagione 2025-26 esiste una fonte aggiuntiva rispetto alle xlsx: 37 pagine HTML
 ("Voti" di leghe.fantacalcio.it, `docs/html/001.html`...`037.html`, una per giornata di
@@ -605,7 +605,8 @@ ammonizione, espulsione, autogol, rigori, portiere imbattuto, player of the matc
 `lineup_players` resta invariata (niente colonne bonus lì, vedi `AGENTS.md`): questi dati
 vivono in tabelle dedicate, introdotte con la migrazione `20260731090000`:
 
-- `bonus_kinds` (code/label) — 13 tipi, elenco chiuso.
+- `bonus_kinds` (code/label) — 14 tipi, elenco chiuso (13 dalla fonte 2025-26 + `assist_fermo`
+  aggiunto con la migrazione `20260802120000` per la fonte 2017-18, vedi sotto).
 - `player_matchday_bonuses` (`matchday_id, player_id, kind_code, position_order`) —
   chiave `(matchday_id, player_id)`, **non** `lineup_player_id`: un evento reale di
   Serie A non va duplicato se più squadre fantacalcio schierano lo stesso giocatore la
@@ -631,7 +632,21 @@ Campionato giornate 5,8,11,14,17 (stesse per entrambi i gironi); Fase Finale gio
 giornata "sorgente" bonus via `matchday_bonus_sources` (o usa la giornata stessa se non
 mappata) e allega un array `bonuses: {code, label}[]` a ogni `LineupPlayerRow`;
 `PlayerRow.tsx` li mostra come piccole icone con tooltip (mappa `code -> emoji`, elenco
-chiuso di 13 voci, niente libreria icone).
+chiuso di 14 voci, niente libreria icone).
+
+**Campionato 2017-18 — stessa architettura, fonte diversa**: i 38 file
+`docs/Fantacalcio 2017-2018/Campionato/formazioni-N.html` (stesso file già usato per
+importare le formazioni, vedi sezione 7.2) contengono anche icone bonus/malus per
+giocatore (`<span class="ico"><img alt="...">`), mai estratte finché non aggiunto
+`FlatHtmlBonusAdapter` (`packages/ingestion/adapters/html-legacy/bonus.ts`): riusa
+`PLAYER_ROW_PATTERN`/`readMatchdayNumber` esportati da `lineup.ts` (stessa regex già
+testata, nessuna duplicazione), estrae le icone con una regex secondaria su `match[0]`.
+9 dei 10 tipi osservati mappano su `bonus_kinds` già esistenti; il decimo
+("assist da fermo", assist da calcio piazzato) è il nuovo `assist_fermo`. Script di
+orchestrazione: `packages/ingestion/scripts/import-bonus-2017-18.ts`. **Nessuna
+derivazione Coppa** per questa stagione: la Coppa 2017-18 non ha formazioni per
+giocatore in questa fonte (solo classifiche/snapshot), quindi `matchday_bonus_sources`
+resta senza righe per le sue competizioni.
 
 ### 7.2 Fonte HTML legacy (stagione 2018-19, mirror Fantagazzetta)
 

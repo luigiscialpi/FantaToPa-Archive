@@ -5,6 +5,21 @@ import { StandingsImportSchema, type StandingsImport } from '../../schema/import
 import type { SourceAdapter } from '../types.js';
 import { extractBalancedObject, extractTeamBlobs, teamNameById } from './decode.js';
 
+// Nome colonna (testo header, es. "pt.", "gf") -> chiave StandingsImport.
+// "g." è ambiguo tra loro ma nella fonte esiste solo come "played" (mai un
+// caso con più colonne "g."), quindi mappatura 1-a-1 semplice.
+const STANDINGS_COLUMN_MAP: Record<string, keyof StandingsImport['rows'][number]> = {
+  'pt.': 'points',
+  'g.': 'played',
+  'v.': 'won',
+  'n.': 'drawn',
+  'p.': 'lost',
+  gf: 'goalsFor',
+  gs: 'goalsAgainst',
+  tot: 'totalFantapoints',
+  'tot.': 'totalFantapoints',
+};
+
 // La classifica di ogni competizione è un oggetto letterale __.s('ci', {...})
 // (non __.dp/__.jp) con sintassi già JSON-valida — vedi decode.ts. "squadre"
 // contiene tutte le righe; layout osservato:
@@ -135,6 +150,83 @@ export class HtmlLegacyGroupTableStandingsAdapter implements SourceAdapter<Stand
         points: Number(cell('rank-pt')),
         totalFantapoints: Number(cell('rank-fp').replace(',', '.')),
       });
+    }
+    if (rows.length === 0) throw new Error(`Nessuna riga classifica trovata in ${input}`);
+
+    return StandingsImportSchema.parse({
+      seasonSlug: this.seasonSlug,
+      competitionSlug: this.competitionSlug,
+      rows,
+    });
+  }
+}
+
+// Stagione 2017-18 (mirror flat, una pagina HTML statica per sezione — non
+// il mirror ricorsivo con blob JS del 2018-19, vedi memoria repo
+// legacy-seasons-compat.md): la tabella classifica (id "tbclassificaA" su
+// Campionato/Seconda Fase, "tbclassifica" su Girone A/B) è HTML statico
+// server-rendered, niente blob da decodificare. Lo schema colonne (quali
+// tra v/n/p/gf/gs sono presenti) varia per competizione ma è dichiarato
+// nell'header <thead> stesso: lo si legge dinamicamente invece di passare
+// un parametro "layout" a priori, un solo adapter per tutti i 3 layout
+// osservati (Campionato 9 colonne, Coppa Seconda Fase 6, Coppa Girone A/B 3).
+export class FlatHtmlStandingsAdapter implements SourceAdapter<StandingsImport> {
+  constructor(
+    private readonly seasonSlug: string,
+    private readonly competitionSlug: string,
+  ) {}
+
+  canHandle(input: unknown): boolean {
+    return typeof input === 'string' && input.toLowerCase().endsWith('.html');
+  }
+
+  async parse(input: unknown): Promise<StandingsImport> {
+    if (typeof input !== 'string') {
+      throw new Error('FlatHtmlStandingsAdapter si aspetta un path file (string)');
+    }
+    const html = await readFile(input, 'utf-8');
+
+    const tableMatch = /<table[^>]*\bid="tbclassifica[Aa]?"[^>]*>([\s\S]*?)<\/table>/.exec(html);
+    if (!tableMatch) throw new Error(`Tabella classifica ("tbclassificaA"/"tbclassifica") non trovata in ${input}`);
+    const tableHtml = tableMatch[1]!;
+
+    const theadMatch = /<thead>([\s\S]*?)<\/thead>/.exec(tableHtml);
+    if (!theadMatch) throw new Error(`<thead> non trovato nella tabella classifica di ${input}`);
+    // Il primo <th> ("CLASSIFICA", colspan che copre rownum+nome squadra) non
+    // ha class="thcol": le colonne dati iniziano tutte con quella classe,
+    // testo diretto nel th (mai dentro un <h3> come il titolo).
+    const columns = [...theadMatch[1]!.matchAll(/<th class="thcol[^"]*"[^>]*>([^<]*)<\/th>/g)].map((m) =>
+      m[1]!.trim(),
+    );
+    if (columns.length === 0) throw new Error(`Nessuna colonna dati trovata nell'header classifica di ${input}`);
+    // "dr" (differenza reti) è derivabile da goalsFor - goalsAgainst, non un
+    // campo a sé in StandingsImportSchema: colonna riconosciuta ma scartata,
+    // non un errore "colonna non mappata".
+    const fields = columns.map((col): keyof StandingsImport['rows'][number] | null => {
+      if (col === 'dr') return null;
+      const field = STANDINGS_COLUMN_MAP[col];
+      if (!field) throw new Error(`Colonna classifica "${col}" non riconosciuta (${input})`);
+      return field;
+    });
+
+    const rowPattern =
+      /<tr><td class="rownum">\d+<\/td><td><span class="steam"><a[^>]*>([^<]+)<\/a><\/span><\/td>((?:<td class="(?:pt|tot)">[^<]*<\/td>)+)<\/tr>/g;
+    const rows: StandingsImport['rows'] = [];
+    let rowMatch: RegExpExecArray | null;
+    while ((rowMatch = rowPattern.exec(tableHtml))) {
+      const teamName = rowMatch[1]!.trim();
+      const values = [...rowMatch[2]!.matchAll(/<td class="(?:pt|tot)">([^<]*)<\/td>/g)].map((m) => m[1]!.trim());
+      if (values.length !== fields.length) {
+        throw new Error(
+          `Squadra "${teamName}": ${values.length} valori ma ${fields.length} colonne attese (${input})`,
+        );
+      }
+      const row: Record<string, string | number> = { teamName, position: rows.length + 1 };
+      fields.forEach((field, i) => {
+        if (field === null) return;
+        row[field] = Number(values[i]!.replace(',', '.'));
+      });
+      rows.push(row as unknown as StandingsImport['rows'][number]);
     }
     if (rows.length === 0) throw new Error(`Nessuna riga classifica trovata in ${input}`);
 

@@ -114,3 +114,69 @@ export class HtmlLegacyRosterAdapter implements SourceAdapter<RosterImport> {
     });
   }
 }
+
+// Stagione 2017-18 (mirror flat — vedi memoria repo
+// legacy-seasons-compat.md): niente blob squadra da incrociare con una
+// tabella giocatori separata. Ogni squadra ha una pagina dedicata
+// (Campionato/dettaglio-rosa/{slug-squadra}/{id}.html) con UNA tabella
+// unica id="tbteamdet" che contiene già ruolo/nome/squadra reale/costo
+// acquisto/costo attuale per ogni giocatore — costo pagato all'asta è la
+// colonna "costo acquisto" (prima delle due), non "costo attuale" (quotazione
+// aggiornata nel tempo, valore diverso). Il nome squadra si legge dal
+// contenuto (<span class="titbig2">), non dallo slug della cartella, per
+// preservare la capitalizzazione originale. Nessun dato "crediti residui"
+// in questa fonte (a differenza di Rose_x.xlsx): teamCredits resta vuoto,
+// gap accettato (RosterImportSchema.teamCredits ha già default []).
+const ROLE_LETTER_TO_CODE: Record<string, string> = { P: 'P', D: 'D', C: 'C', A: 'A' };
+
+export class FlatHtmlRosterAdapter implements SourceAdapter<RosterImport> {
+  constructor(private readonly seasonSlug: string) {}
+
+  canHandle(input: unknown): boolean {
+    return Array.isArray(input) && input.every((p) => typeof p === 'string');
+  }
+
+  async parse(input: unknown): Promise<RosterImport> {
+    if (!this.canHandle(input)) {
+      throw new Error('FlatHtmlRosterAdapter si aspetta string[] (un path per squadra)');
+    }
+    const filePaths = input as string[];
+    const entries: RosterImport['entries'] = [];
+
+    for (const filePath of filePaths) {
+      const html = await readFile(filePath, 'utf-8');
+
+      const teamNameMatch = /<span class="titbig2">([^<]+)<\/span>/.exec(html);
+      if (!teamNameMatch) throw new Error(`Nome squadra (titbig2) non trovato in ${filePath}`);
+      const teamName = decodeHtmlEntities(teamNameMatch[1]!.trim());
+
+      const tableMatch = /<table[^>]*\bid="tbteamdet"[^>]*>([\s\S]*?)<\/table>/.exec(html);
+      if (!tableMatch) throw new Error(`Tabella rosa (id="tbteamdet") non trovata in ${filePath}`);
+
+      const rowPattern =
+        /<td class="tdrole"><span class="[a-z] role">([A-Z])<\/span><\/td>\s*<td><span class="steam"><a[^>]*>([^<]+)<\/a><\/span><\/td>\s*<td class="pt aleft">([^<]*)<\/td>\s*<td class="pt">(\d+)<\/td>\s*<td class="pt">(\d+)<\/td>/g;
+      let rowMatch: RegExpExecArray | null;
+      let rowCount = 0;
+      while ((rowMatch = rowPattern.exec(tableMatch[1]!))) {
+        rowCount++;
+        const roleLetter = rowMatch[1]!;
+        const role = ROLE_LETTER_TO_CODE[roleLetter];
+        if (!role) throw new Error(`Ruolo "${roleLetter}" non riconosciuto (${teamName}, ${filePath})`);
+        entries.push({
+          teamName,
+          playerName: titleCase(decodeHtmlEntities(rowMatch[2]!.trim())),
+          roles: [role],
+          realTeam: decodeHtmlEntities(rowMatch[3]!.trim()),
+          cost: Number(rowMatch[4]),
+        });
+      }
+      if (rowCount === 0) throw new Error(`Nessun giocatore trovato nella rosa di "${teamName}" (${filePath})`);
+    }
+
+    return RosterImportSchema.parse({
+      seasonSlug: this.seasonSlug,
+      entries,
+      teamCredits: [],
+    });
+  }
+}

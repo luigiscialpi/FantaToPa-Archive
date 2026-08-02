@@ -59,6 +59,12 @@ export interface SeasonConfig {
     faseFinale?: CoppaFaseFinaleFiles;
     /** Nuovo dal 2024-25: spareggio salvezza/qualificazione, solo formazioni (1 giornata). */
     spareggio?: { folder: string };
+    /**
+     * Solo 2017-18 (fonte HTML legacy): girone unico round-robin tra le
+     * migliori squadre dei due gruppi, giocato dopo Girone A/B e prima
+     * della Fase Finale — non presente nelle stagioni xlsx-based.
+     */
+    secondaFase?: { folder: string };
   };
 }
 

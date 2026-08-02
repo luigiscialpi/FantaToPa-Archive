@@ -52,6 +52,7 @@ export async function ensureLookups(client: SupabaseClient): Promise<void> {
     { code: 'coppa_girone', label: 'Coppa - Girone' },
     { code: 'coppa_fase_finale', label: 'Coppa - Fase Finale' },
     { code: 'coppa_spareggio', label: 'Coppa - Spareggio' },
+    { code: 'coppa_seconda_fase', label: 'Coppa - Seconda Fase' },
   ]);
   if (kindsError) throw new Error(`Errore upsert competition_kinds: ${kindsError.message}`);
 
@@ -122,6 +123,9 @@ export async function ensureCompetitions(
   }
   if (config.coppa?.spareggio) {
     competitions.push({ slug: 'coppa-spareggio', name: 'Coppa Lelle - Spareggio', kind_code: 'coppa_spareggio', format_code: 'eliminazione_diretta' });
+  }
+  if (config.coppa?.secondaFase) {
+    competitions.push({ slug: 'coppa-seconda-fase', name: 'Coppa Lelle - Seconda Fase', kind_code: 'coppa_seconda_fase', format_code: 'girone_unico' });
   }
 
   // Il parent "coppa" è solo un raggruppamento logico; per semplicità non

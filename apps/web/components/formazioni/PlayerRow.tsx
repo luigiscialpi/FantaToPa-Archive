@@ -1,14 +1,16 @@
 // apps/web/components/formazioni/PlayerRow.tsx
 import type { LineupPlayerRow, PlayerBonus } from '../../lib/queries/formazioni';
 
-// Emoji come scorciatoia visiva compatta (niente libreria icone per 13
-// codici fissi): elenco chiuso, coerente con bonus_kinds della migrazione.
+// Emoji come scorciatoia visiva compatta (niente libreria icone per 14
+// codici fissi): elenco chiuso, coerente con bonus_kinds della migrazione
+// (13 dalla fonte 2025-26 + assist_fermo dalla fonte HTML legacy 2017-18).
 const BONUS_ICON: Record<string, string> = {
   gol_fatto: '⚽',
   gol_subito: '🥅',
   assist: '🅰️',
   assist_soft: '🅰️',
   assist_gold: '🅰️',
+  assist_fermo: '🚩',
   ammonizione: '🟨',
   espulsione: '🟥',
   autogol: '🙃',
@@ -22,9 +24,9 @@ const BONUS_ICON: Record<string, string> = {
 function BonusBadges({ bonuses }: { bonuses: PlayerBonus[] }) {
   if (bonuses.length === 0) return null;
   return (
-    <span className="flex items-center gap-0.5 shrink-0">
+    <span className="flex items-center gap-1 shrink-0">
       {bonuses.map((bonus, index) => (
-        <span key={`${bonus.code}-${index}`} className="text-xs" title={bonus.label}>
+        <span key={`${bonus.code}-${index}`} className="text-sm" title={bonus.label}>
           {BONUS_ICON[bonus.code] ?? '•'}
         </span>
       ))}
