@@ -648,6 +648,12 @@ derivazione Coppa** per questa stagione: la Coppa 2017-18 non ha formazioni per
 giocatore in questa fonte (solo classifiche/snapshot), quindi `matchday_bonus_sources`
 resta senza righe per le sue competizioni.
 
+**Estensione futura alle altre stagioni**: le 5 stagioni classico/mantra 2020-21 →
+2024-25 hanno solo voto/fantavoto (xlsx), senza questa granularità. Analisi di
+fattibilità e piano per colmare il gap usando fantacalcio.it come fonte:
+`docs/bonus-storici-fantacalcio-it.md` (non ancora implementato, vedi anche sezione 11,
+Fase 7).
+
 ### 7.2 Fonte HTML legacy (stagione 2018-19, mirror Fantagazzetta)
 
 Prima stagione con fonte diversa da xlsx: non un'immagine da OCRizzare (sezione 8), ma un
@@ -927,6 +933,9 @@ Prima stagione precedente al 2020-21 recuperata: fonte diversa (sito scaricato, 
 
 **Fase 6 — Siti storici scaricati (edizioni pre-2020)**
 Adapter `html-legacy` quando i file sono disponibili, stesso schema canonico, nessuna modifica al resto del sistema.
+
+**Fase 7 — Bonus/malus storici da fonte web (2020-21 → 2024-25)** *(non iniziata — analisi in `docs/bonus-storici-fantacalcio-it.md`)*
+Le 5 stagioni classico/mantra intermedie hanno solo voto/fantavoto da xlsx, senza bonus/malus granulari (a differenza di 2025-26 e 2017-18, sezione 7.1). Analisi di fattibilità completata: l'architettura esistente (`bonus_kinds`/`player_matchday_bonuses`/`matchday_bonus_sources`) si riusa senza modifiche, serve solo un nuovo adapter per una fonte fantacalcio.it. Resta da verificare se esiste uno storico per-giornata (fonte preferita, poche richieste) o se serve ricadere sulla pagina per-giocatore (più richieste, serve anche un player directory) — verifica in corso. Include anche la mappatura Coppa (`matchday_bonus_sources`) per 2022-23/2023-24/2024-25, non ancora popolata.
 
 ## 12. Domande aperte
 
