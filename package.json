@@ -12,7 +12,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
-    "dev": "npm run dev --workspace=apps/web"
+    "dev": "npm run dev --workspace=apps/web",
+    "diagnose:rivalry-fallback": "dotenv -e .env.local -- tsx packages/ingestion/scripts/verify-rivalry-fallback.ts"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.13",

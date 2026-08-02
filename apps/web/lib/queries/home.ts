@@ -168,8 +168,8 @@ export type RivalryHighlight = {
 
 export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId: string): Promise<RivalryHighlight | null> {
   const [homeResult, awayResult] = await Promise.all([
-    supabase.from('matches').select('away_team_id, home_result_points').eq('home_team_id', teamId),
-    supabase.from('matches').select('home_team_id, away_result_points').eq('away_team_id', teamId),
+    supabase.from('matches').select('matchday_id, away_team_id, home_result_points, home_score, away_score').eq('home_team_id', teamId),
+    supabase.from('matches').select('matchday_id, home_team_id, away_result_points, away_score, home_score').eq('away_team_id', teamId),
   ]);
 
   if (homeResult.error) {
@@ -179,26 +179,71 @@ export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId:
     throw new Error(`Impossibile leggere le partite: ${awayResult.error.message}`);
   }
 
+  const matchdayIds = [...new Set([...homeResult.data, ...awayResult.data].map((match) => match.matchday_id))];
+  if (matchdayIds.length === 0) {
+    return null;
+  }
+
+  const { data: matchdays, error: matchdaysError } = await supabase
+    .from('matchdays')
+    .select('id, competition_id')
+    .in('id', matchdayIds);
+  if (matchdaysError) {
+    throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+  }
+
+  const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
+  const { data: competitions, error: competitionsError } = await supabase
+    .from('competitions')
+    .select('id, kind_code, format_code')
+    .in('id', competitionIds);
+  if (competitionsError) {
+    throw new Error(`Impossibile leggere le competizioni: ${competitionsError.message}`);
+  }
+
+  const excludedCompetitionIds = new Set(
+    competitions
+      .filter((competition) => competition.kind_code.startsWith('coppa') && competition.format_code === 'gironi')
+      .map((competition) => competition.id),
+  );
+  const includedMatchdayIds = new Set(
+    matchdays.filter((matchday) => !excludedCompetitionIds.has(matchday.competition_id)).map((matchday) => matchday.id),
+  );
+
   type Tally = { played: number; won: number; drawn: number; lost: number };
   const byOpponent = new Map<string, Tally>();
 
-  function tally(opponentId: string, points: number | null) {
+  function resolvePoints(points: number | null, ownScore: number | null, opponentScore: number | null): number | null {
+    if (points !== null) return points;
+    // Fallback per partite 1vs1 importate da sole formazioni: i punti
+    // risultato possono mancare, ma il totale squadra consente comunque di
+    // derivare V/N/P.
+    if (ownScore === null || opponentScore === null) return null;
+    if (ownScore > opponentScore) return 3;
+    if (ownScore < opponentScore) return 0;
+    return 1;
+  }
+
+  function tally(opponentId: string, points: number | null, ownScore: number | null, opponentScore: number | null) {
+    const resolvedPoints = resolvePoints(points, ownScore, opponentScore);
     const entry = byOpponent.get(opponentId) ?? { played: 0, won: 0, drawn: 0, lost: 0 };
     entry.played += 1;
-    if (points === 3) entry.won += 1;
-    else if (points === 1) entry.drawn += 1;
-    else if (points === 0) entry.lost += 1;
+    if (resolvedPoints === 3) entry.won += 1;
+    else if (resolvedPoints === 1) entry.drawn += 1;
+    else if (resolvedPoints === 0) entry.lost += 1;
     byOpponent.set(opponentId, entry);
   }
 
   for (const match of homeResult.data) {
+    if (!includedMatchdayIds.has(match.matchday_id)) continue;
     // Girone con numero dispari di squadre: nessun avversario quella
     // giornata (squadra "solo") — niente da tallare per questa partita.
     if (!match.away_team_id) continue;
-    tally(match.away_team_id, match.home_result_points);
+    tally(match.away_team_id, match.home_result_points, match.home_score, match.away_score);
   }
   for (const match of awayResult.data) {
-    tally(match.home_team_id, match.away_result_points);
+    if (!includedMatchdayIds.has(match.matchday_id)) continue;
+    tally(match.home_team_id, match.away_result_points, match.away_score, match.home_score);
   }
 
   let topOpponentId: string | null = null;
