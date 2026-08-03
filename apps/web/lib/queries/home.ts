@@ -158,6 +158,19 @@ export async function getMostTitledTeam(
   return { teamName: team?.canonical_name ?? '—', titles: topTitles };
 }
 
+// cache(): getRivalryHighlight, getPersonalRecords e getLongestUnbeatenStreak la chiamano
+// in parallelo nello stesso Promise.all — deduplica 6 round-trip Supabase in 2.
+const getTeamMatches = cache(async (supabase: TypedSupabaseClient, teamId: string) => {
+  const selection = 'matchday_id, home_team_id, away_team_id, home_result_points, away_result_points, home_score, away_score';
+  const [home, away] = await Promise.all([
+    supabase.from('matches').select(selection).eq('home_team_id', teamId),
+    supabase.from('matches').select(selection).eq('away_team_id', teamId),
+  ]);
+  if (home.error) throw new Error(`Impossibile leggere le partite: ${home.error.message}`);
+  if (away.error) throw new Error(`Impossibile leggere le partite: ${away.error.message}`);
+  return { homeMatches: home.data, awayMatches: away.data };
+});
+
 export type RivalryHighlight = {
   opponentName: string;
   played: number;
@@ -167,38 +180,27 @@ export type RivalryHighlight = {
 };
 
 export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId: string): Promise<RivalryHighlight | null> {
-  const [homeResult, awayResult] = await Promise.all([
-    supabase.from('matches').select('matchday_id, away_team_id, home_result_points, home_score, away_score').eq('home_team_id', teamId),
-    supabase.from('matches').select('matchday_id, home_team_id, away_result_points, away_score, home_score').eq('away_team_id', teamId),
+  // ponytail: matchdays per competition_id (≤16 ID) per evitare URL troppo lunga.
+  const [{ homeMatches, awayMatches }, competitionsResult] = await Promise.all([
+    getTeamMatches(supabase, teamId),
+    supabase.from('competitions').select('id, kind_code, format_code'),
   ]);
 
-  if (homeResult.error) {
-    throw new Error(`Impossibile leggere le partite: ${homeResult.error.message}`);
-  }
-  if (awayResult.error) {
-    throw new Error(`Impossibile leggere le partite: ${awayResult.error.message}`);
+  if (competitionsResult.error) {
+    throw new Error(`Impossibile leggere le competizioni: ${competitionsResult.error.message}`);
   }
 
-  const matchdayIds = [...new Set([...homeResult.data, ...awayResult.data].map((match) => match.matchday_id))];
-  if (matchdayIds.length === 0) {
+  if (homeMatches.length === 0 && awayMatches.length === 0) {
     return null;
   }
 
+  const competitions = competitionsResult.data;
   const { data: matchdays, error: matchdaysError } = await supabase
     .from('matchdays')
     .select('id, competition_id')
-    .in('id', matchdayIds);
+    .in('competition_id', competitions.map((c) => c.id));
   if (matchdaysError) {
     throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
-  }
-
-  const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
-  const { data: competitions, error: competitionsError } = await supabase
-    .from('competitions')
-    .select('id, kind_code, format_code')
-    .in('id', competitionIds);
-  if (competitionsError) {
-    throw new Error(`Impossibile leggere le competizioni: ${competitionsError.message}`);
   }
 
   const excludedCompetitionIds = new Set(
@@ -234,14 +236,14 @@ export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId:
     byOpponent.set(opponentId, entry);
   }
 
-  for (const match of homeResult.data) {
+  for (const match of homeMatches) {
     if (!includedMatchdayIds.has(match.matchday_id)) continue;
     // Girone con numero dispari di squadre: nessun avversario quella
     // giornata (squadra "solo") — niente da tallare per questa partita.
     if (!match.away_team_id) continue;
     tally(match.away_team_id, match.home_result_points, match.home_score, match.away_score);
   }
-  for (const match of awayResult.data) {
+  for (const match of awayMatches) {
     if (!includedMatchdayIds.has(match.matchday_id)) continue;
     tally(match.home_team_id, match.away_result_points, match.away_score, match.home_score);
   }
@@ -367,20 +369,8 @@ export async function getPersonalRecords(
   supabase: TypedSupabaseClient,
   teamId: string,
 ): Promise<{ best: MatchHighlight | null; worst: MatchHighlight | null }> {
-  const selection = 'matchday_id, home_team_id, away_team_id, home_score, away_score';
-  const [homeResult, awayResult] = await Promise.all([
-    supabase.from('matches').select(selection).eq('home_team_id', teamId),
-    supabase.from('matches').select(selection).eq('away_team_id', teamId),
-  ]);
-
-  if (homeResult.error) {
-    throw new Error(`Impossibile leggere le partite: ${homeResult.error.message}`);
-  }
-  if (awayResult.error) {
-    throw new Error(`Impossibile leggere le partite: ${awayResult.error.message}`);
-  }
-
-  const matches: RawMatch[] = [...homeResult.data, ...awayResult.data];
+  const { homeMatches, awayMatches } = await getTeamMatches(supabase, teamId);
+  const matches: RawMatch[] = [...homeMatches, ...awayMatches];
   let bestMatch: RawMatch | null = null;
   let bestScore = -Infinity;
   let worstMatch: RawMatch | null = null;
@@ -483,7 +473,7 @@ export type FieldedPlayer = { playerName: string; appearances: number };
 // Condiviso da getMostFieldedPlayers e getRosterStandout: stessa identica
 // catena lineups→matches→matchdays→competitions per isolare le sole
 // formazioni di campionato (mai coppa) di una squadra.
-async function getCampionatoLineupIds(supabase: TypedSupabaseClient, teamId: string): Promise<string[]> {
+const getCampionatoLineupIds = cache(async (supabase: TypedSupabaseClient, teamId: string): Promise<string[]> => {
   const { data: lineups, error: lineupsError } = await supabase
     .from('lineups')
     .select('id, match_id')
@@ -529,7 +519,7 @@ async function getCampionatoLineupIds(supabase: TypedSupabaseClient, teamId: str
     matches.filter((match) => campionatoMatchdayIds.has(match.matchday_id)).map((match) => match.id),
   );
   return lineups.filter((lineup) => campionatoMatchIds.has(lineup.match_id)).map((lineup) => lineup.id);
-}
+});
 
 // Il costo della query non dipende da `limit`: la paginazione qui sotto
 // scorre comunque TUTTE le lineup_players campionato della squadra per
@@ -1063,53 +1053,45 @@ export type UnbeatenStreak = {
 // (3/1/0, già derivati in fase di import) invece di ricalcolare
 // vittoria/pareggio/sconfitta confrontando home_score/away_score a mano.
 export async function getLongestUnbeatenStreak(supabase: TypedSupabaseClient, teamId: string): Promise<UnbeatenStreak | null> {
-  const selection = 'matchday_id, home_team_id, away_team_id, home_result_points, away_result_points';
-  const [homeResult, awayResult] = await Promise.all([
-    supabase.from('matches').select(selection).eq('home_team_id', teamId),
-    supabase.from('matches').select(selection).eq('away_team_id', teamId),
+  // ponytail: matchdays per competition_id (≤16 ID) per evitare URL troppo lunga.
+  const [{ homeMatches, awayMatches }, competitionsResult] = await Promise.all([
+    getTeamMatches(supabase, teamId),
+    supabase.from('competitions').select('id, season_id').eq('kind_code', 'campionato'),
   ]);
-  if (homeResult.error) {
-    throw new Error(`Impossibile leggere le partite: ${homeResult.error.message}`);
-  }
-  if (awayResult.error) {
-    throw new Error(`Impossibile leggere le partite: ${awayResult.error.message}`);
+  if (competitionsResult.error) {
+    throw new Error(`Impossibile leggere le competizioni: ${competitionsResult.error.message}`);
   }
 
   const matches = [
-    ...homeResult.data.map((match) => ({ matchdayId: match.matchday_id, points: match.home_result_points })),
-    ...awayResult.data.map((match) => ({ matchdayId: match.matchday_id, points: match.away_result_points })),
+    ...homeMatches.map((match) => ({ matchdayId: match.matchday_id, points: match.home_result_points })),
+    ...awayMatches.map((match) => ({ matchdayId: match.matchday_id, points: match.away_result_points })),
   ];
   if (matches.length === 0) {
     return null;
   }
 
-  const matchdayIds = [...new Set(matches.map((match) => match.matchdayId))];
-  const { data: matchdays, error: matchdaysError } = await supabase
-    .from('matchdays')
-    .select('id, number, competition_id')
-    .in('id', matchdayIds);
-  if (matchdaysError) {
-    throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+  const campionatoCompetitions = competitionsResult.data;
+  const campionatoCompetitionIds = campionatoCompetitions.map((c) => c.id);
+  const seasonIds = [...new Set(campionatoCompetitions.map((c) => c.season_id))];
+
+  const [matchdaysResult, seasonsResult] = await Promise.all([
+    supabase.from('matchdays').select('id, number, competition_id').in('competition_id', campionatoCompetitionIds),
+    supabase.from('seasons').select('id, label, starts_on').in('id', seasonIds),
+  ]);
+  if (matchdaysResult.error) {
+    throw new Error(`Impossibile leggere le giornate: ${matchdaysResult.error.message}`);
+  }
+  if (seasonsResult.error) {
+    throw new Error(`Impossibile leggere le stagioni: ${seasonsResult.error.message}`);
   }
 
-  const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
-  const { data: competitions, error: competitionsError } = await supabase
-    .from('competitions')
-    .select('id, kind_code, season_id')
-    .in('id', competitionIds);
-  if (competitionsError) {
-    throw new Error(`Impossibile leggere le competizioni: ${competitionsError.message}`);
-  }
+  const matchdays = matchdaysResult.data;
+  const seasons = seasonsResult.data;
 
   const seasonIdByCampionatoCompetition = new Map(
-    competitions.filter((competition) => competition.kind_code === 'campionato').map((competition) => [competition.id, competition.season_id]),
+    campionatoCompetitions.map((competition) => [competition.id, competition.season_id]),
   );
 
-  const seasonIds = [...new Set(seasonIdByCampionatoCompetition.values())];
-  const { data: seasons, error: seasonsError } = await supabase.from('seasons').select('id, label, starts_on').in('id', seasonIds);
-  if (seasonsError) {
-    throw new Error(`Impossibile leggere le stagioni: ${seasonsError.message}`);
-  }
   const seasonById = new Map(seasons.map((season) => [season.id, season]));
   const matchdayById = new Map(matchdays.map((matchday) => [matchday.id, matchday]));
 
