@@ -84,6 +84,10 @@ const CONFIRMED_TEAM_MERGES: { canonicalName: string; seasonAlias: string }[] = 
   { canonicalName: 'Associazione Sportiva via Roma', seasonAlias: 'Manchester Iutatime' },
 ];
 
+// Squadre confermate dall'utente come realmente nuove (non alias) durante
+// l'onboarding 2018-19.
+const CONFIRMED_NEW_TEAMS = ['Panothinaikos', 'Nemesis FC', 'FC Steaua Ste'];
+
 type IngestionClient = ReturnType<typeof createIngestionClient>;
 
 // I file in Campionato/web/risorse/{squadra,maglietta}/ sono nominati
@@ -188,6 +192,7 @@ async function main(): Promise<void> {
   await repo.upsertTeams(
     CONFIRMED_TEAM_MERGES.map((m) => ({ name: m.canonicalName, aliases: [m.seasonAlias] })),
   );
+  await repo.upsertTeams(CONFIRMED_NEW_TEAMS.map((name) => ({ name })));
 
   await seedTeamsFromNames(seasonId, teamNames, repo);
   console.log(`Seed squadre: ${teamNames.size} squadre`);

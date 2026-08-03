@@ -68,6 +68,9 @@ const CONFIRMED_TEAM_MERGES: { canonicalName: string; seasonAlias: string }[] = 
   { canonicalName: 'Panothinaikos', seasonAlias: 'Panothinaikos 2014' },
 ];
 
+// Squadra confermata dall'utente come realmente nuova (non alias).
+const CONFIRMED_NEW_TEAMS = ['Uber Alles Fussball Club'];
+
 async function discoverRosterFiles(): Promise<string[]> {
   const teamDirs = await readdir(ROSTER_DIR, { withFileTypes: true });
   const files: string[] = [];
@@ -175,6 +178,7 @@ async function main(): Promise<void> {
   // seedTeamsFromNames trova già l'identità corretta invece di crearne una
   // nuova per errore.
   await repo.upsertTeams(CONFIRMED_TEAM_MERGES.map((m) => ({ name: m.canonicalName, aliases: [m.seasonAlias] })));
+  await repo.upsertTeams(CONFIRMED_NEW_TEAMS.map((name) => ({ name })));
 
   await seedTeamsFromNames(seasonId, teamNames, repo);
   console.log(`Seed squadre: ${teamNames.size} squadre`);

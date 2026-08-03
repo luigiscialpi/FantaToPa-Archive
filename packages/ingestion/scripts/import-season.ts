@@ -218,15 +218,25 @@ export async function seedTeamsFromNames(
   teamNames: Set<string>,
   repo: SupabaseSeasonRepository,
 ): Promise<void> {
-  // Fallback per nomi di questa stagione non ancora noti al database (non
-  // dovrebbe succedere per le stagioni xlsx note, protegge da sorprese).
+  // Non creare mai squadre nuove in modo silenzioso: quando un nome non
+  // risolve su teams/team_aliases, fermiamo l'import per chiedere conferma
+  // umana (alias verso squadra esistente vs vera nuova identità).
   const unresolved: string[] = [];
   for (const name of teamNames) {
     if (!(await repo.resolveTeamId(name))) unresolved.push(name);
   }
   if (unresolved.length > 0) {
-    await repo.upsertTeams(unresolved.map((name) => ({ name })));
-    console.log(`Squadre non nel registro (aggiunte come nuove): ${unresolved.join(', ')}`);
+    const names = unresolved.map((name) => `- ${name}`).join('\n');
+    throw new Error(
+      [
+        'Squadre non risolte nel registro (import interrotto):',
+        names,
+        '',
+        'Conferma prima con l\'utente per ogni nome:',
+        '- alias di squadra esistente: aggiungi upsertTeams({ name: canonical, aliases: [seasonAlias] }) PRIMA di seedTeamsFromNames;',
+        '- squadra davvero nuova: aggiungi esplicitamente upsertTeams({ name }) nello script stagione PRIMA di seedTeamsFromNames.',
+      ].join('\n'),
+    );
   }
 
   for (const name of teamNames) {
