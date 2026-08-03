@@ -49,6 +49,7 @@ import {
 const DOCS_ROOT = fileURLToPath(new URL('../../../docs/Fantacalcio 2017-2018', import.meta.url));
 const CAMPIONATO_DIR = path.join(DOCS_ROOT, 'Campionato');
 const ROSTER_DIR = path.join(CAMPIONATO_DIR, 'dettaglio-rosa');
+const CREDITS_DIR = path.join(CAMPIONATO_DIR, 'dettaglio-squadra');
 const COPPA_DIR = path.join(DOCS_ROOT, 'Coppa');
 
 const SEASON = {
@@ -80,6 +81,21 @@ async function discoverRosterFiles(): Promise<string[]> {
     const teamFiles = (await readdir(teamDir)).filter((name) => name.endsWith('.html'));
     if (teamFiles.length !== 1) {
       throw new Error(`Attesi esattamente 1 file .html in ${teamDir}, trovati ${teamFiles.length}`);
+    }
+    files.push(path.join(teamDir, teamFiles[0]!));
+  }
+  return files;
+}
+
+async function discoverCreditFiles(): Promise<string[]> {
+  const teamDirs = await readdir(CREDITS_DIR, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of teamDirs) {
+    if (!entry.isDirectory()) continue;
+    const teamDir = path.join(CREDITS_DIR, entry.name);
+    const teamFiles = (await readdir(teamDir)).filter((name) => name.endsWith('.html'));
+    if (teamFiles.length !== 1) {
+      throw new Error(`Atteso esattamente 1 file .html in ${teamDir}, trovati ${teamFiles.length}`);
     }
     files.push(path.join(teamDir, teamFiles[0]!));
   }
@@ -125,7 +141,8 @@ async function main(): Promise<void> {
   );
 
   const rosterFiles = await discoverRosterFiles();
-  const roster = await new FlatHtmlRosterAdapter(SEASON.slug).parse(rosterFiles);
+  const creditFiles = await discoverCreditFiles();
+  const roster = await new FlatHtmlRosterAdapter(SEASON.slug, creditFiles).parse(rosterFiles);
 
   const lineupFiles = await discoverLineupFiles();
   const lineupAdapter = new FlatHtmlLineupAdapter(SEASON.slug, 'campionato');

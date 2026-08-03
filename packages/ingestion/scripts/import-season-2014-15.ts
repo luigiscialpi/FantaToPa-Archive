@@ -59,10 +59,11 @@ async function main(): Promise<void> {
   const standingsFile = path.join(BASE_DIR, 'classifica.html');
   const calendarFile = path.join(BASE_DIR, 'calendario.html');
   const rosterFile = path.join(BASE_DIR, 'tutte-le-rose.html');
+  const creditsFile = path.join(BASE_DIR, 'squadre.html');
 
   const standings = await new FlatHtmlStandingsAdapter(SEASON.slug, 'campionato').parse(standingsFile);
   const calendar = await new FlatHtmlCalendarAdapter(SEASON.slug, 'campionato').parse(calendarFile);
-  const roster = await new FlatHtmlRosterAdapter(SEASON.slug).parse([rosterFile]);
+  const roster = await new FlatHtmlRosterAdapter(SEASON.slug, creditsFile).parse([rosterFile]);
 
   const lineupFiles = await discoverLineupFiles();
   const lineupAdapter = new FlatHtmlLineupAdapter(SEASON.slug, 'campionato');

@@ -9,6 +9,12 @@ const BOLOGNA_FILE = fileURLToPath(
 const UBER_ALLES_FILE = fileURLToPath(
   new URL('./__fixtures__/2017-18/dettaglio-rosa/uber-alles-fussball-club/601779.html', import.meta.url),
 );
+const BOLOGNA_CREDITS_FILE = fileURLToPath(
+  new URL(
+    '../../../../docs/Fantacalcio 2017-2018/Campionato/dettaglio-squadra/bbsatlpr-bologna-ac-17/612107.html',
+    import.meta.url,
+  ),
+);
 
 describe('FlatHtmlRosterAdapter, contro le rose reali 2017-18', () => {
   it('legge 25 giocatori per squadra da un singolo file dettaglio-rosa', async () => {
@@ -31,10 +37,10 @@ describe('FlatHtmlRosterAdapter, contro le rose reali 2017-18', () => {
     expect(teams).toEqual(new Set(['BBSATLPR Bologna AC 17', 'Uber Alles Fussball Club']));
   });
 
-  it('non popola teamCredits (dato assente in questa fonte)', async () => {
-    const adapter = new FlatHtmlRosterAdapter('2017-18');
+  it('legge i crediti residui dalla pagina dettaglio-squadra', async () => {
+    const adapter = new FlatHtmlRosterAdapter('2017-18', [BOLOGNA_CREDITS_FILE]);
     const result = await adapter.parse([BOLOGNA_FILE]);
 
-    expect(result.teamCredits).toEqual([]);
+    expect(result.teamCredits).toEqual([{ teamName: 'BBSATLPR Bologna AC 17', creditsRemaining: 249 }]);
   });
 });

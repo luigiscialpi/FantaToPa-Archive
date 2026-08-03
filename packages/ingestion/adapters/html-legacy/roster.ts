@@ -124,10 +124,62 @@ export class HtmlLegacyRosterAdapter implements SourceAdapter<RosterImport> {
 // colonna "costo acquisto" (prima delle due), non "costo attuale" (quotazione
 // aggiornata nel tempo, valore diverso). Il nome squadra si legge dal
 // contenuto (<span class="titbig2">), non dallo slug della cartella, per
-// preservare la capitalizzazione originale. Nessun dato "crediti residui"
-// in questa fonte (a differenza di Rose_x.xlsx): teamCredits resta vuoto,
-// gap accettato (RosterImportSchema.teamCredits ha già default []).
+// preservare la capitalizzazione originale. Le pagine dettaglio-squadra collegate
+// al mirror contengono anche i crediti residui; vengono passate separatamente
+// perché dettaglio-rosa non li include.
 const ROLE_LETTER_TO_CODE: Record<string, string> = { P: 'P', D: 'D', C: 'C', A: 'A' };
+const CREDITS_AVAILABLE_PATTERN =
+  /<strong>\s*Crediti disponibili:\s*<\/strong>\s*(?:<span\b[^>]*>)?\s*(-?\d+(?:[.,]\d+)?)\s*(?:<\/span>)?/i;
+
+function cleanText(value: string): string {
+  return decodeHtmlEntities(value.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+
+function parseCreditsValue(html: string, teamName: string, filePath: string): number | undefined {
+  const match = CREDITS_AVAILABLE_PATTERN.exec(html);
+  if (!match) return undefined;
+
+  const credits = Number(match[1]!.replace(',', '.'));
+  if (!Number.isFinite(credits)) {
+    throw new Error(`Crediti disponibili non parsificabili per "${teamName}" in ${filePath}`);
+  }
+  return credits;
+}
+
+function parseDetailTeamCredits(html: string, filePath: string): RosterImport['teamCredits'] {
+  const teamNameMatch = /<span\s+class="titbig2">([^<]+)<\/span>/i.exec(html);
+  if (!teamNameMatch) return [];
+
+  const teamName = decodeHtmlEntities(teamNameMatch[1]!.trim());
+  const credits = parseCreditsValue(html, teamName, filePath);
+  if (credits === undefined) return [];
+  return [{ teamName, creditsRemaining: credits }];
+}
+
+function parseAggregateTeamCredits(html: string, filePath: string): RosterImport['teamCredits'] {
+  const headings = [...html.matchAll(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi)];
+  const credits: RosterImport['teamCredits'] = [];
+
+  for (let index = 0; index < headings.length; index += 1) {
+    const heading = headings[index]!;
+    const teamName = cleanText(heading[1]!);
+    if (!teamName) continue;
+
+    const start = (heading.index ?? 0) + heading[0].length;
+    const end = headings[index + 1]?.index ?? html.length;
+    const creditsValue = parseCreditsValue(html.slice(start, end), teamName, filePath);
+    if (creditsValue !== undefined) credits.push({ teamName, creditsRemaining: creditsValue });
+  }
+
+  if (credits.length === 0) throw new Error(`Nessun credito residuo trovato in ${filePath}`);
+  return credits;
+}
+
+function parseCreditSource(html: string, filePath: string): RosterImport['teamCredits'] {
+  const detailCredits = parseDetailTeamCredits(html, filePath);
+  if (detailCredits.length > 0) return detailCredits;
+  return parseAggregateTeamCredits(html, filePath);
+}
 
 function parseFlatTeamTableRows(tableHtml: string, teamName: string, filePath: string): RosterImport['entries'] {
   const entries: RosterImport['entries'] = [];
@@ -179,7 +231,11 @@ function parseFlatAggregateRoster(html: string, filePath: string): RosterImport[
 }
 
 export class FlatHtmlRosterAdapter implements SourceAdapter<RosterImport> {
-  constructor(private readonly seasonSlug: string) {}
+  private readonly creditFiles: string[];
+
+  constructor(private readonly seasonSlug: string, creditFiles?: string | string[]) {
+    this.creditFiles = creditFiles ? (Array.isArray(creditFiles) ? creditFiles : [creditFiles]) : [];
+  }
 
   canHandle(input: unknown): boolean {
     return Array.isArray(input) && input.every((p) => typeof p === 'string');
@@ -191,6 +247,7 @@ export class FlatHtmlRosterAdapter implements SourceAdapter<RosterImport> {
     }
     const filePaths = input as string[];
     const entries: RosterImport['entries'] = [];
+    const teamCredits = new Map<string, number>();
 
     for (const filePath of filePaths) {
       const html = await readFile(filePath, 'utf-8');
@@ -205,6 +262,9 @@ export class FlatHtmlRosterAdapter implements SourceAdapter<RosterImport> {
           throw new Error(`Nessun giocatore trovato nella rosa di "${teamName}" (${filePath})`);
         }
         entries.push(...teamEntries);
+        for (const credit of parseDetailTeamCredits(html, filePath)) {
+          teamCredits.set(credit.teamName, credit.creditsRemaining);
+        }
         continue;
       }
 
@@ -217,10 +277,17 @@ export class FlatHtmlRosterAdapter implements SourceAdapter<RosterImport> {
       entries.push(...aggregateEntries);
     }
 
+    for (const creditFile of this.creditFiles) {
+      const creditsHtml = await readFile(creditFile, 'utf-8');
+      for (const credit of parseCreditSource(creditsHtml, creditFile)) {
+        teamCredits.set(credit.teamName, credit.creditsRemaining);
+      }
+    }
+
     return RosterImportSchema.parse({
       seasonSlug: this.seasonSlug,
       entries,
-      teamCredits: [],
+      teamCredits: [...teamCredits].map(([teamName, creditsRemaining]) => ({ teamName, creditsRemaining })),
     });
   }
 }

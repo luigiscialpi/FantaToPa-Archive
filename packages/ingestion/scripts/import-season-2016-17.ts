@@ -25,6 +25,7 @@ import {
 const DOCS_ROOT = fileURLToPath(new URL('../../../docs/Fantacalcio 2016-2017', import.meta.url));
 const CAMPIONATO_DIR = path.join(DOCS_ROOT, 'Campionato', 'fantatopa');
 const ROSTER_DIR = path.join(CAMPIONATO_DIR, 'dettaglio-rosa');
+const CREDITS_DIR = path.join(CAMPIONATO_DIR, 'dettaglio-squadra');
 const COPPA_DIR = path.join(DOCS_ROOT, 'Coppa Lelle');
 
 const SEASON = {
@@ -54,6 +55,17 @@ async function discoverRosterFiles(): Promise<string[]> {
   for (const entry of teamDirs) {
     if (!entry.isDirectory()) continue;
     const teamDir = path.join(ROSTER_DIR, entry.name);
+    files.push(await discoverSingleHtm(teamDir));
+  }
+  return files;
+}
+
+async function discoverCreditFiles(): Promise<string[]> {
+  const teamDirs = await readdir(CREDITS_DIR, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of teamDirs) {
+    if (!entry.isDirectory()) continue;
+    const teamDir = path.join(CREDITS_DIR, entry.name);
     files.push(await discoverSingleHtm(teamDir));
   }
   return files;
@@ -99,7 +111,8 @@ async function main(): Promise<void> {
   const faseFinaleCalendar = await new FlatHtmlFinalMatchAdapter(SEASON.slug, 'coppa-fase-finale').parse(faseFinaleFile);
 
   const rosterFiles = await discoverRosterFiles();
-  const roster = await new FlatHtmlRosterAdapter(SEASON.slug).parse(rosterFiles);
+  const creditFiles = await discoverCreditFiles();
+  const roster = await new FlatHtmlRosterAdapter(SEASON.slug, creditFiles).parse(rosterFiles);
 
   const lineupFiles = await discoverLineupFiles();
   const lineupAdapter = new FlatHtmlLineupAdapter(SEASON.slug, 'campionato');

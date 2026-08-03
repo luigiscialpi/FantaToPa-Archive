@@ -94,11 +94,12 @@ async function verifyImport(slug: string): Promise<void> {
 
   const { data: teamSeasons, error: teamSeasonsErr } = await client
     .from('team_seasons')
-    .select('logo_url, jersey_url')
+    .select('logo_url, jersey_url, credits_remaining')
     .eq('season_id', season.id);
   if (teamSeasonsErr) throw teamSeasonsErr;
   const logosCount = (teamSeasons ?? []).filter((t) => t.logo_url).length;
   const jerseysCount = (teamSeasons ?? []).filter((t) => t.jersey_url).length;
+  const creditsCount = (teamSeasons ?? []).filter((t) => t.credits_remaining !== null).length;
 
   console.log(`Stagione: ${season.label} (${slug})`);
   console.log(`Competizioni: ${competitionIds.length} (${(competitions ?? []).map((c) => c.slug).join(', ')})`);
@@ -108,6 +109,7 @@ async function verifyImport(slug: string): Promise<void> {
   console.log(`Righe lineup_players: ${lineupPlayersCount}`);
   console.log(`Rose: ${rosters?.length ?? 0} righe, ${rosterTeamIds.size} squadre distinte, ${rosterPlayerIds.size} giocatori distinti`);
   console.log(`Branding: ${logosCount}/${teamSeasons?.length ?? 0} loghi, ${jerseysCount}/${teamSeasons?.length ?? 0} maglie`);
+  console.log(`Crediti residui: ${creditsCount}/${teamSeasons?.length ?? 0} squadre valorizzate`);
 }
 
 const seasonSlug = process.argv[2];
