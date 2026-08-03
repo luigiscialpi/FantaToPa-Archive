@@ -200,8 +200,20 @@ export type RivalryHighlight = {
   lost: number;
 };
 
-export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId: string): Promise<RivalryHighlight | null> {
-  // ponytail: matchdays per competition_id (≤16 ID) per evitare URL troppo lunga.
+export type OpponentRecord = {
+  opponentName: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+};
+
+type Tally = { played: number; won: number; drawn: number; lost: number };
+
+async function tallyOpponentMatches(
+  supabase: TypedSupabaseClient,
+  teamId: string,
+): Promise<Map<string, Tally> | null> {
   const [{ homeMatches, awayMatches }, competitionsResult] = await Promise.all([
     getTeamMatches(supabase, teamId),
     supabase.from('competitions').select('id, kind_code, format_code'),
@@ -233,14 +245,10 @@ export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId:
     matchdays.filter((matchday) => !excludedCompetitionIds.has(matchday.competition_id)).map((matchday) => matchday.id),
   );
 
-  type Tally = { played: number; won: number; drawn: number; lost: number };
   const byOpponent = new Map<string, Tally>();
 
   function resolvePoints(points: number | null, ownScore: number | null, opponentScore: number | null): number | null {
     if (points !== null) return points;
-    // Fallback per partite 1vs1 importate da sole formazioni: i punti
-    // risultato possono mancare, ma il totale squadra consente comunque di
-    // derivare V/N/P.
     if (ownScore === null || opponentScore === null) return null;
     if (ownScore > opponentScore) return 3;
     if (ownScore < opponentScore) return 0;
@@ -259,14 +267,21 @@ export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId:
 
   for (const match of homeMatches) {
     if (!includedMatchdayIds.has(match.matchday_id)) continue;
-    // Girone con numero dispari di squadre: nessun avversario quella
-    // giornata (squadra "solo") — niente da tallare per questa partita.
     if (!match.away_team_id) continue;
     tally(match.away_team_id, match.home_result_points, match.home_score, match.away_score);
   }
   for (const match of awayMatches) {
     if (!includedMatchdayIds.has(match.matchday_id)) continue;
     tally(match.home_team_id, match.away_result_points, match.away_score, match.home_score);
+  }
+
+  return byOpponent;
+}
+
+export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId: string): Promise<RivalryHighlight | null> {
+  const byOpponent = await tallyOpponentMatches(supabase, teamId);
+  if (!byOpponent) {
+    return null;
   }
 
   let topOpponentId: string | null = null;
@@ -293,6 +308,55 @@ export async function getRivalryHighlight(supabase: TypedSupabaseClient, teamId:
   }
 
   return { opponentName: opponent?.canonical_name ?? '—', ...topTally };
+}
+
+export async function getOpponentRecords(
+  supabase: TypedSupabaseClient,
+  teamId: string,
+): Promise<{ best: OpponentRecord[]; worst: OpponentRecord[] } | null> {
+  const byOpponent = await tallyOpponentMatches(supabase, teamId);
+  if (!byOpponent) {
+    return null;
+  }
+
+  const opponentIds = [...byOpponent.keys()];
+  const { data: teams, error: teamsError } = await supabase
+    .from('teams')
+    .select('id, canonical_name')
+    .in('id', opponentIds);
+  if (teamsError) {
+    throw new Error(`Impossibile leggere le squadre avversarie: ${teamsError.message}`);
+  }
+
+  const nameById = new Map(teams.map((team) => [team.id, team.canonical_name]));
+
+  const recordsWithId = [...byOpponent].map(([opponentId, tally]) => ({
+    opponentId,
+    opponentName: nameById.get(opponentId) ?? '—',
+    played: tally.played,
+    won: tally.won,
+    drawn: tally.drawn,
+    lost: tally.lost,
+  }));
+
+  // "Migliori" prima, poi "peggiori" solo tra gli avversari rimanenti: un
+  // avversario affrontato molto più spesso degli altri accumula sia più
+  // vittorie sia più sconfitte in valore assoluto (es. "Biancoceleste") e
+  // finirebbe in cima a entrambe le classifiche se calcolate in modo
+  // indipendente. Punti stile classifica (3-1-0): i pareggi valgono meno
+  // delle vittorie/sconfitte, non semplici conteggi di esiti.
+  const points = (record: (typeof recordsWithId)[number]) => record.won * 3 + record.drawn;
+  const pointsAgainst = (record: (typeof recordsWithId)[number]) => record.lost * 3 + record.drawn;
+  const best = [...recordsWithId]
+    .sort((a, b) => points(b) - points(a) || b.played - a.played)
+    .slice(0, 3);
+  const bestOpponentIds = new Set(best.map((record) => record.opponentId));
+  const worst = recordsWithId
+    .filter((record) => !bestOpponentIds.has(record.opponentId))
+    .sort((a, b) => pointsAgainst(b) - pointsAgainst(a) || b.played - a.played)
+    .slice(0, 3);
+
+  return { best, worst };
 }
 
 export type MatchHighlight = {

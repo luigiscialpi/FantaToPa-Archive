@@ -13,6 +13,8 @@ import { StandingSparkline } from './StandingSparkline';
 import { RosterLoyaltyCard } from './RosterLoyaltyCard';
 import { RosterStandoutCard } from './RosterStandoutCard';
 import { UnbeatenStreakCard } from './UnbeatenStreakCard';
+import { BestRivalsCard } from './BestRivalsCard';
+import { WorstRivalsCard } from './WorstRivalsCard';
 import type {
   TitleCounts,
   RivalryHighlight,
@@ -22,6 +24,7 @@ import type {
   RosterLoyaltyEntry,
   RosterStandout,
   UnbeatenStreak,
+  OpponentRecord,
 } from '../../lib/queries/home';
 
 type CurrentStanding = {
@@ -43,6 +46,8 @@ type TeamPanelProps = {
   loyalty: RosterLoyaltyEntry[];
   standout: RosterStandout | null;
   streak: UnbeatenStreak | null;
+  bestOpponents: OpponentRecord[];
+  worstOpponents: OpponentRecord[];
 };
 
 function formatMatchdayLink(record: MatchHighlight) {
@@ -67,6 +72,8 @@ export function TeamPanel({
   loyalty,
   standout,
   streak,
+  bestOpponents,
+  worstOpponents,
 }: TeamPanelProps) {
   const gap =
     standing && standing.leaderPoints !== null && standing.points !== null ? standing.leaderPoints - standing.points : null;
@@ -111,7 +118,7 @@ export function TeamPanel({
           </div>
         </StatCard>
 
-        <StatCard label="Rivale storico">
+        <StatCard label="Avversario più incontrato">
           {rivalry ? (
             <>
               <Swords size={18} className="mb-1 text-brand-500" />
@@ -127,6 +134,10 @@ export function TeamPanel({
             <div className="text-sm text-stone-400">Ancora nessuna storia</div>
           )}
         </StatCard>
+
+        <KeyPlayersCard players={keyPlayers} />
+
+        <RosterLoyaltyCard loyalty={loyalty} />
 
         <StatCard label="Record personali">
           <TrendingUp size={18} className="mb-1 text-emerald-600" />
@@ -154,13 +165,14 @@ export function TeamPanel({
           )}
         </StatCard>
 
-        <KeyPlayersCard players={keyPlayers} />
+        <BestRivalsCard records={bestOpponents} />
 
-        <RosterLoyaltyCard loyalty={loyalty} />
+        <WorstRivalsCard records={worstOpponents} />
 
         <RosterStandoutCard standout={standout} />
 
         <UnbeatenStreakCard streak={streak} />
+
       </div>
     </section>
   );

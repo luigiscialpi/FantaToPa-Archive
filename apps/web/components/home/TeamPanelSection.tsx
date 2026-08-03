@@ -12,6 +12,7 @@ import {
   getAllTimeTitleCounts,
   getLongestUnbeatenStreak,
   getMostFieldedPlayers,
+  getOpponentRecords,
   getPersonalRecords,
   getRivalryHighlight,
   getRosterLoyalty,
@@ -38,7 +39,7 @@ export async function TeamPanelSection({
 }: TeamPanelSectionProps) {
   const supabase = await createClient();
 
-  const [titleCounts, rivalry, records, keyPlayers, standingHistory, loyalty, standout, streak, branding, teamRow] =
+  const [titleCounts, rivalry, records, keyPlayers, standingHistory, loyalty, standout, streak, branding, teamRow, opponentRecords] =
     await Promise.all([
       getAllTimeTitleCounts(supabase),
       getRivalryHighlight(supabase, teamId),
@@ -50,6 +51,7 @@ export async function TeamPanelSection({
       getLongestUnbeatenStreak(supabase, teamId),
       getTeamBranding(supabase, seasonId, [teamId]),
       supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
+      getOpponentRecords(supabase, teamId),
     ]);
 
   if (teamRow.error) {
@@ -75,6 +77,8 @@ export async function TeamPanelSection({
         loyalty={loyalty}
         standout={standout}
         streak={streak}
+        bestOpponents={opponentRecords?.best ?? []}
+        worstOpponents={opponentRecords?.worst ?? []}
       />
     </div>
   );
