@@ -6,7 +6,16 @@
 //   - Fase finale Coppa Lelle: calendario di 5 giornate, rose aggregate e
 //     formazioni complete.
 //   - classifica.html: solo selettori/menu competizione, nessuna riga squadra
-//     importabile; non si calcola una classifica dal calendario.
+//     importabile; non si calcola una classifica dal calendario. Il dump non
+//     contiene affatto un Campionato (il menu competizioni della lega elenca
+//     solo Coppa Lelle quell'anno): calendario/formazioni di Campionato non
+//     esistono, non sono un buco di parsing.
+//   - Podio Campionato: nessuna classifica nella fonte HTML, ma una nota
+//     storica testuale (fornita dall'utente, non verificabile da un file
+//     della lega) conferma le prime 3 posizioni finali — vedi
+//     CAMPIONATO_PODIUM_STANDINGS. Solo la posizione 1 riporta i punti; per le
+//     posizioni 2-3 punti e fantapunti non sono noti e restano null: non si
+//     inventa un dato assente in una fonte comunque parziale.
 //   - Bonus nelle formazioni: estratti e verificati, ma non persistiti perché
 //     player_matchday_bonuses richiede una giornata Campionato come fonte reale
 //     e qui il dump non dimostra alcun Campionato.
@@ -27,7 +36,7 @@ import { Html2013RosterAdapter } from '../adapters/html-legacy/2013-14/roster.js
 import { createIngestionClient } from '../lib/supabase-client.js';
 import { normalizeName } from '../lib/normalize-name.js';
 import { SupabaseSeasonRepository } from '../loader/supabase-season-repository.js';
-import type { BonusImport, CalendarImport, LineupImport, RosterImport } from '../schema/imports.js';
+import type { BonusImport, CalendarImport, LineupImport, RosterImport, StandingsImport } from '../schema/imports.js';
 import {
   buildTeamBrandingLookup,
   ensureCompetitions,
@@ -63,6 +72,18 @@ const CONFIRMED_TEAM_MERGES: { canonicalName: string; seasonAlias: string }[] = 
   { canonicalName: 'Uber Alles Fussball Club', seasonAlias: 'Uber Alles F.C' },
 ];
 const CONFIRMED_NEW_TEAMS: string[] = ['Goliardic F.C.', 'pierpaologranata'];
+
+// Nota storica utente (non presente in alcun file del mirror, il Campionato
+// 2013-14 non ha una classifica.html popolata): "La stagione 2013/14 [...] la
+// Carloparola, ottiene il record concludendo il campionato a 82 punti. Alle
+// spalle della Carloparola si piazzano la rediviva Nemesis 08 e la
+// neopromossa Uber Alles." Solo il vincitore riporta un punteggio; 2°/3°
+// posto restano senza punti/fantapunti, mai inventati.
+const CAMPIONATO_PODIUM_STANDINGS: StandingsImport['rows'] = [
+  { teamName: 'CarloParola F.C', position: 1, points: 82 },
+  { teamName: 'Nemesis 08 F.C', position: 2 },
+  { teamName: 'Uber Alles F.C', position: 3 },
+];
 
 type ParsedSource = {
   filePath: string;
@@ -217,7 +238,7 @@ async function main(): Promise<void> {
     0,
   );
 
-  console.log('Classifica: nessuna riga squadra verificabile in classifica.html, salto senza derivazione.');
+  console.log('Classifica: nessuna riga squadra verificabile in classifica.html; podio Campionato importato da nota storica manuale (1°-3°), resto della classifica non disponibile.');
   console.log(`Calendario Coppa Fase Finale: ${calendar.matchdays.length} giornate, ${calendar.matchdays.reduce((total, matchday) => total + matchday.matches.length, 0)} partite`);
   console.log(`Rosa: ${roster.entries.length} righe, ${new Set(roster.entries.map((entry) => entry.teamName)).size} squadre`);
   console.log(`Formazioni: ${sources.length} giornate, ${sources.reduce((total, source) => total + source.lineup.matches.length, 0)} partite`);
@@ -252,6 +273,12 @@ async function main(): Promise<void> {
   await repo.upsertRoster(roster);
   await repo.upsertCalendar(calendar);
   for (const source of sources) await repo.upsertLineup(source.lineup);
+  await repo.upsertStandings({
+    seasonSlug: SEASON.slug,
+    competitionSlug: 'campionato',
+    rows: CAMPIONATO_PODIUM_STANDINGS,
+  });
+  console.log('Podio Campionato importato da nota storica manuale: 1° CarloParola F.C, 2° Nemesis 08 F.C, 3° Uber Alles F.C.');
 
   console.log(`\nImport ${SEASON.slug} completato: Coppa Fase Finale, ${sources.length} giornate di formazioni.`);
 }

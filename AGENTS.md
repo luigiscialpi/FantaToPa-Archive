@@ -21,6 +21,9 @@ pubblico.
 - **`standings` non si ricalcola mai automaticamente**: è sempre lo snapshot importato.
   Il confronto con `matches` è un controllo di qualità in fase di import, non un dato
   gemello salvato — due "fonti di verità" nella stessa tabella creano solo ambiguità.
+  `points`/`totalFantapoints` in `StandingsImportSchema` sono opzionali apposta: una
+  fonte `manual` (nota storica testuale, non un file della lega — vedi 2013-14) può
+  conoscere solo la posizione di podio, senza inventare punteggi assenti.
 - **`lineup_players` ha solo `voto`/`fantavoto`, niente bonus/malus granulari** (gol,
   assist, cartellini): la fonte xlsx non li riporta. Dove esiste una fonte HTML dedicata
   (Campionato 2025-26, `docs/html/`; Campionato 2017-18, icone in

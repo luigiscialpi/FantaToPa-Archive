@@ -101,6 +101,21 @@ async function verifyImport(slug: string): Promise<void> {
   const jerseysCount = (teamSeasons ?? []).filter((t) => t.jersey_url).length;
   const creditsCount = (teamSeasons ?? []).filter((t) => t.credits_remaining !== null).length;
 
+  const { data: standingsRows, error: standingsErr } = await client
+    .from('standings')
+    .select('competition_id, position, team_id, points')
+    .in('competition_id', competitionIds)
+    .not('position', 'is', null)
+    .order('position', { ascending: true });
+  if (standingsErr) throw standingsErr;
+  const standingsTeamIds = [...new Set((standingsRows ?? []).map((r) => r.team_id))];
+  const { data: standingsTeams, error: standingsTeamsErr } =
+    standingsTeamIds.length > 0
+      ? await client.from('teams').select('id, canonical_name').in('id', standingsTeamIds)
+      : { data: [], error: null };
+  if (standingsTeamsErr) throw standingsTeamsErr;
+  const teamNameById = new Map((standingsTeams ?? []).map((t) => [t.id, t.canonical_name]));
+
   console.log(`Stagione: ${season.label} (${slug})`);
   console.log(`Competizioni: ${competitionIds.length} (${(competitions ?? []).map((c) => c.slug).join(', ')})`);
   console.log(`Giornate: ${matchdayIds.length}`);
@@ -110,6 +125,14 @@ async function verifyImport(slug: string): Promise<void> {
   console.log(`Rose: ${rosters?.length ?? 0} righe, ${rosterTeamIds.size} squadre distinte, ${rosterPlayerIds.size} giocatori distinti`);
   console.log(`Branding: ${logosCount}/${teamSeasons?.length ?? 0} loghi, ${jerseysCount}/${teamSeasons?.length ?? 0} maglie`);
   console.log(`Crediti residui: ${creditsCount}/${teamSeasons?.length ?? 0} squadre valorizzate`);
+  if ((standingsRows ?? []).length === 0) {
+    console.log('Classifica: nessuna posizione importata per nessuna competizione.');
+  } else {
+    for (const row of standingsRows ?? []) {
+      const teamName = teamNameById.get(row.team_id) ?? row.team_id;
+      console.log(`Classifica: pos. ${row.position} - ${teamName}${row.points !== null ? ` (${row.points} punti)` : ''}`);
+    }
+  }
 }
 
 const seasonSlug = process.argv[2];

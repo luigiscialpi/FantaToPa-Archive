@@ -263,8 +263,8 @@ export class SupabaseSeasonRepository implements SeasonRepository {
             row.goalsFor !== undefined && row.goalsAgainst !== undefined
               ? row.goalsFor - row.goalsAgainst
               : null,
-          points: row.points,
-          total_fantapoints: row.totalFantapoints,
+          points: row.points ?? null,
+          total_fantapoints: row.totalFantapoints ?? null,
         },
         { onConflict: 'competition_id, team_id' },
       );

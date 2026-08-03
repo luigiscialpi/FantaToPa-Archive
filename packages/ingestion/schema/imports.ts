@@ -53,8 +53,11 @@ export const StandingsImportSchema = z.object({
       lost: z.number().int().nonnegative().optional(),
       goalsFor: z.number().int().nonnegative().optional(),
       goalsAgainst: z.number().int().nonnegative().optional(),
-      points: z.number().int().nonnegative(),
-      totalFantapoints: z.number(),
+      // Opzionali anche questi: una fonte manuale (nota storica testuale,
+      // niente file classifica) può conoscere solo la posizione di podio,
+      // senza punti né fantapunti per tutte le squadre.
+      points: z.number().int().nonnegative().optional(),
+      totalFantapoints: z.number().optional(),
     }),
   ),
 });

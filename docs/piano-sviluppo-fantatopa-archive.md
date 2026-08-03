@@ -667,7 +667,17 @@ ma condividono lo stesso contratto `SourceAdapter<T>`:
   crediti residui, `tutte-le-rose.html` per la rosa aggregata e `calendario.html`/
   `formazioni*.html` per la Coppa Fase Finale. `classifica.html` contiene solo il
   selettore delle competizioni, senza righe squadra verificabili: non si deriva una
-  classifica dal calendario e il gap resta esplicito. L'orchestrazione è in
+  classifica dal calendario e il gap resta esplicito. Il selettore competizioni del
+  mirror (`statistiche.html`/`classifica.html`) rivela anche perché: quell'edizione
+  (10th, 2013-14) ha disputato **solo la Coppa Lelle** quell'anno (Girone A, Girone B,
+  Fase Finale) — non esisteva un Campionato lato piattaforma, non solo lato dump.
+  Girone A/B non sono recuperabili dal mirror (selettore competizione via postback
+  ASP.NET, HTTrack non li ha seguiti): solo la Fase Finale è nel dump. Il podio
+  Campionato (posizioni 1-3, non l'intera classifica) è comunque importato da una nota
+  storica testuale fornita dall'utente (non un file della lega, quindi
+  `StandingsImportSchema` ha `points`/`totalFantapoints` opzionali per questo caso: solo
+  il vincitore riporta un punteggio) — vedi `CAMPIONATO_PODIUM_STANDINGS` in
+  `import-season-2013-14.ts`. L'orchestrazione è in
   `packages/ingestion/scripts/import-season-2013-14.ts`; i bonus presenti nelle
   formazioni vengono verificati ma non persistiti, perché il dump non dimostra una
   fonte Campionato utilizzabile per la derivazione.
