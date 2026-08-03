@@ -42,9 +42,15 @@ export function readMatchdayNumber(html: string, filePath: string): number {
   return Number(match[1]);
 }
 
-function readMatchdayLabel(html: string): string | undefined {
-  return /id="LabelGiornata">([^<]*)<\/span>/.exec(html)?.[1]?.trim();
-}
+// ponytail: non leggiamo più lo span "LabelGiornata" della fonte. Contiene
+// "N ª GIORNATA COMPETIZIONE - M ª SERIE A": M coincide quasi sempre con N,
+// ma per la giornata 1 del 2014-15 vale 22 (glitch del sito sorgente su
+// quella pagina, non un fatto storico: le giornate successive tornano ad
+// avere M=N) — propagarlo produceva un testo fuorviante in UI ("1ª
+// giornata" mostrata come "22ª"). matchdayNumber (da "gselected") resta
+// l'unica fonte affidabile; l'UI già ricade su `${number}ª giornata`
+// quando `label` è assente (vedi MatchdaySelector), quindi non serve
+// costruire qui un'alternativa.
 
 function parseVotoCell(raw: string): number | null {
   const trimmed = raw.trim();
@@ -212,7 +218,6 @@ export class FlatHtmlLineupAdapter implements SourceAdapter<LineupImport> {
     }
     const html = await readFile(input, 'utf-8');
     const matchdayNumber = readMatchdayNumber(html, input);
-    const matchdayLabel = readMatchdayLabel(html);
 
     const matches: LineupImport['matches'] = [];
     BOX_PATTERN.lastIndex = 0;
@@ -244,7 +249,6 @@ export class FlatHtmlLineupAdapter implements SourceAdapter<LineupImport> {
       seasonSlug: this.seasonSlug,
       competitionSlug: this.competitionSlug,
       matchdayNumber,
-      matchdayLabel,
       matches,
     });
   }

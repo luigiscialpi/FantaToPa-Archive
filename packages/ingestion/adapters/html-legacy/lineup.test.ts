@@ -14,7 +14,9 @@ describe('FlatHtmlLineupAdapter, contro il file reale 2017-18 (formazioni-1.html
     const result = await adapter.parse(REAL_FILE);
 
     expect(result.matchdayNumber).toBe(38);
-    expect(result.matchdayLabel).toContain('38');
+    // Niente matchdayLabel: la label grezza della fonte ("LabelGiornata") non
+    // è affidabile (vedi commento in lineup.ts) e non viene più letta.
+    expect(result.matchdayLabel).toBeUndefined();
   });
 
   it('legge 4 box-match, ognuno con titolari home/away e formazione/totale validi', async () => {
