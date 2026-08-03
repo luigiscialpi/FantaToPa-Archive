@@ -105,6 +105,13 @@ pubblico.
   intervallo di stagioni può essere lungo quanto il nome di un giocatore e su una riga
   sola lo schiacciava fino a troncarlo a 1-2 lettere — verificato solo con screenshot
   reale, non deducibile dal solo albero di accessibilità.
+- **"Serie utile più lunga" (home, `getLongestUnbeatenStreak`) porta anche il record di
+  vittorie consecutive, calcolato indipendentemente e non necessariamente nella stessa
+  stagione** della striscia utile mostrata sopra: le due strisce sono ricavate dagli
+  stessi `chronoMatches` già caricati (funzione condivisa `longestStreak` con predicato
+  diverso: `points > 0` per la striscia utile, `points === 3` per il record vittorie),
+  mai un'unica computazione che assuma che il periodo migliore di "non aver mai perso"
+  coincida con quello di "aver sempre vinto".
 
 ## Come scrivere codice qui
 

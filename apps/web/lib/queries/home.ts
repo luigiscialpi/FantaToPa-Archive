@@ -1287,21 +1287,81 @@ export async function getBestPlayerSeasons(
 
 export type UnbeatenStreak = {
   length: number;
-  fromSeasonLabel: string;
+  seasonLabel: string;
   fromMatchdayNumber: number;
-  toSeasonLabel: string;
   toMatchdayNumber: number;
+  // Record indipendente dalla striscia utile sopra: può cadere in una
+  // stagione diversa, per questo porta la propria seasonLabel invece di
+  // riusare quella della striscia utile.
+  longestWinningStreak: { length: number; seasonLabel: string } | null;
 };
 
+type ChronoMatch = { startsOn: string; matchdayNumber: number; seasonId: string; seasonLabel: string; points: number };
+
+type StreakRange = { length: number; seasonLabel: string; fromMatchdayNumber: number; toMatchdayNumber: number };
+
+// Striscia più lunga di partite consecutive che soddisfano `isStreak`, mai a
+// cavallo di un cambio stagione. Condivisa da getLongestUnbeatenStreak per
+// calcolare sia la striscia utile (vittoria o pareggio) sia il record di
+// sole vittorie sugli stessi dati già caricati, senza una seconda query.
+function longestStreak(chronoMatches: ChronoMatch[], isStreak: (match: ChronoMatch) => boolean): StreakRange | null {
+  let bestLength = 0;
+  let bestStart = -1;
+  let bestEnd = -1;
+  let currentLength = 0;
+  let currentStart = 0;
+  for (let i = 0; i < chronoMatches.length; i++) {
+    const current = chronoMatches[i];
+    if (!current) continue;
+    // Una striscia non attraversa il cambio di stagione: azzerare qui,
+    // prima di valutare la partita corrente, impedisce di incatenare il
+    // finale di una stagione con l'inizio della successiva.
+    const previous = i > 0 ? chronoMatches[i - 1] : null;
+    if (previous && previous.seasonId !== current.seasonId) {
+      currentLength = 0;
+    }
+    if (isStreak(current)) {
+      if (currentLength === 0) {
+        currentStart = i;
+      }
+      currentLength += 1;
+      if (currentLength > bestLength) {
+        bestLength = currentLength;
+        bestStart = currentStart;
+        bestEnd = i;
+      }
+    } else {
+      currentLength = 0;
+    }
+  }
+  if (bestStart === -1 || bestEnd === -1) {
+    return null;
+  }
+  const from = chronoMatches[bestStart];
+  const to = chronoMatches[bestEnd];
+  if (!from || !to) {
+    return null;
+  }
+  return {
+    length: bestLength,
+    seasonLabel: from.seasonLabel,
+    fromMatchdayNumber: from.matchdayNumber,
+    toMatchdayNumber: to.matchdayNumber,
+  };
+}
+
 // "Serie utile": striscia più lunga di partite consecutive senza sconfitta
-// (vittoria o pareggio) di sempre. Solo campionato, mai coppa: `matches` non
-// ha una data reale per partita, solo matchday_id → number relativo alla
-// competizione, quindi non c'è modo affidabile di intrecciare
-// cronologicamente giornate di gironi/fase finale di coppa con quelle di
-// campionato nella stessa stagione — stesso perimetro di Andamento
-// storico/Giocatori chiave. Riusa home_result_points/away_result_points
-// (3/1/0, già derivati in fase di import) invece di ricalcolare
-// vittoria/pareggio/sconfitta confrontando home_score/away_score a mano.
+// (vittoria o pareggio), entro una singola stagione — mai a cavallo di due
+// stagioni (richiesto esplicitamente: un fine-stagione imbattuto seguito da
+// un inizio-stagione altrettanto imbattuto non è "la stessa striscia"). Solo
+// campionato, mai coppa: `matches` non ha una data reale per partita, solo
+// matchday_id → number relativo alla competizione, quindi non c'è modo
+// affidabile di intrecciare cronologicamente giornate di gironi/fase finale
+// di coppa con quelle di campionato nella stessa stagione — stesso perimetro
+// di Andamento storico/Giocatori chiave. Riusa home_result_points/
+// away_result_points (3/1/0, già derivati in fase di import) invece di
+// ricalcolare vittoria/pareggio/sconfitta confrontando home_score/away_score
+// a mano.
 export async function getLongestUnbeatenStreak(supabase: TypedSupabaseClient, teamId: string): Promise<UnbeatenStreak | null> {
   // ponytail: matchdays per competition_id (≤16 ID) per evitare URL troppo lunga.
   const [{ homeMatches, awayMatches }, competitionsResult] = await Promise.all([
@@ -1345,7 +1405,6 @@ export async function getLongestUnbeatenStreak(supabase: TypedSupabaseClient, te
   const seasonById = new Map(seasons.map((season) => [season.id, season]));
   const matchdayById = new Map(matchdays.map((matchday) => [matchday.id, matchday]));
 
-  type ChronoMatch = { startsOn: string; matchdayNumber: number; seasonLabel: string; points: number };
   const chronoMatches: ChronoMatch[] = [];
   for (const match of matches) {
     if (match.points === null) continue;
@@ -1358,49 +1417,24 @@ export async function getLongestUnbeatenStreak(supabase: TypedSupabaseClient, te
     chronoMatches.push({
       startsOn: season.starts_on ?? '',
       matchdayNumber: matchday.number,
+      seasonId,
       seasonLabel: season.label,
       points: match.points,
     });
   }
   chronoMatches.sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.matchdayNumber - b.matchdayNumber);
 
-  let bestLength = 0;
-  let bestStart = -1;
-  let bestEnd = -1;
-  let currentLength = 0;
-  let currentStart = 0;
-  for (let i = 0; i < chronoMatches.length; i++) {
-    const current = chronoMatches[i];
-    if (!current) continue;
-    if (current.points > 0) {
-      if (currentLength === 0) {
-        currentStart = i;
-      }
-      currentLength += 1;
-      if (currentLength > bestLength) {
-        bestLength = currentLength;
-        bestStart = currentStart;
-        bestEnd = i;
-      }
-    } else {
-      currentLength = 0;
-    }
-  }
-  if (bestStart === -1 || bestEnd === -1) {
+  const unbeaten = longestStreak(chronoMatches, (match) => match.points > 0);
+  if (!unbeaten) {
     return null;
   }
-
-  const from = chronoMatches[bestStart];
-  const to = chronoMatches[bestEnd];
-  if (!from || !to) {
-    return null;
-  }
+  const winning = longestStreak(chronoMatches, (match) => match.points === 3);
 
   return {
-    length: bestLength,
-    fromSeasonLabel: from.seasonLabel,
-    fromMatchdayNumber: from.matchdayNumber,
-    toSeasonLabel: to.seasonLabel,
-    toMatchdayNumber: to.matchdayNumber,
+    length: unbeaten.length,
+    seasonLabel: unbeaten.seasonLabel,
+    fromMatchdayNumber: unbeaten.fromMatchdayNumber,
+    toMatchdayNumber: unbeaten.toMatchdayNumber,
+    longestWinningStreak: winning ? { length: winning.length, seasonLabel: winning.seasonLabel } : null,
   };
 }
