@@ -48,12 +48,21 @@ pubblico.
   di totali azzerati — qualsiasi nuovo tipo di riga scoperto va riconosciuto ed escluso
   per entrambe le colonne separatamente.
 - **Gli adapter `html-legacy/{lineup,roster,calendar,standings}.ts` sono condivisi da
-  più stagioni (2014-15, 2016-17, 2017-18) con markup leggermente diverso fra loro**
+  più stagioni (2014-15, 2016-17, 2017-18) con markup leggermente diverso fra loro
   (minificato vs pretty-printed): un regex reso più rigido per una stagione ha rotto
-  silenziosamente il parsing rosa di un'altra già funzionante, mai ri-verificata. Dopo
-  aver toccato uno di questi adapter, controllare `git status`/`git diff HEAD` per
-  modifiche staged-ma-non-committate di sessioni precedenti prima di fidarsi che siano
-  "pulite", e ri-eseguire l'import delle altre stagioni che condividono l'adapter.
+  silenziosamente il parsing rosa di un'altra già funzionante, mai ri-verificata. La
+  stagione 2013-14 usa invece adapter dedicati in
+  `html-legacy/2013-14/`, perché il suo markup XHTML non è compatibile con il formato
+  flat. Dopo aver toccato uno degli adapter condivisi, controllare `git status`/`git diff
+  HEAD` per modifiche staged-ma-non-committate di sessioni precedenti prima di fidarsi
+  che siano "pulite", e ri-eseguire l'import delle altre stagioni che condividono
+  l'adapter.
+- **I crediti residui delle rose legacy hanno fonti esplicite**: `squadre.html` per
+  2013-14 e 2014-15, pagine `dettaglio-squadra` per 2016-17 e 2017-18. Non assumere che
+  la pagina `dettaglio-rosa` li contenga e non interpretare `teamCredits: []` come
+  assenza obbligatoria del dato per queste stagioni. La verifica finale usa
+  `verify-import.ts` e controlla il conteggio delle righe `team_seasons` con
+  `credits_remaining` non nullo.
 - **`matches.away_team_id` è nullable**: i gironi di Coppa con un numero dispari di
   squadre hanno sempre una squadra senza avversario ("solo") quella giornata, sempre
   normalizzata nello slot home. Unicità garantita da un indice parziale
