@@ -4,7 +4,7 @@
 >
 > **Aggiornamento**: la 2022-23 — indicata più sotto come "confermata mancante" nella stesura originale di questo piano — è stata in realtà recuperata separatamente ed è oggi una sesta stagione importabile come le altre, con alcune lacune reali proprie (niente `Rose_fantatopa.xlsx`, dati Coppa gironi/Fase Finale incompleti) ma non un buco totale. Vedi sezione 8 per il quadro aggiornato delle lacune dati per stagione.
 >
-> **Aggiornamento (stagione 2018-19)**: le "edizioni ancora più vecchie salvate come siti interi scaricati" hanno ora un primo caso reale — un mirror statico del vecchio sito "Leghe Fantagazzetta", importato con un adapter dedicato (non OCR: i dati sono già in HTML/JS embedded, non immagini). Vedi sezione 7.2 per il meccanismo e le lacune specifiche di questa fonte.
+> **Aggiornamento (stagioni 2014-15, 2016-17, 2017-18, 2018-19)**: le "edizioni ancora più vecchie salvate come siti interi scaricati" hanno ora quattro casi reali — tutti mirror statici del vecchio sito "Leghe Fantagazzetta" (non OCR: i dati sono già in HTML/JS embedded, non immagini), in due varianti di formato (pagine flat server-renderizzate vs dati in blob JS). Vedi sezione 7.2 per il meccanismo e le lacune specifiche di ciascuna.
 
 ## Indice
 
@@ -654,12 +654,33 @@ fattibilità e piano per colmare il gap usando fantacalcio.it come fonte:
 `docs/bonus-storici-fantacalcio-it.md` (non ancora implementato, vedi anche sezione 11,
 Fase 7).
 
-### 7.2 Fonte HTML legacy (stagione 2018-19, mirror Fantagazzetta)
+### 7.2 Fonte HTML legacy (stagioni 2014-15, 2016-17, 2017-18, 2018-19 — due varianti di mirror Fantagazzetta)
 
-Prima stagione con fonte diversa da xlsx: non un'immagine da OCRizzare (sezione 8), ma un
-mirror statico del vecchio sito "Leghe Fantagazzetta" — un sito scaricato, il caso già
-previsto in fondo alla sezione 8. Tre meccanismi di embedding dati nella stessa fonte,
-utile controllarli in quest'ordine quando si valuta se una pagina è recuperabile:
+Quattro stagioni con fonte diversa da xlsx: non immagini da OCRizzare (sezione 8), ma
+mirror statici del vecchio sito "Leghe Fantagazzetta" — siti scaricati, il caso già
+previsto in fondo alla sezione 8. Due varianti dello stesso mirror, adapter diversi ma
+lo stesso contratto `SourceAdapter<T>`:
+
+- **Variante "flat"** (2014-15, 2016-17, 2017-18): pagine HTML server-renderizzate con
+  tabelle dirette, markup a volte minificato (tag adiacenti, 2014-15) a volte
+  pretty-printed (whitespace/indentazione fra i tag, 2016-17) — stessa struttura, solo
+  formattazione diversa, tollerata con `\s*` nei regex invece di due parser separati.
+  Adapter `FlatHtml{Standings,Calendar,Roster,Lineup}Adapter`
+  (`packages/ingestion/adapters/html-legacy/{standings,calendar,roster,lineup}.ts`),
+  condivisi dalle tre stagioni. La rosa arriva in due forme diverse a seconda della
+  stagione: un file per squadra (`dettaglio-rosa/<squadra>/<id>.htm`, 2016-17/2017-18)
+  o un unico file aggregato con una tabella per squadra (`tutte-le-rose.html`,
+  2014-15) — stesso adapter, due funzioni di parsing (`parseFlatTeamTableRows`
+  condivisa, `parseFlatAggregateRoster` solo per il caso aggregato). La 2014-15 è anche
+  l'unica delle tre senza Coppa importabile: il menu competizione esiste nel mirror ma
+  le pagine endpoint (classifica/calendario/formazioni per id Coppa) non ci sono nel
+  dump — gap accettato, non un'omissione dell'adapter. Script one-off per stagione
+  (`import-season-2014-15.ts`, `import-season-2016-17.ts`, `import-season-2017-18.ts`).
+- **Variante "blob JS"** (solo 2018-19): pagine dove i dati non sono in tabelle HTML
+  dirette ma incapsulati in variabili JS, con un secondo meccanismo di decodifica —
+  dettagli sotto, mai servito per le altre tre stagioni. Tre meccanismi di embedding
+  dati nella stessa fonte, utile controllarli in quest'ordine quando si valuta se una
+  pagina è recuperabile:
 
 1. **Blob in variabili JS globali** (`__.dp('base64')` → decode base64 → JSON, oppure un
    oggetto letterale già JSON-valido da estrarre con un balanced-brace scanner che rispetta
@@ -931,18 +952,17 @@ Si ipotizzava un adapter OCR completo (img2table + eventuale cross-check vision 
 **Estensione — Stagione 2018-19 da mirror HTML legacy** *(completata, vedi sezione 7.2)*
 Prima stagione precedente al 2020-21 recuperata: fonte diversa (sito scaricato, non xlsx né immagini), adapter `html-legacy` dedicato. Importata e verificata: 4 competizioni, classifiche/calendario campionato completi, Coppa parziale dove la fonte stessa è uno snapshot a metà stagione, branding completo, nessuna formazione (gap di fonte, non di importazione).
 
-**Fase 6 — Siti storici scaricati (edizioni pre-2020)**
-Adapter `html-legacy` quando i file sono disponibili, stesso schema canonico, nessuna modifica al resto del sistema.
+**Fase 6 — Siti storici scaricati (edizioni pre-2020)** *(sostanzialmente completata, vedi sezione 7.2)*
+Adapter `html-legacy`, variante "flat": 2014-15, 2016-17 e 2017-18 importate (classifica, calendario, rose, formazioni; Coppa dove il mirror la contiene — non per la 2014-15, gap di fonte). Insieme alla 2018-19 (variante "blob"), tutte le stagioni pre-2020 presenti nel dump locale sono ora importate. Stesso schema canonico della Fase 1, nessuna modifica al resto del sistema.
 
 **Fase 7 — Bonus/malus storici da fonte web (2020-21 → 2024-25)** *(non iniziata — analisi in `docs/bonus-storici-fantacalcio-it.md`)*
 Le 5 stagioni classico/mantra intermedie hanno solo voto/fantavoto da xlsx, senza bonus/malus granulari (a differenza di 2025-26 e 2017-18, sezione 7.1). Analisi di fattibilità completata: l'architettura esistente (`bonus_kinds`/`player_matchday_bonuses`/`matchday_bonus_sources`) si riusa senza modifiche, serve solo un nuovo adapter per una fonte fantacalcio.it. Resta da verificare se esiste uno storico per-giornata (fonte preferita, poche richieste) o se serve ricadere sulla pagina per-giocatore (più richieste, serve anche un player directory) — verifica in corso. Include anche la mappatura Coppa (`matchday_bonus_sources`) per 2022-23/2023-24/2024-25, non ancora popolata.
 
 ## 12. Domande aperte
 
-- Le edizioni "siti interi scaricati": che formato hanno esattamente (HTML statico, screenshot, altro)? Definisce l'adapter della fase 6 — per ora resta "poi vediamo", nessuna azione richiesta ora.
 - Per la direzione visiva: preferisci che ti proponga 2-3 direzioni concrete da cui partire quando arriviamo al frontend, o hai già un'idea/riferimento in testa?
 
-**Risolte in questa revisione**: stagione 2022-23 confermata mancante (sezione 1 — **superato**: recuperata separatamente in seguito, vedi nota di aggiornamento in sezione 1); utenti normali solo in consultazione, zero scritture (sezione 9); loghi/maglie senza ottimizzazione in fase di import; home page personalizzata per utente/squadra con statistiche (sezione 10); workflow Supabase pull+push (sezione 4); flusso di registrazione con validazione admin (sezione 9).
+**Risolte in questa revisione**: stagione 2022-23 confermata mancante (sezione 1 — **superato**: recuperata separatamente in seguito, vedi nota di aggiornamento in sezione 1); utenti normali solo in consultazione, zero scritture (sezione 9); loghi/maglie senza ottimizzazione in fase di import; home page personalizzata per utente/squadra con statistiche (sezione 10); workflow Supabase pull+push (sezione 4); flusso di registrazione con validazione admin (sezione 9); le edizioni "siti interi scaricati" sono HTML statico (mirror Fantagazzetta), non screenshot — due varianti di formato, vedi sezione 7.2 (Fase 6 sostanzialmente completata).
 
 ## 13. Prossimo passo pratico
 
