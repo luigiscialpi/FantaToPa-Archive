@@ -16,9 +16,14 @@
 //     CAMPIONATO_PODIUM_STANDINGS. Solo la posizione 1 riporta i punti; per le
 //     posizioni 2-3 punti e fantapunti non sono noti e restano null: non si
 //     inventa un dato assente in una fonte comunque parziale.
-//   - Bonus nelle formazioni: estratti e verificati, ma non persistiti perché
-//     player_matchday_bonuses richiede una giornata Campionato come fonte reale
-//     e qui il dump non dimostra alcun Campionato.
+//   - Bonus nelle formazioni: la fonte HTML di questa stagione riporta le icone
+//     bonus/malus direttamente nello stesso file delle formazioni Coppa Fase
+//     Finale (come Campionato 2017-18/2025-26) — è una fonte diretta, non una
+//     derivazione. Persistiti su `player_matchday_bonuses` con matchday_id
+//     della giornata di Coppa Fase Finale stessa: matchday_bonus_sources non
+//     serve, perché non c'è nessuna giornata Campionato da cui derivare (la
+//     UI (`formazioni.ts`) già ricade su matchdayId quando manca un mapping in
+//     matchday_bonus_sources, quindi legge questi bonus senza altre modifiche).
 //
 // Uso:
 //   dotenv-cli -e .env.local -- tsx packages/ingestion/scripts/import-season-2013-14.ts [--dry-run]
@@ -242,7 +247,7 @@ async function main(): Promise<void> {
   console.log(`Calendario Coppa Fase Finale: ${calendar.matchdays.length} giornate, ${calendar.matchdays.reduce((total, matchday) => total + matchday.matches.length, 0)} partite`);
   console.log(`Rosa: ${roster.entries.length} righe, ${new Set(roster.entries.map((entry) => entry.teamName)).size} squadre`);
   console.log(`Formazioni: ${sources.length} giornate, ${sources.reduce((total, source) => total + source.lineup.matches.length, 0)} partite`);
-  console.log(`Bonus verificati: ${bonusEvents} eventi; non persistiti, manca una fonte Campionato dimostrata per la derivazione.`);
+  console.log(`Bonus verificati: ${bonusEvents} eventi, fonte diretta Coppa Fase Finale (nessuna giornata Campionato da cui derivare).`);
   console.log(`Squadre coinvolte: ${teamNames.size}`);
 
   if (dryRun) {
@@ -273,6 +278,8 @@ async function main(): Promise<void> {
   await repo.upsertRoster(roster);
   await repo.upsertCalendar(calendar);
   for (const source of sources) await repo.upsertLineup(source.lineup);
+  for (const source of sources) await repo.upsertMatchdayBonuses(source.bonuses);
+  console.log(`Bonus/malus persistiti: ${sources.length} giornate.`);
   await repo.upsertStandings({
     seasonSlug: SEASON.slug,
     competitionSlug: 'campionato',

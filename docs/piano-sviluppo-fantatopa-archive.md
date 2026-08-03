@@ -679,8 +679,11 @@ ma condividono lo stesso contratto `SourceAdapter<T>`:
   il vincitore riporta un punteggio) — vedi `CAMPIONATO_PODIUM_STANDINGS` in
   `import-season-2013-14.ts`. L'orchestrazione è in
   `packages/ingestion/scripts/import-season-2013-14.ts`; i bonus presenti nelle
-  formazioni vengono verificati ma non persistiti, perché il dump non dimostra una
-  fonte Campionato utilizzabile per la derivazione.
+  formazioni sono una fonte diretta (icone nello stesso file delle formazioni Coppa
+  Fase Finale, come Campionato 2017-18/2025-26) e vengono persistiti direttamente sulla
+  giornata di Coppa Fase Finale — non serve `matchday_bonus_sources` perché non c'è
+  nessuna giornata Campionato da cui derivare, e la query lato UI (`formazioni.ts`) già
+  ricade sul `matchdayId` stesso quando manca un mapping.
 - **Variante "flat"** (2014-15, 2016-17, 2017-18): pagine HTML server-renderizzate con
   tabelle dirette, markup a volte minificato (tag adiacenti, 2014-15) a volte
   pretty-printed (whitespace/indentazione fra i tag, 2016-17) — stessa struttura, solo

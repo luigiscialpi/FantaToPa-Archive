@@ -83,6 +83,11 @@ async function verifyImport(slug: string): Promise<void> {
     lineupIds,
   );
 
+  const bonusesCount = await countInChunks(
+    (batch) => client.from('player_matchday_bonuses').select('id', { count: 'exact', head: true }).in('matchday_id', batch),
+    matchdayIds,
+  );
+
   const { data: rosters, error: rosterErr } = await client
     .from('rosters')
     .select('id, team_id, player_id')
@@ -122,6 +127,7 @@ async function verifyImport(slug: string): Promise<void> {
   console.log(`Partite: ${matchIds.length}`);
   console.log(`Formazioni (lineups): ${lineupIds.length}`);
   console.log(`Righe lineup_players: ${lineupPlayersCount}`);
+  console.log(`Bonus/malus (player_matchday_bonuses): ${bonusesCount}`);
   console.log(`Rose: ${rosters?.length ?? 0} righe, ${rosterTeamIds.size} squadre distinte, ${rosterPlayerIds.size} giocatori distinti`);
   console.log(`Branding: ${logosCount}/${teamSeasons?.length ?? 0} loghi, ${jerseysCount}/${teamSeasons?.length ?? 0} maglie`);
   console.log(`Crediti residui: ${creditsCount}/${teamSeasons?.length ?? 0} squadre valorizzate`);

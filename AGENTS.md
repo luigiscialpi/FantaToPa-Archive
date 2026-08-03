@@ -32,7 +32,11 @@ pubblico.
   — un evento reale non va duplicato se più squadre fantacalcio schierano lo stesso
   giocatore), con derivazione Coppa via `matchday_bonus_sources` (mapping a giornata di
   Campionato, non applicabile al 2017-18: quella Coppa non ha formazioni per giocatore
-  in questa fonte). Non aggiungere quei campi a `lineup_players` per le stagioni che non
+  in questa fonte). Eccezione 2013-14 (unica stagione senza Campionato a livello di
+  piattaforma): la fonte diretta è la Coppa Fase Finale stessa, quindi i bonus vivono
+  su quella giornata senza `matchday_bonus_sources` — la query lato UI già ricade su
+  `matchdayId` quando manca un mapping, quindi funziona senza altre modifiche. Non
+  aggiungere quei campi a `lineup_players` per le stagioni che non
   hanno questa fonte.
 - **Lookup table (`competition_kinds`, `import_source_types`...) solo dove c'è
   variabilità già osservata nei dati**, non ovunque per principio — altrove restano
