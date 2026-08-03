@@ -81,6 +81,27 @@ async function getCupFinalWinners(supabase: TypedSupabaseClient, cupCompetitionI
     winners.set(competitionId, homeWins ? match.home_team_id : match.away_team_id);
   }
 
+  // Competizioni senza giornate reali (podio manuale da nota storica, es.
+  // Coppa Lelle 2012-13/2014-15 prima dei mirror HTML): il vincitore viene
+  // dalla riga standings position=1, stesso meccanismo del podio Campionato
+  // manuale — nessun bracket da cui derivarlo.
+  const missingCompetitionIds = cupCompetitionIds.filter((id) => !winners.has(id));
+  if (missingCompetitionIds.length > 0) {
+    const { data: manualWinners, error: manualWinnersError } = await supabase
+      .from('standings')
+      .select('competition_id, team_id')
+      .eq('position', 1)
+      .in('competition_id', missingCompetitionIds);
+
+    if (manualWinnersError) {
+      throw new Error(`Impossibile leggere il vincitore manuale: ${manualWinnersError.message}`);
+    }
+
+    for (const row of manualWinners) {
+      winners.set(row.competition_id, row.team_id);
+    }
+  }
+
   return winners;
 }
 
@@ -683,6 +704,10 @@ export type SeasonGalleryEntry = {
   // spareggio) sono qualificazione, non il titolo — stesso filtro di
   // getAllTimeTitleCounts, fonte unica per "chi ha vinto la coppa".
   cupWinner: GalleryTeam | null;
+  // false per le stagioni con solo un podio manuale (nessuna giornata reale,
+  // es. 2004-05→2012-13): la card mostra comunque il podio ma il click verso
+  // la classifica va disabilitato, non porterebbe a nulla di navigabile.
+  hasSchedule: boolean;
 };
 
 export async function getSeasonGallery(
@@ -750,8 +775,9 @@ export async function getSeasonGallery(
     }
   }
 
-  // Vincitore Coppa: dedotto dalla finale (vedi getCupFinalWinners), mai da
-  // standings — un bracket a eliminazione diretta non ne produce righe.
+  // Vincitore Coppa: dedotto dalla finale (vedi getCupFinalWinners), con
+  // fallback a standings solo per le competizioni senza giornate reali
+  // (podio manuale da nota storica).
   const coppaCompetitionIds = [...coppaBySeason.values()];
   const cupWinnerByCompetition = await getCupFinalWinners(supabase, coppaCompetitionIds);
   for (const teamId of cupWinnerByCompetition.values()) {
@@ -826,6 +852,7 @@ export async function getSeasonGallery(
         inProgress,
         podium: null,
         cupWinner: null,
+        hasSchedule: season.hasSchedule,
       };
     }
 
@@ -850,6 +877,7 @@ export async function getSeasonGallery(
       inProgress,
       podium: podium.length > 0 ? podium : null,
       cupWinner,
+      hasSchedule: season.hasSchedule,
     };
   });
 }

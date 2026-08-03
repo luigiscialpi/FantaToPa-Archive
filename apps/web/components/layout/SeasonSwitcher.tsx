@@ -20,7 +20,11 @@ export function SeasonSwitcher({ seasons }: SeasonSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  if (seasons.length <= 1) {
+  // Stagioni con solo un podio manuale (nessuna giornata reale) non hanno
+  // pagine di dominio da mostrare: fuori dal selettore, non solo "disabled".
+  const browsableSeasons = seasons.filter((season) => season.hasSchedule);
+
+  if (browsableSeasons.length <= 1) {
     return null;
   }
 
@@ -48,7 +52,7 @@ export function SeasonSwitcher({ seasons }: SeasonSwitcherProps) {
             Seleziona stagione...
           </option>
         )}
-        {seasons.map((season) => (
+        {browsableSeasons.map((season) => (
           <option key={season.id} value={season.slug}>
             {season.label}
           </option>
