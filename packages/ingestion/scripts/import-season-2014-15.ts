@@ -7,6 +7,12 @@
 //   - Coppa: il menu competizione esiste, ma le pagine endpoint competizione
 //     (classifica/calendario/formazioni per id Coppa) non sono presenti nel mirror.
 //     ponytail: importiamo solo dati verificabili nel dump, senza inventare snapshot mancanti.
+//   - Vincitore Coppa Lelle: nota storica utente (nessun file del mirror la riporta)
+//     conferma la finale vinta 1-0 dalla Roots Bologna sulla Uber Alles Fussball Club.
+//     Nessun bracket/calendario Coppa disponibile, quindi persistito come standings
+//     manuale (position 1, stesso meccanismo del podio Campionato 2013-14) invece che
+//     derivato dall'ultima giornata — getCupFinalWinners (apps/web/lib/queries/home.ts)
+//     ricade su standings quando la competizione non ha giornate reali.
 //
 // Uso:
 //   dotenv-cli -e .env.local -- tsx packages/ingestion/scripts/import-season-2014-15.ts [--dry-run]
@@ -110,7 +116,7 @@ async function main(): Promise<void> {
 
   const seasonId = await ensureSeason(client, SEASON);
   await ensureLookups(client);
-  await ensureCompetitions(client, seasonId, {});
+  await ensureCompetitions(client, seasonId, { coppa: { faseFinale: { folder: 'manuale' } } });
 
   await repo.upsertTeams(CONFIRMED_TEAM_MERGES.map((m) => ({ name: m.canonicalName, aliases: [m.seasonAlias] })));
   await repo.upsertTeams(CONFIRMED_NEW_TEAMS.map((name) => ({ name })));
@@ -133,6 +139,15 @@ async function main(): Promise<void> {
   await repo.upsertRoster(roster);
   await repo.upsertStandings(standings);
   await repo.upsertCalendar(calendar);
+
+  // Nota storica utente, non presente nel mirror: finale Coppa Lelle 2014-15
+  // vinta 1-0 dalla Roots Bologna sulla Uber Alles Fussball Club.
+  await repo.upsertStandings({
+    seasonSlug: SEASON.slug,
+    competitionSlug: 'coppa-fase-finale',
+    rows: [{ teamName: 'Roots Bologna', position: 1 }],
+  });
+  console.log('Vincitore Coppa Lelle importato da nota storica manuale: Roots Bologna.');
 
   for (const lineup of lineups) {
     await repo.upsertLineup(lineup);
