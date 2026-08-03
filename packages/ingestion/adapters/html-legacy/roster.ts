@@ -154,7 +154,7 @@ export class FlatHtmlRosterAdapter implements SourceAdapter<RosterImport> {
       if (!tableMatch) throw new Error(`Tabella rosa (id="tbteamdet") non trovata in ${filePath}`);
 
       const rowPattern =
-        /<td class="tdrole"><span class="[a-z] role">([A-Z])<\/span><\/td>\s*<td><span class="steam"><a[^>]*>([^<]+)<\/a><\/span><\/td>\s*<td class="pt aleft">([^<]*)<\/td>\s*<td class="pt">(\d+)<\/td>\s*<td class="pt">(\d+)<\/td>/g;
+        /<td class="tdrole"><span class="[a-z] role">([A-Z])<\/span><\/td>\s*<td><span class="steam">(?:<a[^>]*>)?([^<]+)(?:<\/a>)?<\/span><\/td>\s*<td class="pt aleft">([^<]*)<\/td>\s*<td class="pt">(\d+)<\/td>\s*<td class="pt">(\d+)<\/td>/g;
       let rowMatch: RegExpExecArray | null;
       let rowCount = 0;
       while ((rowMatch = rowPattern.exec(tableMatch[1]!))) {

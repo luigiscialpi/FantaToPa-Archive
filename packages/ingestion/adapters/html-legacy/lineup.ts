@@ -91,7 +91,7 @@ interface ParsedTeamBox {
 // tenere allineate a mano sulla stessa fonte fragile (vedi memoria repo
 // lineup-parsing.md).
 export const PLAYER_ROW_PATTERN =
-  /<tr class="playerrow( bnc)?"><td class="myhidden-xs"><span class="[a-z] role">([A-Z])<\/span><\/td><td class="myhidden-lg myhidden-md myhidden-sm r"><span class="[a-z] role">[A-Z]<\/span><\/td><td><span class="sh"><a[^>]*>([^<]+)<\/a><\/span><span class="ico">[\s\S]*?<\/span><\/td><td class="pt aleft">([^<]*)<\/td><td class="pt">([^<]*)<\/td><td class="pt( bold)?">([^<]*)<\/td><td class="tdrole"><\/td><\/tr>/g;
+  /<tr class="playerrow( bnc)?"><td class="myhidden-xs"><span class="[a-z] role">([A-Z])<\/span><\/td><td class="myhidden-lg myhidden-md myhidden-sm r"><span class="[a-z] role">[A-Z]<\/span><\/td><td><span class="sh">(?:<a[^>]*>)?([^<]+)(?:<\/a>)?<\/span><span class="ico">[\s\S]*?<\/span><\/td><td class="pt aleft">([^<]*)<\/td><td class="pt">([^<]*)<\/td><td class="pt( bold)?">([^<]*)<\/td><td class="tdrole"><\/td><\/tr>/g;
 
 function parsePlayers(
   sectionHtml: string,
@@ -170,7 +170,7 @@ export class FlatHtmlLineupAdapter implements SourceAdapter<LineupImport> {
   ) {}
 
   canHandle(input: unknown): boolean {
-    return typeof input === 'string' && input.toLowerCase().endsWith('.html');
+    return typeof input === 'string' && /\.html?$/.test(input.toLowerCase());
   }
 
   async parse(input: unknown): Promise<LineupImport> {

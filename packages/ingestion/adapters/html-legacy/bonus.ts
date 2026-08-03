@@ -62,7 +62,7 @@ export class FlatHtmlBonusAdapter implements SourceAdapter<BonusImport> {
   ) {}
 
   canHandle(input: unknown): boolean {
-    return typeof input === 'string' && input.toLowerCase().endsWith('.html');
+    return typeof input === 'string' && /\.html?$/.test(input.toLowerCase());
   }
 
   async parse(input: unknown): Promise<BonusImport> {
