@@ -7,7 +7,7 @@ function RoleBadges({ roleCodes }: { roleCodes: string[] }) {
   }
 
   return (
-    <div className="flex gap-1 flex-wrap">
+    <div className="flex gap-1 flex-wrap justify-start sm:justify-center">
       {roleCodes.map((code) => (
         <span
           key={code}
@@ -27,19 +27,25 @@ export function RosterTable({ players }: { players: RosterPlayerRow[] }) {
 
   return (
     <div className="bg-white overflow-x-auto">
-      <table className="w-full text-xs">
+      <table className="w-full table-fixed text-left text-xs sm:text-center">
+        <colgroup>
+          <col className="w-[15%]" />
+          <col className="w-[40%]" />
+          <col className="w-[30%]" />
+          <col className="w-[15%]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-stone-200 bg-stone-50 text-stone-500">
-            <th scope="col" className="px-2 py-2 text-left font-semibold whitespace-nowrap">
+            <th scope="col" className="px-2 py-2 font-semibold whitespace-nowrap">
               Ruolo
             </th>
-            <th scope="col" className="px-2 py-2 text-left font-semibold whitespace-nowrap">
+            <th scope="col" className="px-2 py-2 font-semibold whitespace-nowrap">
               Calciatore
             </th>
-            <th scope="col" className="px-2 py-2 text-left font-semibold whitespace-nowrap">
+            <th scope="col" className="px-2 py-2 font-semibold whitespace-nowrap">
               Squadra
             </th>
-            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap">
+            <th scope="col" className="px-2 py-2 text-right font-semibold whitespace-nowrap sm:text-center">
               Costo
             </th>
           </tr>
@@ -54,7 +60,7 @@ export function RosterTable({ players }: { players: RosterPlayerRow[] }) {
                 {player.playerName}
               </td>
               <td className="px-2 py-2 text-stone-500 whitespace-nowrap">{player.realTeam ?? '–'}</td>
-              <td className="px-2 py-2 text-right tabular-nums text-stone-600">{player.cost ?? '–'}</td>
+              <td className="px-2 py-2 text-right tabular-nums text-stone-600 sm:text-center">{player.cost ?? '–'}</td>
             </tr>
           ))}
         </tbody>
