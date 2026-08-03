@@ -95,6 +95,16 @@ pubblico.
   ricalca la struttura della pagina reale. Il layout di stagione (navbar + tab) resta
   visibile durante il caricamento — lo skeleton sostituisce solo `{children}`. Nuove
   pagine di stagione devono avere il proprio `loading.tsx`.
+- **"Migliori"/"Peggiori avversari" (home, `getOpponentRecords`) usano punti 3-1-0**
+  (vittoria/pareggio/sconfitta), non conteggio grezzo di vittorie: altrimenti una
+  squadra con molti pareggi contro un avversario batteva in classifica una squadra con
+  un record di vittorie reali. Gli avversari già in top "migliori" sono esclusi dal pool
+  dei "peggiori" per `opponentId` (mai per nome, per evitare falsi positivi da
+  omonimie) — senza questa esclusione uno stesso avversario, giocato spesso, poteva
+  comparire in entrambe le liste contemporaneamente. Un filtro precedente basato sul
+  "segno" del record (richiede più sconfitte che vittorie per stare in "peggiori") è
+  stato scartato: svuotava la card per una squadra dominante senza nessun record in
+  perdita netta contro alcun avversario.
 - **"Fuoriclasse della rosa" e "Miglior stagione individuale" condividono gli stessi dati
   grezzi di fantavoto** (`getCampionatoFantavotoRows`, cached) ma aggregano su chiavi
   diverse — per giocatore su tutta la carriera in squadra la prima, per coppia
