@@ -95,6 +95,16 @@ pubblico.
   ricalca la struttura della pagina reale. Il layout di stagione (navbar + tab) resta
   visibile durante il caricamento — lo skeleton sostituisce solo `{children}`. Nuove
   pagine di stagione devono avere il proprio `loading.tsx`.
+- **"Fuoriclasse della rosa" e "Miglior stagione individuale" condividono gli stessi dati
+  grezzi di fantavoto** (`getCampionatoFantavotoRows`, cached) ma aggregano su chiavi
+  diverse — per giocatore su tutta la carriera in squadra la prima, per coppia
+  giocatore+stagione la seconda — così lo stesso giocatore compare una sola volta nella
+  prima (con l'intervallo di stagioni in cui ha giocato) ma può comparire più volte
+  nella seconda (una riga per ogni stagione sopra soglia presenze). Le righe delle
+  liste sono su due linee (nome+media, poi la stagione/l'intervallo sotto): un
+  intervallo di stagioni può essere lungo quanto il nome di un giocatore e su una riga
+  sola lo schiacciava fino a troncarlo a 1-2 lettere — verificato solo con screenshot
+  reale, non deducibile dal solo albero di accessibilità.
 
 ## Come scrivere codice qui
 

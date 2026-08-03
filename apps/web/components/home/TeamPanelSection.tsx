@@ -2,7 +2,7 @@
 //
 // Pannello squadra personale come Server Component asincrono indipendente:
 // isolato in un proprio <Suspense> (vedi page.tsx) così le sue query più
-// pesanti (9 in parallelo, ciascuna su tutte le stagioni della squadra) non
+// pesanti (11 in parallelo, ciascuna su tutte le stagioni della squadra) non
 // bloccano il rendering di galleria stagioni/vetrina generale mentre sono
 // ancora in corso — quelle sezioni hanno un proprio Server Component e
 // possono comparire prima o dopo, indipendentemente da questa.
@@ -10,6 +10,7 @@ import { createClient } from '../../lib/supabase/server';
 import { getTeamBranding, brandingFor } from '../../lib/queries/team-branding';
 import {
   getAllTimeTitleCounts,
+  getBestPlayerSeasons,
   getLongestUnbeatenStreak,
   getMostFieldedPlayers,
   getOpponentRecords,
@@ -39,7 +40,7 @@ export async function TeamPanelSection({
 }: TeamPanelSectionProps) {
   const supabase = await createClient();
 
-  const [titleCounts, rivalry, records, keyPlayers, standingHistory, loyalty, standout, streak, branding, teamRow, opponentRecords] =
+  const [titleCounts, rivalry, records, keyPlayers, standingHistory, loyalty, standouts, seasonStandouts, streak, branding, teamRow, opponentRecords] =
     await Promise.all([
       getAllTimeTitleCounts(supabase),
       getRivalryHighlight(supabase, teamId),
@@ -48,6 +49,7 @@ export async function TeamPanelSection({
       getStandingHistory(supabase, teamId),
       getRosterLoyalty(supabase, teamId),
       getRosterStandout(supabase, teamId),
+      getBestPlayerSeasons(supabase, teamId),
       getLongestUnbeatenStreak(supabase, teamId),
       getTeamBranding(supabase, seasonId, [teamId]),
       supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
@@ -75,7 +77,8 @@ export async function TeamPanelSection({
         records={records}
         keyPlayers={keyPlayers}
         loyalty={loyalty}
-        standout={standout}
+        standouts={standouts}
+        seasonStandouts={seasonStandouts}
         streak={streak}
         bestOpponents={opponentRecords?.best ?? []}
         worstOpponents={opponentRecords?.worst ?? []}

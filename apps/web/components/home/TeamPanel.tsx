@@ -12,6 +12,7 @@ import { KeyPlayersCard } from './KeyPlayersCard';
 import { StandingSparkline } from './StandingSparkline';
 import { RosterLoyaltyCard } from './RosterLoyaltyCard';
 import { RosterStandoutCard } from './RosterStandoutCard';
+import { PlayerSeasonStandoutCard } from './PlayerSeasonStandoutCard';
 import { UnbeatenStreakCard } from './UnbeatenStreakCard';
 import { BestRivalsCard } from './BestRivalsCard';
 import { WorstRivalsCard } from './WorstRivalsCard';
@@ -23,6 +24,7 @@ import type {
   StandingHistoryPoint,
   RosterLoyaltyEntry,
   RosterStandout,
+  PlayerSeasonStandout,
   UnbeatenStreak,
   OpponentRecord,
 } from '../../lib/queries/home';
@@ -44,7 +46,8 @@ type TeamPanelProps = {
   records: { best: MatchHighlight | null; worst: MatchHighlight | null };
   keyPlayers: FieldedPlayer[];
   loyalty: RosterLoyaltyEntry[];
-  standout: RosterStandout | null;
+  standouts: RosterStandout[];
+  seasonStandouts: PlayerSeasonStandout[];
   streak: UnbeatenStreak | null;
   bestOpponents: OpponentRecord[];
   worstOpponents: OpponentRecord[];
@@ -70,7 +73,8 @@ export function TeamPanel({
   records,
   keyPlayers,
   loyalty,
-  standout,
+  standouts,
+  seasonStandouts,
   streak,
   bestOpponents,
   worstOpponents,
@@ -169,7 +173,9 @@ export function TeamPanel({
 
         <WorstRivalsCard records={worstOpponents} />
 
-        <RosterStandoutCard standout={standout} />
+        <RosterStandoutCard standouts={standouts} />
+
+        <PlayerSeasonStandoutCard standouts={seasonStandouts} />
 
         <UnbeatenStreakCard streak={streak} />
 

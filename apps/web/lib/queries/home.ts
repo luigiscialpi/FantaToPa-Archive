@@ -555,55 +555,91 @@ export type FieldedPlayer = { playerName: string; appearances: number };
 // partite di tutte le squadre): con 6 stagioni quella lista di partite non
 // filtrate per squadra supera la lunghezza URL accettata da Supabase per un
 // filtro `.in()` e la query fallisce con "Bad Request".
-// Condiviso da getMostFieldedPlayers e getRosterStandout: stessa identica
-// catena lineups→matches→matchdays→competitions per isolare le sole
-// formazioni di campionato (mai coppa) di una squadra.
+// Condiviso da getMostFieldedPlayers, getRosterStandout e
+// getBestPlayerSeasons: stessa identica catena
+// lineups→matches→matchdays→competitions→seasons per isolare le sole
+// formazioni di campionato (mai coppa) di una squadra, con la stagione di
+// ciascuna.
+type LineupSeason = { seasonId: string; seasonLabel: string; startsOn: string };
+
+const getCampionatoLineupSeasons = cache(
+  async (supabase: TypedSupabaseClient, teamId: string): Promise<Map<string, LineupSeason>> => {
+    const { data: lineups, error: lineupsError } = await supabase
+      .from('lineups')
+      .select('id, match_id')
+      .eq('team_id', teamId);
+    if (lineupsError) {
+      throw new Error(`Impossibile leggere le formazioni: ${lineupsError.message}`);
+    }
+    if (lineups.length === 0) {
+      return new Map();
+    }
+
+    const matchIds = [...new Set(lineups.map((lineup) => lineup.match_id))];
+    const { data: matches, error: matchesError } = await supabase.from('matches').select('id, matchday_id').in('id', matchIds);
+    if (matchesError) {
+      throw new Error(`Impossibile leggere le partite: ${matchesError.message}`);
+    }
+
+    const matchdayIds = [...new Set(matches.map((match) => match.matchday_id))];
+    const { data: matchdays, error: matchdaysError } = await supabase
+      .from('matchdays')
+      .select('id, competition_id')
+      .in('id', matchdayIds);
+    if (matchdaysError) {
+      throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+    }
+
+    const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
+    const { data: competitions, error: competitionsError } = await supabase
+      .from('competitions')
+      .select('id, kind_code, season_id')
+      .in('id', competitionIds);
+    if (competitionsError) {
+      throw new Error(`Impossibile leggere i campionati: ${competitionsError.message}`);
+    }
+
+    const campionatoCompetitions = competitions.filter((competition) => competition.kind_code === 'campionato');
+    const seasonIds = [...new Set(campionatoCompetitions.map((competition) => competition.season_id))];
+    const { data: seasons, error: seasonsError } = await supabase
+      .from('seasons')
+      .select('id, label, starts_on')
+      .in('id', seasonIds);
+    if (seasonsError) {
+      throw new Error(`Impossibile leggere le stagioni: ${seasonsError.message}`);
+    }
+
+    const seasonById = new Map(seasons.map((season) => [season.id, season]));
+    const seasonIdByCompetition = new Map(
+      campionatoCompetitions.map((competition) => [competition.id, competition.season_id]),
+    );
+    const seasonByMatchday = new Map(
+      matchdays.flatMap((matchday) => {
+        const seasonId = seasonIdByCompetition.get(matchday.competition_id);
+        const season = seasonId ? seasonById.get(seasonId) : undefined;
+        if (!seasonId || !season) return [];
+        return [[matchday.id, { seasonId, seasonLabel: season.label, startsOn: season.starts_on ?? '' }] as const];
+      }),
+    );
+    const seasonByMatch = new Map(
+      matches.flatMap((match) => {
+        const season = seasonByMatchday.get(match.matchday_id);
+        return season ? [[match.id, season] as const] : [];
+      }),
+    );
+
+    const result = new Map<string, LineupSeason>();
+    for (const lineup of lineups) {
+      const season = seasonByMatch.get(lineup.match_id);
+      if (season) result.set(lineup.id, season);
+    }
+    return result;
+  },
+);
+
 const getCampionatoLineupIds = cache(async (supabase: TypedSupabaseClient, teamId: string): Promise<string[]> => {
-  const { data: lineups, error: lineupsError } = await supabase
-    .from('lineups')
-    .select('id, match_id')
-    .eq('team_id', teamId);
-  if (lineupsError) {
-    throw new Error(`Impossibile leggere le formazioni: ${lineupsError.message}`);
-  }
-  if (lineups.length === 0) {
-    return [];
-  }
-
-  const matchIds = [...new Set(lineups.map((lineup) => lineup.match_id))];
-  const { data: matches, error: matchesError } = await supabase.from('matches').select('id, matchday_id').in('id', matchIds);
-  if (matchesError) {
-    throw new Error(`Impossibile leggere le partite: ${matchesError.message}`);
-  }
-
-  const matchdayIds = [...new Set(matches.map((match) => match.matchday_id))];
-  const { data: matchdays, error: matchdaysError } = await supabase
-    .from('matchdays')
-    .select('id, competition_id')
-    .in('id', matchdayIds);
-  if (matchdaysError) {
-    throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
-  }
-
-  const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
-  const { data: competitions, error: competitionsError } = await supabase
-    .from('competitions')
-    .select('id, kind_code')
-    .in('id', competitionIds);
-  if (competitionsError) {
-    throw new Error(`Impossibile leggere i campionati: ${competitionsError.message}`);
-  }
-
-  const campionatoCompetitionIds = new Set(
-    competitions.filter((competition) => competition.kind_code === 'campionato').map((competition) => competition.id),
-  );
-  const campionatoMatchdayIds = new Set(
-    matchdays.filter((matchday) => campionatoCompetitionIds.has(matchday.competition_id)).map((matchday) => matchday.id),
-  );
-  const campionatoMatchIds = new Set(
-    matches.filter((match) => campionatoMatchdayIds.has(match.matchday_id)).map((match) => match.id),
-  );
-  return lineups.filter((lineup) => campionatoMatchIds.has(lineup.match_id)).map((lineup) => lineup.id);
+  const lineupSeasons = await getCampionatoLineupSeasons(supabase, teamId);
+  return [...lineupSeasons.keys()];
 });
 
 // Il costo della query non dipende da `limit`: la paginazione qui sotto
@@ -1062,7 +1098,13 @@ export async function getRosterLoyalty(supabase: TypedSupabaseClient, teamId: st
     .slice(0, limit);
 }
 
-export type RosterStandout = { playerName: string; averageFantavoto: number; appearances: number };
+export type RosterStandout = {
+  playerName: string;
+  averageFantavoto: number;
+  appearances: number;
+  fromSeasonLabel: string;
+  toSeasonLabel: string;
+};
 
 // "Fuoriclasse della rosa": media fantavoto più alta fra i titolari/subentrati
 // che contano per il totale squadra. `counts_for_total`, non `slot`: un
@@ -1070,61 +1112,177 @@ export type RosterStandout = { playerName: string; averageFantavoto: number; app
 // comunque), un titolare non sostituito che non gioca la partita successiva
 // non c'entra qui — è la stessa distinzione già documentata nella migrazione
 // che ha introdotto la colonna. Soglia minima di presenze per non far
-// vincere un exploit da una sola giornata.
+// vincere un exploit da una sola giornata — applicata sia qui (carriera)
+// sia in getBestPlayerSeasons (singola stagione).
 const MIN_APPEARANCES_FOR_STANDOUT = 10;
 
-export async function getRosterStandout(supabase: TypedSupabaseClient, teamId: string): Promise<RosterStandout | null> {
-  const lineupIds = await getCampionatoLineupIds(supabase, teamId);
-  if (lineupIds.length === 0) {
-    return null;
+type FantavotoRow = { playerId: string; fantavoto: number; season: LineupSeason };
+
+// Condivisa da getRosterStandout e getBestPlayerSeasons: stessa paginazione
+// di lineup_players filtrata per counts_for_total, ciascuna riga arricchita
+// con la stagione della sua formazione (serve a entrambe, con aggregazioni
+// diverse: per giocatore su tutta la carriera vs. per giocatore+stagione).
+const getCampionatoFantavotoRows = cache(
+  async (supabase: TypedSupabaseClient, teamId: string): Promise<FantavotoRow[]> => {
+    const lineupSeasons = await getCampionatoLineupSeasons(supabase, teamId);
+    if (lineupSeasons.size === 0) {
+      return [];
+    }
+    const lineupIds = [...lineupSeasons.keys()];
+
+    // Stessa cautela di paginazione di getMostFieldedPlayers: 6 stagioni di
+    // campionato superano le 1000 righe di default per risposta.
+    const rows: FantavotoRow[] = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data: page, error: pageError } = await supabase
+        .from('lineup_players')
+        .select('player_id, fantavoto, lineup_id')
+        .in('lineup_id', lineupIds)
+        .eq('counts_for_total', true)
+        .range(from, from + pageSize - 1);
+      if (pageError) {
+        throw new Error(`Impossibile leggere i fantavoti: ${pageError.message}`);
+      }
+      for (const row of page) {
+        if (row.fantavoto === null) continue;
+        const season = lineupSeasons.get(row.lineup_id);
+        if (!season) continue;
+        rows.push({ playerId: row.player_id, fantavoto: row.fantavoto, season });
+      }
+      if (page.length < pageSize) break;
+    }
+    return rows;
+  },
+);
+
+export async function getRosterStandout(
+  supabase: TypedSupabaseClient,
+  teamId: string,
+  limit = 30,
+): Promise<RosterStandout[]> {
+  const rows = await getCampionatoFantavotoRows(supabase, teamId);
+  if (rows.length === 0) {
+    return [];
   }
 
-  // Stessa cautela di paginazione di getMostFieldedPlayers: 6 stagioni di
-  // campionato superano le 1000 righe di default per risposta.
-  const totalsByPlayer = new Map<string, { sum: number; count: number }>();
-  const pageSize = 1000;
-  for (let from = 0; ; from += pageSize) {
-    const { data: page, error: pageError } = await supabase
-      .from('lineup_players')
-      .select('player_id, fantavoto')
-      .in('lineup_id', lineupIds)
-      .eq('counts_for_total', true)
-      .range(from, from + pageSize - 1);
-    if (pageError) {
-      throw new Error(`Impossibile leggere i fantavoti: ${pageError.message}`);
-    }
-    for (const row of page) {
-      if (row.fantavoto === null) continue;
-      const entry = totalsByPlayer.get(row.player_id) ?? { sum: 0, count: 0 };
-      entry.sum += row.fantavoto;
-      entry.count += 1;
-      totalsByPlayer.set(row.player_id, entry);
-    }
-    if (page.length < pageSize) break;
+  const totalsByPlayer = new Map<
+    string,
+    { sum: number; count: number; from: LineupSeason; to: LineupSeason }
+  >();
+  for (const row of rows) {
+    const entry = totalsByPlayer.get(row.playerId) ?? { sum: 0, count: 0, from: row.season, to: row.season };
+    entry.sum += row.fantavoto;
+    entry.count += 1;
+    if (row.season.startsOn.localeCompare(entry.from.startsOn) < 0) entry.from = row.season;
+    if (row.season.startsOn.localeCompare(entry.to.startsOn) > 0) entry.to = row.season;
+    totalsByPlayer.set(row.playerId, entry);
   }
 
   const best = [...totalsByPlayer.entries()]
-    .map(([playerId, { sum, count }]) => ({ playerId, average: sum / count, appearances: count }))
+    .map(([playerId, entry]) => ({
+      playerId,
+      average: entry.sum / entry.count,
+      appearances: entry.count,
+      fromSeasonLabel: entry.from.seasonLabel,
+      toSeasonLabel: entry.to.seasonLabel,
+    }))
     .filter((entry) => entry.appearances >= MIN_APPEARANCES_FOR_STANDOUT)
-    .sort((a, b) => b.average - a.average)[0];
-  if (!best) {
-    return null;
+    .sort((a, b) => b.average - a.average || a.playerId.localeCompare(b.playerId))
+    .slice(0, limit);
+  if (best.length === 0) {
+    return [];
   }
 
-  const { data: player, error: playerError } = await supabase
+  const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('canonical_name')
-    .eq('id', best.playerId)
-    .maybeSingle();
-  if (playerError) {
-    throw new Error(`Impossibile leggere il giocatore: ${playerError.message}`);
+    .select('id, canonical_name')
+    .in(
+      'id',
+      best.map((entry) => entry.playerId),
+    );
+  if (playersError) {
+    throw new Error(`Impossibile leggere i giocatori: ${playersError.message}`);
+  }
+  const nameById = new Map(players.map((player) => [player.id, player.canonical_name]));
+
+  return best.map((entry) => ({
+    playerName: nameById.get(entry.playerId) ?? '—',
+    averageFantavoto: Math.round(entry.average * 100) / 100,
+    appearances: entry.appearances,
+    fromSeasonLabel: entry.fromSeasonLabel,
+    toSeasonLabel: entry.toSeasonLabel,
+  }));
+}
+
+export type PlayerSeasonStandout = {
+  playerName: string;
+  averageFantavoto: number;
+  appearances: number;
+  seasonLabel: string;
+};
+
+// "Miglior stagione individuale": come getRosterStandout ma la media è
+// calcolata per singola stagione (non sull'intera carriera in squadra), così
+// lo stesso giocatore può comparire più volte per annate diverse. Stessa
+// soglia minima di presenze di getRosterStandout, riferita però alle sole
+// presenze di quella stagione.
+export async function getBestPlayerSeasons(
+  supabase: TypedSupabaseClient,
+  teamId: string,
+  limit = 30,
+): Promise<PlayerSeasonStandout[]> {
+  const rows = await getCampionatoFantavotoRows(supabase, teamId);
+  if (rows.length === 0) {
+    return [];
   }
 
-  return {
-    playerName: player?.canonical_name ?? '—',
-    averageFantavoto: Math.round(best.average * 100) / 100,
-    appearances: best.appearances,
-  };
+  const totalsByPlayerSeason = new Map<string, { playerId: string; seasonLabel: string; sum: number; count: number }>();
+  for (const row of rows) {
+    const key = `${row.playerId}|${row.season.seasonId}`;
+    const entry = totalsByPlayerSeason.get(key) ?? {
+      playerId: row.playerId,
+      seasonLabel: row.season.seasonLabel,
+      sum: 0,
+      count: 0,
+    };
+    entry.sum += row.fantavoto;
+    entry.count += 1;
+    totalsByPlayerSeason.set(key, entry);
+  }
+
+  const best = [...totalsByPlayerSeason.values()]
+    .map((entry) => ({
+      playerId: entry.playerId,
+      seasonLabel: entry.seasonLabel,
+      average: entry.sum / entry.count,
+      appearances: entry.count,
+    }))
+    .filter((entry) => entry.appearances >= MIN_APPEARANCES_FOR_STANDOUT)
+    .sort((a, b) => b.average - a.average || a.playerId.localeCompare(b.playerId))
+    .slice(0, limit);
+  if (best.length === 0) {
+    return [];
+  }
+
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id, canonical_name')
+    .in(
+      'id',
+      best.map((entry) => entry.playerId),
+    );
+  if (playersError) {
+    throw new Error(`Impossibile leggere i giocatori: ${playersError.message}`);
+  }
+  const nameById = new Map(players.map((player) => [player.id, player.canonical_name]));
+
+  return best.map((entry) => ({
+    playerName: nameById.get(entry.playerId) ?? '—',
+    averageFantavoto: Math.round(entry.average * 100) / 100,
+    appearances: entry.appearances,
+    seasonLabel: entry.seasonLabel,
+  }));
 }
 
 export type UnbeatenStreak = {
