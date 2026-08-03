@@ -14,6 +14,10 @@ type TeamCrestsProps = {
 };
 
 export function TeamCrests({ name, logoUrl, jerseyUrl, highlight = false, size = 'md' }: TeamCrestsProps) {
+  if (!logoUrl && !jerseyUrl) {
+    return <Crest name={name} highlight={highlight} size={size} />;
+  }
+
   return (
     <div className="flex items-center gap-1.5 shrink-0">
       <Crest name={name} imageUrl={logoUrl} highlight={highlight} size={size} />
