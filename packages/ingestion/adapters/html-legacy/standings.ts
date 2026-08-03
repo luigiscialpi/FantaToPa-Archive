@@ -210,7 +210,7 @@ export class FlatHtmlStandingsAdapter implements SourceAdapter<StandingsImport> 
     });
 
     const rowPattern =
-      /<tr><td class="rownum">\d+<\/td><td><span class="steam"><a[^>]*>([^<]+)<\/a><\/span><\/td>((?:<td class="(?:pt|tot)">[^<]*<\/td>)+)<\/tr>/g;
+      /<tr><td class="rownum">\s*\d+\s*<\/td><td><span class="steam"><a[^>]*>([^<]+)<\/a><\/span><\/td>((?:<td class="(?:pt|tot)">[^<]*<\/td>)+)<\/tr>/g;
     const rows: StandingsImport['rows'] = [];
     let rowMatch: RegExpExecArray | null;
     while ((rowMatch = rowPattern.exec(tableHtml))) {

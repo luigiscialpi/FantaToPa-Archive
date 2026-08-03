@@ -1,10 +1,10 @@
 // packages/ingestion/adapters/html-legacy/lineup.ts
 //
-// Stagione 2017-18 (mirror flat — vedi memoria repo legacy-seasons-compat.md):
-// unica stagione HTML legacy con formazioni disponibili (il 2018-19 non le
-// aveva affatto per l'intera stagione). Un file per giornata di Campionato
-// (Campionato/formazioni-N.html — la Coppa non ha cartella formazioni in
-// questa fonte). Box-match `<div class="row itemBox">` con due tabelle
+// Condiviso da 2014-15, 2016-17, 2017-18 (mirror flat — vedi memoria repo
+// legacy-seasons-compat.md); il 2018-19 non ha formazioni per l'intera
+// stagione (fonte diversa, vedi html-legacy/decode.ts). Un file per
+// giornata di Campionato (Campionato/formazioni-N.html — la Coppa non ha
+// cartella formazioni in questa fonte). Box-match `<div class="row itemBox">` con due tabelle
 // affiancate (home poi away), righe `<tr class="playerrow">` (o
 // `class="playerrow bnc"`, giocatore "senza voto"/non considerato) separate
 // da un `<td class="tdwhite">PANCHINA</td>`, eventuali righe
@@ -91,7 +91,13 @@ interface ParsedTeamBox {
 // tenere allineate a mano sulla stessa fonte fragile (vedi memoria repo
 // lineup-parsing.md).
 export const PLAYER_ROW_PATTERN =
-  /<tr class="playerrow( bnc)?"><td class="myhidden-xs"><span class="[a-z] role">([A-Z])<\/span><\/td><td class="myhidden-lg myhidden-md myhidden-sm r"><span class="[a-z] role">[A-Z]<\/span><\/td><td><span class="sh">(?:<a[^>]*>)?([^<]+)(?:<\/a>)?<\/span><span class="ico">[\s\S]*?<\/span><\/td><td class="pt aleft">([^<]*)<\/td><td class="pt">([^<]*)<\/td><td class="pt( bold)?">([^<]*)<\/td><td class="tdrole"><\/td><\/tr>/g;
+  /<tr class="playerrow( bnc)?"><td class="myhidden-xs"><span class="[a-z] role">([A-Z])\s*<\/span><\/td><td class="myhidden-lg myhidden-md myhidden-sm r"><span class="[a-z] role">[A-Z]\s*<\/span><\/td><td>(?:<span class="sh">)?(?:<a[^>]*>)?([^<]+)(?:<\/a>)?(?:<\/span>)?\s*<span class="ico">[\s\S]*?<\/span><\/td><td class="pt aleft">([^<]*)<\/td><td class="pt">([^<]*)<\/td><td class="pt( bold)?">([^<]*)<\/td><td class="tdrole">[\s\S]*?<\/td><\/tr>/g;
+
+// Formato legacy 2014-15: niente class="playerrow", niente colonne ruolo
+// duplicate responsive, nome giocatore direttamente in <td> (spesso con
+// icone <img> bonus/malus). Il valore utile è il testo ripulito dai tag.
+const LEGACY_PLAYER_ROW_PATTERN =
+  /<tr><td><span class="[a-z] role">([A-Z])\s*<\/span><\/td><td>([\s\S]*?)<\/td><td class="pt aleft">([^<]*)<\/td><td class="pt">([^<]*)<\/td><td class="pt([^"]*)">([^<]*)<\/td><td class="tdrole">[\s\S]*?<\/td><\/tr>/g;
 
 function parsePlayers(
   sectionHtml: string,
@@ -115,6 +121,31 @@ function parsePlayers(
       countsForTotal: match[6] === ' bold',
     });
   }
+
+  // Fallback per il markup legacy 2014-15.
+  if (players.length === 0) {
+    LEGACY_PLAYER_ROW_PATTERN.lastIndex = 0;
+    while ((match = LEGACY_PLAYER_ROW_PATTERN.exec(sectionHtml))) {
+      const roleLetter = match[1]!;
+      const role = ROLE_LETTER_TO_CODE[roleLetter];
+      if (!role) throw new Error(`Ruolo "${roleLetter}" non riconosciuto (${teamLabel}, ${filePath})`);
+
+      const rawName = match[2]!
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      players.push({
+        playerName: titleCase(decodeHtmlEntities(rawName)),
+        roles: [role],
+        voto: parseVotoCell(match[4]!),
+        fantavoto: parseVotoCell(match[6]!),
+        slot,
+        countsForTotal: match[5]!.includes('bold'),
+      });
+    }
+  }
+
   return players;
 }
 
@@ -137,10 +168,12 @@ function parseTeamBox(tableHtml: string, teamLabel: string, filePath: string): P
   // Righe opzionali, assenti quando il valore è zero (stessa insidia già
   // nota per Formazioni_*.xlsx — vedi AGENTS.md): non presuppongono nulla
   // sull'altro lato del box-match.
-  const defenseModifierMatch = /Modificatore difesa:<\/td><td colspan="\d" class="pt bold">(-?\d+)<\/td>/.exec(
+  const defenseModifierMatch = /Modificatore difesa:<\/td><td colspan="\d" class="pt bold">(-?\d+(?:[.,]\d+)?)<\/td>/.exec(
     tableHtml,
   );
-  const fieldAdvantageMatch = /Fattore campo:<\/td><td colspan="\d" class="pt bold">(-?\d+)<\/td>/.exec(tableHtml);
+  const fieldAdvantageMatch = /Fattore campo:<\/td><td colspan="\d" class="pt bold">(-?\d+(?:[.,]\d+)?)<\/td>/.exec(
+    tableHtml,
+  );
 
   const totalMatch = /<span class="numbig4 pull-right">([^<]+)<\/span>/.exec(tableHtml);
   if (!totalMatch) throw new Error(`Totale non trovato per "${teamLabel}" (${filePath})`);
@@ -150,8 +183,8 @@ function parseTeamBox(tableHtml: string, teamLabel: string, filePath: string): P
 
   return {
     formation,
-    defenseModifier: defenseModifierMatch ? Number(defenseModifierMatch[1]) : 0,
-    fieldAdvantage: fieldAdvantageMatch ? Number(fieldAdvantageMatch[1]) : 0,
+    defenseModifier: defenseModifierMatch ? Number(defenseModifierMatch[1]!.replace(',', '.')) : 0,
+    fieldAdvantage: fieldAdvantageMatch ? Number(fieldAdvantageMatch[1]!.replace(',', '.')) : 0,
     total: Number(totalMatch[1]!.replace(',', '.')),
     players,
     ...submission,

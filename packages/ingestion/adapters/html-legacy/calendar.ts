@@ -217,9 +217,9 @@ export class FlatHtmlCalendarAdapter implements SourceAdapter<CalendarImport> {
 
     // Ogni box giornata: <h4>Nª GIORNATA - ...</h4> nell'header della
     // tabella, poi <tbody> con una riga <tr> per partita.
-    const matchdayPattern = /<h4>(\d+)ª GIORNATA[^<]*<\/h4><\/th><\/tr><\/thead><tbody>([\s\S]*?)<\/tbody>/g;
+    const matchdayPattern = /<h4>\s*(\d+)\s*(?:ª|&ordf;)\s*GIORNATA[^<]*<\/h4>[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/gi;
     const rowPattern =
-      /<tr><td class="match"><span class="ssteam tleft"><a[^>]*>([^<]+)<\/a><\/span> <span class="point">([^<]+)<\/span> - <span class="point">([^<]+)<\/span> <span class="ssteam tright"><a[^>]*>([^<]+)<\/a><\/span><\/td><td class="result">([^<]+)<\/td><\/tr>/g;
+      /<tr><td class="match">[\s\S]*?<span class="ssteam tleft"><a[^>]*>([^<]+)<\/a><\/span>\s*<span class="point">([^<]+)<\/span>\s*-\s*<span class="point">([^<]+)<\/span>\s*<span class="ssteam tright"><a[^>]*>([^<]+)<\/a><\/span>[\s\S]*?<\/td><td class="result">([^<]+)<\/td><\/tr>/g;
 
     const matchdays: CalendarImport['matchdays'] = [];
     let matchdayMatch: RegExpExecArray | null;
