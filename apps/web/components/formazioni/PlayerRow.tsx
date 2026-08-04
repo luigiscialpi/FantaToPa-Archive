@@ -1,35 +1,79 @@
 // apps/web/components/formazioni/PlayerRow.tsx
 import type { LineupPlayerRow, PlayerBonus } from '../../lib/queries/formazioni';
 
-// Emoji come scorciatoia visiva compatta (niente libreria icone per 14
-// codici fissi): elenco chiuso, coerente con bonus_kinds della migrazione
-// (13 dalla fonte 2025-26 + assist_fermo dalla fonte HTML legacy 2017-18).
-const BONUS_ICON: Record<string, string> = {
-  gol_fatto: '⚽',
-  gol_subito: '🥅',
-  assist: '🅰️',
-  assist_soft: '🅰️',
-  assist_gold: '🅰️',
-  assist_fermo: '🚩',
-  ammonizione: '🟨',
-  espulsione: '🟥',
-  autogol: '🙃',
-  rigore_segnato: '⚽',
-  rigore_sbagliato: '❌',
-  rigore_parato: '🧤',
-  portiere_imbattuto: '🛡️',
+// Spritesheet ufficiale fantacalcio.it (self-hosted in public/icons, non
+// linkato dal CDN esterno per non dipendere dalla sua disponibilità): 32
+// celle da 32px in fila, la maggior parte inutilizzate/di eventi che non
+// modelliamo (subentrato, uscito, VAR, infortunio, sostituzioni...).
+// Indici verificati visivamente ritagliando ogni cella (vedi sessione).
+const SPRITE_URL = '/icons/bonus-spritesheet.webp';
+const SPRITE_CELL_PX = 32;
+const SPRITE_COLUMNS = 32;
+
+const SPRITE_ICON_INDEX: Record<string, number> = {
+  gol_fatto: 0,
+  assist: 1,
+  assist_soft: 1,
+  assist_gold: 1,
+  assist_fermo: 1,
+  ammonizione: 2,
+  espulsione: 3,
+  rigore_segnato: 4,
+  rigore_sbagliato: 5,
+  rigore_parato: 6,
+  autogol: 7,
+  gol_subito: 8,
+  portiere_imbattuto: 13,
+};
+
+// player_of_the_match non ha una cella corrispondente nello spritesheet
+// (quelle rimanenti sono eventi non modellati: subentrato/uscito/VAR/
+// infortunio/sostituzioni) — resta un'emoji di fallback.
+const FALLBACK_ICON: Record<string, string> = {
   player_of_the_match: '⭐',
 };
+
+function SpriteIcon({ index, size, label }: { index: number; size: number; label: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="inline-block shrink-0"
+      style={{
+        width: size,
+        height: size,
+        backgroundImage: `url(${SPRITE_URL})`,
+        backgroundSize: `${SPRITE_COLUMNS * size}px ${size}px`,
+        backgroundPosition: `-${index * size}px 0`,
+        backgroundRepeat: 'no-repeat',
+      }}
+    />
+  );
+}
 
 function BonusBadges({ bonuses }: { bonuses: PlayerBonus[] }) {
   if (bonuses.length === 0) return null;
   return (
     <span className="flex items-center gap-1 shrink-0">
-      {bonuses.map((bonus, index) => (
-        <span key={`${bonus.code}-${index}`} className="text-sm" title={bonus.label}>
-          {BONUS_ICON[bonus.code] ?? '•'}
-        </span>
-      ))}
+      {bonuses.map((bonus, index) => {
+        const spriteIndex = SPRITE_ICON_INDEX[bonus.code];
+        if (spriteIndex !== undefined) {
+          return (
+            <SpriteIcon
+              key={`${bonus.code}-${index}`}
+              index={spriteIndex}
+              size={SPRITE_CELL_PX / 2}
+              label={bonus.label}
+            />
+          );
+        }
+        return (
+          <span key={`${bonus.code}-${index}`} className="text-sm" title={bonus.label}>
+            {FALLBACK_ICON[bonus.code] ?? '•'}
+          </span>
+        );
+      })}
     </span>
   );
 }
