@@ -8,6 +8,7 @@
 // invece di aspettare anche queste.
 import { createClient } from '../../lib/supabase/server';
 import { getBestPlayerSeasons, getMostFieldedPlayers, getRosterStandout } from '../../lib/queries/home';
+import { cachedHomeStat } from '../../lib/queries/home-cache';
 import { KeyPlayersCard } from './KeyPlayersCard';
 import { RosterStandoutCard } from './RosterStandoutCard';
 import { PlayerSeasonStandoutCard } from './PlayerSeasonStandoutCard';
@@ -15,9 +16,9 @@ import { PlayerSeasonStandoutCard } from './PlayerSeasonStandoutCard';
 export async function RosterStatsCards({ teamId }: { teamId: string }) {
   const supabase = await createClient();
   const [keyPlayers, standouts, seasonStandouts] = await Promise.all([
-    getMostFieldedPlayers(supabase, teamId),
-    getRosterStandout(supabase, teamId),
-    getBestPlayerSeasons(supabase, teamId),
+    cachedHomeStat('most-fielded-players', teamId, () => getMostFieldedPlayers(supabase, teamId)),
+    cachedHomeStat('roster-standout', teamId, () => getRosterStandout(supabase, teamId)),
+    cachedHomeStat('best-player-seasons', teamId, () => getBestPlayerSeasons(supabase, teamId)),
   ]);
 
   return (

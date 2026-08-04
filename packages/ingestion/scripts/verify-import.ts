@@ -6,6 +6,7 @@
 // check-season.ts, prima di considerare l'import concluso.
 import 'dotenv/config';
 import { createIngestionClient } from '../lib/supabase-client.js';
+import { revalidateWebHomeCache } from '../lib/revalidate-web-cache.js';
 
 // PostgREST rifiuta filtri .in() con troppi id in una singola richiesta
 // (header HTTP oltre ~16KB, visto con 224 id): a chunk per restare sotto il
@@ -139,6 +140,11 @@ async function verifyImport(slug: string): Promise<void> {
       console.log(`Classifica: pos. ${row.position} - ${teamName}${row.points !== null ? ` (${row.points} punti)` : ''}`);
     }
   }
+
+  // Ultimo passo, solo se tutte le verifiche sopra sono passate senza
+  // eccezioni: la Home mostra dati aggregati su tutte le stagioni di ogni
+  // squadra, altrimenti visibili solo dopo la scadenza naturale della cache.
+  await revalidateWebHomeCache();
 }
 
 const seasonSlug = process.argv[2];

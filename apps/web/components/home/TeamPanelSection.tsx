@@ -19,8 +19,10 @@ import {
   getRivalryHighlight,
   getRosterLoyalty,
   getStandingHistory,
+  type TitleCounts,
 } from '../../lib/queries/home';
 import type { StandingsRow } from '../../lib/queries/classifica';
+import { cachedHomeStat } from '../../lib/queries/home-cache';
 import { TeamPanel } from './TeamPanel';
 import { RosterStatsCards } from './RosterStatsCards';
 import { RosterStatsCardsSkeleton } from './HomeSkeletons';
@@ -42,17 +44,21 @@ export async function TeamPanelSection({
 }: TeamPanelSectionProps) {
   const supabase = await createClient();
 
-  const [titleCounts, rivalry, records, standingHistory, loyalty, streak, branding, teamRow, opponentRecords] = await Promise.all([
-    getAllTimeTitleCounts(supabase),
-    getRivalryHighlight(supabase, teamId),
-    getPersonalRecords(supabase, teamId),
-    getStandingHistory(supabase, teamId),
-    getRosterLoyalty(supabase, teamId),
-    getLongestUnbeatenStreak(supabase, teamId),
+  const [titleCountEntries, rivalry, records, standingHistory, loyalty, streak, branding, teamRow, opponentRecords] = await Promise.all([
+    // unstable_cache serializza il risultato: una Map non sopravvive al
+    // round-trip (torna un oggetto vuoto senza .get), quindi si cachea
+    // l'array di entries e si ricostruisce la Map subito dopo.
+    cachedHomeStat('title-counts', null, async () => Array.from((await getAllTimeTitleCounts(supabase)).entries())),
+    cachedHomeStat('rivalry', teamId, () => getRivalryHighlight(supabase, teamId)),
+    cachedHomeStat('personal-records', teamId, () => getPersonalRecords(supabase, teamId)),
+    cachedHomeStat('standing-history', teamId, () => getStandingHistory(supabase, teamId)),
+    cachedHomeStat('roster-loyalty', teamId, () => getRosterLoyalty(supabase, teamId)),
+    cachedHomeStat('unbeaten-streak', teamId, () => getLongestUnbeatenStreak(supabase, teamId)),
     getTeamBranding(supabase, seasonId, [teamId]),
     supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
-    getOpponentRecords(supabase, teamId),
+    cachedHomeStat('opponent-records', teamId, () => getOpponentRecords(supabase, teamId)),
   ]);
+  const titleCounts = new Map<string, TitleCounts>(titleCountEntries);
 
   if (teamRow.error) {
     throw new Error(`Impossibile leggere la squadra: ${teamRow.error.message}`);

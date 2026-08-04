@@ -95,6 +95,12 @@ pubblico.
   ricalca la struttura della pagina reale. Il layout di stagione (navbar + tab) resta
   visibile durante il caricamento — lo skeleton sostituisce solo `{children}`. Nuove
   pagine di stagione devono avere il proprio `loading.tsx`.
+- **Le query più pesanti del pannello squadra in Home sono cacheate cross-richiesta**
+  (`lib/queries/home-cache.ts`, `cachedHomeStat`, `unstable_cache`) con invalidazione
+  on-demand a fine import (`verify-import.ts` → `revalidate-web-cache.ts` → route
+  handler protetto da `REVALIDATE_SECRET`) più un refresh a 1h come rete di sicurezza.
+  Dettagli/insidie (Map non serializzabile, config Netlify) nei commenti di
+  `home-cache.ts` e `app/api/internal/revalidate-home-stats/route.ts`.
 - **"Migliori"/"Peggiori avversari" (home, `getOpponentRecords`) usano punti 3-1-0**
   (vittoria/pareggio/sconfitta), non conteggio grezzo di vittorie: altrimenti una
   squadra con molti pareggi contro un avversario batteva in classifica una squadra con
@@ -153,8 +159,8 @@ nella skill `fantatopa-dev`, non qui.
 
 - `SUPABASE_SERVICE_ROLE_KEY` solo negli script di ingestion server-side, mai nel client/
   bundle browser.
-- Push su Supabase **prod** solo da CI (GitHub Action su merge a `main`), mai a mano dal
-  laptop — il collegamento locale resta su staging.
+- Un solo progetto Supabase e un solo sito Netlify, nessuna distinzione staging/prod:
+  migrazioni e import lanciati dal laptop toccano subito ciò che vedono gli utenti reali.
 - Mai committare segreti reali, nemmeno in file di esempio.
 
 ## Comandi utili
