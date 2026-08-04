@@ -27,6 +27,7 @@ export default async function AdminRegistrazioniPage() {
               >
                 <div className="min-w-0">
                   <p className="font-semibold text-stone-800 truncate">{name}</p>
+                  {request.email && <p className="text-sm text-stone-500 truncate">{request.email}</p>}
                   <p className="text-sm text-stone-500 truncate">{request.requestedTeamName ?? 'Nessuna squadra richiesta'}</p>
                   <p className="text-xs text-stone-400">
                     {new Date(request.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}

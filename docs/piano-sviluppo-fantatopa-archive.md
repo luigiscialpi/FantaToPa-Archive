@@ -972,14 +972,23 @@ Nota architetturale: come per le altre statistiche di questa sezione, tutto quan
 
 ## 11. Roadmap a fasi
 
+**Nota sullo stato**: questa sezione è la fonte di verità versionata su "a che punto
+siamo" — va aggiornata quando una fase/estensione si chiude, non solo quando se ne apre
+una nuova (un aggiornamento mancato qui è stato scoperto e corretto il 2026-08-04:
+l'ingestion generalizzata risultava ancora "in corso" con un'ultima stagione da fare,
+in realtà completata da tempo). Per il dettaglio investigativo di OGNI import/bug
+scoperto stagione per stagione, i file in `.agents/skills/fantatopa-dev/` non bastano:
+quel livello di dettaglio vive nella memoria repo dell'agente (non versionata in git),
+consultabile su richiesta in una sessione futura.
+
 **Fase 0 — Fondamenta anti-fragili** *(nuova, prioritaria — completata)*
 Repo scaffold (npm workspaces), progetto Supabase + prima migrazione con lo schema completo, generazione tipi TS automatica, CI base (typecheck, lint, keepalive). Incluso: il tuo profilo va creato/promosso ad `admin` con `status='approved'` direttamente via migrazione/seed, non passando dal flusso di registrazione — altrimenti non potresti vedere nulla nemmeno tu durante lo sviluppo, dato l'archivio riservato (sezione 9).
 
 **Fase 1 — Ingestion stagioni moderne (2023-24 → 2025-26)** *(completata)*
 Adapter xlsx (Rose, Classifica, Calendario, Formazioni, Coppa), schema Zod, loader idempotente, risoluzione alias squadre/giocatori, import pilota sulla 2025-26.
 
-**Estensione — Ingestion generalizzata a tutte le 6 stagioni** *(in corso)*
-Il pilota è stato generalizzato (`import-season.ts`/`check-season.ts`/`season-configs.ts`/`team-registry.ts`, non più `pilot-import-2025-26.ts` hardcoded) e validato su tutte e 6 le stagioni (2020-21 → 2025-26, inclusa la 2022-23 recuperata — sezione 1). Copre anche il caricamento loghi/maglie (`seedBranding`, dove la stagione ha la cartella `Loghi & Maglie/`). Import reale su Supabase staging in corso stagione per stagione: 2025-26, 2024-25, 2023-24, 2022-23 e 2021-22 completate e verificate (quest'ultima anche corretta successivamente per due fusioni giocatore errate, vedi nota di ingestion sotto); resta solo 2020-21.
+**Estensione — Ingestion generalizzata a tutte le 6 stagioni xlsx** *(completata)*
+Il pilota è stato generalizzato (`import-season.ts`/`check-season.ts`/`season-configs.ts`/`team-registry.ts`, non più `pilot-import-2025-26.ts` hardcoded) e validato su tutte e 6 le stagioni (2020-21 → 2025-26, inclusa la 2022-23 recuperata — sezione 1). Copre anche il caricamento loghi/maglie (`seedBranding`, dove la stagione ha la cartella `Loghi & Maglie/`). **Tutte e 6 importate e verificate su Supabase staging** (2025-26, 2024-25, 2023-24, 2022-23, 2021-22 — quest'ultima corretta successivamente per due fusioni giocatore errate, vedi nota di ingestion sotto — e 2020-21).
 
 **Fase 2 — Frontend core** *(completata)*
 Pagine Classifica/Calendario/Rose/Formazioni per stagione, rendering server-side con sessione utente (niente più generazione statica, sezione 3 punto 5), repository layer tipizzato, responsive mobile. Tutte e quattro online. Formazioni mostra la lista testuale (titolari/panchina, voto/fantavoto) per giornata, non il campo grafico — resta l'opzione "vedi campo" descritta in sezione 10 se servirà in futuro, non è bloccante. Aggiunto rispetto alla formulazione iniziale: il selettore stagione/competizione persistente in header previsto in sezione 10 è ora un layout condiviso (`stagioni/[season]/layout.tsx`) sopra tutte le pagine di stagione, con tab di navigazione tra Classifica/Calendario/Rose/Formazioni; il selettore competizione si nasconde da sé sulle pagine (come Rose) la cui tabella non ha una dimensione competizione.
@@ -1006,10 +1015,32 @@ utilizzabili. Il 2014-15 non ha Coppa importabile per un gap della fonte; 2016-1
 reimport su staging è stato verificato con lo stesso schema canonico della Fase 1,
 senza modifiche al resto del sistema.
 
+**Estensione — stagioni 2011-12/2012-13 dallo stesso mirror del 2013-14** *(completata)*
+Stessa piattaforma/adapter `Html2013*` del 2013-14: il 2011-12 ha un import completo
+(classifica, calendario, rose, formazioni, bonus/malus); il 2012-13 aggiunge una
+classifica Campionato reale (38 giornate) allo stesso dump, tramite un unico adapter
+nuovo (`Html2013StandingsAdapter`) — calendario/formazioni/rose riusano le classi già
+esistenti. Nessuna Coppa Lelle in nessuno dei due dump. Con questi due, **tutte e 9 le
+stagioni coperte da un mirror/xlsx reale (2011-12 → 2025-26 esclusa la sola classifica
+2013-14) sono importate**; le stagioni 2004-05 → 2010-11 restano solo podio manuale
+(nota storica utente, vedi sotto).
+
 **Estensione — bonus subentrato/uscito 2011-12/2012-13/2013-14** *(completata)*
 Icone "Entrato"/"Uscito" già presenti nella fonte condivisa di queste tre stagioni ma
 scartate esplicitamente; recuperate con due nuovi `bonus_kinds` (sezione 7.2). Nessuna
 fonte legacy indagata contiene un'icona di infortunio: gap di dato, non riproposto.
+
+**Estensione — stagioni 2004-05 → 2010-11, podio manuale** *(completata)*
+Nessun mirror/file sorgente esiste per queste 7 stagioni (precedono il primo mirror
+disponibile, 2013-14): unica fonte una nota storica testuale dell'utente (podio
+Campionato + vincitore Coppa Lelle dove esiste, nata solo dal 2012-13). Niente
+calendario/formazioni/rose — restano fuori dal selettore stagione in header e dalla
+galleria stagioni cliccabile in home (`hasSchedule: false`, sezione 10), ma compaiono in
+Albo d'Oro/Statistiche storiche. Script unico per tutte e 7 (`import-historical-seasons.ts`),
+non un file per stagione: il volume di dati per stagione (1-3 righe standings) non
+giustifica la separazione.
+
+
 
 **Fase 7 — Bonus/malus storici da fonte web (2020-21 → 2024-25)** *(non iniziata — analisi in `docs/bonus-storici-fantacalcio-it.md`)*
 Le 5 stagioni classico/mantra intermedie hanno solo voto/fantavoto da xlsx, senza bonus/malus granulari (a differenza di 2025-26 e 2017-18, sezione 7.1). Analisi di fattibilità completata: l'architettura esistente (`bonus_kinds`/`player_matchday_bonuses`/`matchday_bonus_sources`) si riusa senza modifiche, serve solo un nuovo adapter per una fonte fantacalcio.it. Resta da verificare se esiste uno storico per-giornata (fonte preferita, poche richieste) o se serve ricadere sulla pagina per-giocatore (più richieste, serve anche un player directory) — verifica in corso. Include anche la mappatura Coppa (`matchday_bonus_sources`) per 2022-23/2023-24/2024-25, non ancora popolata.

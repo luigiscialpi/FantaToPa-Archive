@@ -30,6 +30,7 @@ export type PendingRegistrationRequest = {
   id: string;
   firstName: string | null;
   lastName: string | null;
+  email: string | null;
   requestedTeamName: string | null;
   createdAt: string;
 };
@@ -39,7 +40,7 @@ export async function getPendingRegistrationRequests(
 ): Promise<PendingRegistrationRequest[]> {
   const { data, error } = await supabase
     .from('registration_requests')
-    .select('id, first_name, last_name, requested_team_id, created_at')
+    .select('id, first_name, last_name, email, requested_team_id, created_at')
     .eq('status', 'pending')
     .order('created_at', { ascending: true });
 
@@ -71,6 +72,7 @@ export async function getPendingRegistrationRequests(
     id: row.id,
     firstName: row.first_name,
     lastName: row.last_name,
+    email: row.email,
     requestedTeamName: row.requested_team_id ? (teamNames.get(row.requested_team_id) ?? null) : null,
     createdAt: row.created_at,
   }));
