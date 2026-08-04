@@ -683,7 +683,13 @@ ma condividono lo stesso contratto `SourceAdapter<T>`:
   Fase Finale, come Campionato 2017-18/2025-26) e vengono persistiti direttamente sulla
   giornata di Coppa Fase Finale — non serve `matchday_bonus_sources` perché non c'è
   nessuna giornata Campionato da cui derivare, e la query lato UI (`formazioni.ts`) già
-  ricade sul `matchdayId` stesso quando manca un mapping.
+  ricade sul `matchdayId` stesso quando manca un mapping. **Aggiornamento**: le icone
+  "Entrato"/"Uscito" (sostituzioni in/out), presenti in questa stessa fonte per
+  2011-12/2012-13/2013-14, erano parsate ma scartate esplicitamente
+  (`IGNORED_LABELS`); recuperate aggiungendo i code `subentrato`/`uscito` a
+  `bonus_kinds` (migrazione `20260804160000`). Nessuna fonte legacy indagata finora
+  (né questa né la variante "flat" sotto) contiene invece un'icona di infortunio: gap
+  di dato, non di adapter, non colmabile allo stato attuale.
 - **Variante "flat"** (2014-15, 2016-17, 2017-18): pagine HTML server-renderizzate con
   tabelle dirette, markup a volte minificato (tag adiacenti, 2014-15) a volte
   pretty-printed (whitespace/indentazione fra i tag, 2016-17) — stessa struttura, solo
@@ -999,6 +1005,11 @@ utilizzabili. Il 2014-15 non ha Coppa importabile per un gap della fonte; 2016-1
 2017-18 e 2018-19 mantengono le rispettive lacune già descritte in sezione 7.2. Il
 reimport su staging è stato verificato con lo stesso schema canonico della Fase 1,
 senza modifiche al resto del sistema.
+
+**Estensione — bonus subentrato/uscito 2011-12/2012-13/2013-14** *(completata)*
+Icone "Entrato"/"Uscito" già presenti nella fonte condivisa di queste tre stagioni ma
+scartate esplicitamente; recuperate con due nuovi `bonus_kinds` (sezione 7.2). Nessuna
+fonte legacy indagata contiene un'icona di infortunio: gap di dato, non riproposto.
 
 **Fase 7 — Bonus/malus storici da fonte web (2020-21 → 2024-25)** *(non iniziata — analisi in `docs/bonus-storici-fantacalcio-it.md`)*
 Le 5 stagioni classico/mantra intermedie hanno solo voto/fantavoto da xlsx, senza bonus/malus granulari (a differenza di 2025-26 e 2017-18, sezione 7.1). Analisi di fattibilità completata: l'architettura esistente (`bonus_kinds`/`player_matchday_bonuses`/`matchday_bonus_sources`) si riusa senza modifiche, serve solo un nuovo adapter per una fonte fantacalcio.it. Resta da verificare se esiste uno storico per-giornata (fonte preferita, poche richieste) o se serve ricadere sulla pagina per-giocatore (più richieste, serve anche un player directory) — verifica in corso. Include anche la mappatura Coppa (`matchday_bonus_sources`) per 2022-23/2023-24/2024-25, non ancora popolata.
