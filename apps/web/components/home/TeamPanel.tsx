@@ -11,7 +11,6 @@ import { Crest } from '../shared/Crest';
 import { StatCard } from './StatCard';
 import { StandingSparkline } from './StandingSparkline';
 import { RosterLoyaltyCard } from './RosterLoyaltyCard';
-import { UnbeatenStreakCard } from './UnbeatenStreakCard';
 import { BestRivalsCard } from './BestRivalsCard';
 import { WorstRivalsCard } from './WorstRivalsCard';
 import type {
@@ -20,7 +19,6 @@ import type {
   MatchHighlight,
   StandingHistoryPoint,
   RosterLoyaltyEntry,
-  UnbeatenStreak,
   OpponentRecord,
 } from '../../lib/queries/home';
 
@@ -40,10 +38,9 @@ type TeamPanelProps = {
   rivalry: RivalryHighlight | null;
   records: { best: MatchHighlight | null; worst: MatchHighlight | null };
   loyalty: RosterLoyaltyEntry[];
-  // Le 3 card rosa più costose: passate già pronte per lo streaming (il
+  // Le card rosa più costose: passate già pronte per lo streaming (il
   // proprio <Suspense> è montato da TeamPanelSection), non come dati grezzi.
   rosterStatsSlot: ReactNode;
-  streak: UnbeatenStreak | null;
   bestOpponents: OpponentRecord[];
   worstOpponents: OpponentRecord[];
 };
@@ -68,7 +65,6 @@ export function TeamPanel({
   records,
   loyalty,
   rosterStatsSlot,
-  streak,
   bestOpponents,
   worstOpponents,
 }: TeamPanelProps) {
@@ -134,6 +130,8 @@ export function TeamPanel({
 
         <RosterLoyaltyCard loyalty={loyalty} />
 
+        {rosterStatsSlot}
+
         <StatCard label="Record personali">
           <TrendingUp size={18} className="mb-1 text-emerald-600" />
           {records.best ? (
@@ -163,11 +161,6 @@ export function TeamPanel({
         <BestRivalsCard records={bestOpponents} />
 
         <WorstRivalsCard records={worstOpponents} />
-
-        {rosterStatsSlot}
-
-        <UnbeatenStreakCard streak={streak} />
-
       </div>
     </section>
   );

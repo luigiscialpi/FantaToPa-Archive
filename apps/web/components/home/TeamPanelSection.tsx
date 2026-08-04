@@ -5,7 +5,7 @@
 // pesanti non bloccano il rendering di galleria stagioni/vetrina generale
 // mentre sono ancora in corso — quelle sezioni hanno un proprio Server
 // Component e possono comparire prima o dopo, indipendentemente da questa.
-// Le 3 query più costose in assoluto (roster stats, vedi RosterStatsCards)
+// Le query più costose in assoluto (roster stats, vedi RosterStatsCards)
 // hanno un secondo <Suspense> annidato qui dentro: il resto del pannello
 // compare non appena pronto, senza aspettare anche quelle.
 import { Suspense } from 'react';
@@ -13,7 +13,6 @@ import { createClient } from '../../lib/supabase/server';
 import { getTeamBranding, brandingFor } from '../../lib/queries/team-branding';
 import {
   getAllTimeTitleCounts,
-  getLongestUnbeatenStreak,
   getOpponentRecords,
   getPersonalRecords,
   getRivalryHighlight,
@@ -44,7 +43,7 @@ export async function TeamPanelSection({
 }: TeamPanelSectionProps) {
   const supabase = await createClient();
 
-  const [titleCountEntries, rivalry, records, standingHistory, loyalty, streak, branding, teamRow, opponentRecords] = await Promise.all([
+  const [titleCountEntries, rivalry, records, standingHistory, loyalty, branding, teamRow, opponentRecords] = await Promise.all([
     // unstable_cache serializza il risultato: una Map non sopravvive al
     // round-trip (torna un oggetto vuoto senza .get), quindi si cachea
     // l'array di entries e si ricostruisce la Map subito dopo.
@@ -53,7 +52,6 @@ export async function TeamPanelSection({
     cachedHomeStat('personal-records', teamId, () => getPersonalRecords(supabase, teamId)),
     cachedHomeStat('standing-history', teamId, () => getStandingHistory(supabase, teamId)),
     cachedHomeStat('roster-loyalty', teamId, () => getRosterLoyalty(supabase, teamId)),
-    cachedHomeStat('unbeaten-streak', teamId, () => getLongestUnbeatenStreak(supabase, teamId)),
     getTeamBranding(supabase, seasonId, [teamId]),
     supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
     cachedHomeStat('opponent-records', teamId, () => getOpponentRecords(supabase, teamId)),
@@ -85,7 +83,6 @@ export async function TeamPanelSection({
             <RosterStatsCards teamId={teamId} />
           </Suspense>
         }
-        streak={streak}
         bestOpponents={opponentRecords?.best ?? []}
         worstOpponents={opponentRecords?.worst ?? []}
       />
