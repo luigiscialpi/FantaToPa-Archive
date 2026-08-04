@@ -2,8 +2,7 @@
 //
 // Vetrina generale (piano, sezione 10, punto 2): visibile a chiunque sia
 // approvato, con o senza squadra assegnata — digest verso le pagine
-// dedicate (Calendario, Classifica), non una loro duplicazione. Niente link
-// per "Squadra più titolata": /albo-doro non esiste ancora come pagina.
+// dedicate (Calendario, Classifica, Albo d'Oro), non una loro duplicazione.
 import Link from 'next/link';
 import { Flame, Trophy } from 'lucide-react';
 import { Crest } from '../shared/Crest';
@@ -146,7 +145,7 @@ export function LeagueShowcase({
           )}
         </StatCard>
 
-        <StatCard label="Squadra più titolata">
+        <StatCard label="Squadra più titolata" href="/albo-doro">
           <Trophy size={18} className="mb-1 text-amber-500" />
           {mostTitled ? (
             <>

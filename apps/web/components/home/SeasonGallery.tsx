@@ -21,7 +21,7 @@ const PODIUM_TIERS = [
 // Podio compatto della giornata (piano, sezione 10, punto 3): 1° al centro
 // più alto, 2° a sinistra, 3° a destra. Riproduce il layout del mockup, ma con
 // le maglie/loghi reali del team_seasons quando disponibili.
-function SeasonPodium({ podium }: { podium: GalleryTeam[] }) {
+export function SeasonPodium({ podium }: { podium: GalleryTeam[] }) {
   const teamsByPosition = podium.reduce(
     (acc, team, index) => {
       acc[index + 1] = team;
@@ -65,7 +65,7 @@ function SeasonPodium({ podium }: { podium: GalleryTeam[] }) {
 // mobile: sulla stessa riga il nome aveva pochissimo spazio residuo dopo
 // l'etichetta e uno spigolo diventava invisibile invece di troncare — vedi
 // screenshot vista mobile, card "Le stagioni" a 2 colonne).
-function CupWinnerLine({ winner }: { winner: GalleryTeam }) {
+export function CupWinnerLine({ winner }: { winner: GalleryTeam }) {
   return (
     <div className="mt-1.5 flex flex-col items-center gap-1">
       <span className="flex items-center mt-3 mb-2 gap-1 text-[10px] uppercase tracking-wide text-stone-500">

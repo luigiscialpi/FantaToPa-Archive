@@ -44,6 +44,28 @@ pubblico.
 - **Niente generazione statica (SSG) per le pagine di stagione**: l'archivio è riservato,
   una pagina pre-renderizzata in build aggirerebbe la RLS. Rendering server-side con la
   sessione utente, sempre.
+- **Nav globale persistente (`GlobalNav`, dentro `AppHeader`): Home/Albo d'Oro/
+  Statistiche**, distinta dai tab per-stagione (`PageTabs`, solo sotto
+  `stagioni/[season]/**`) — Albo d'Oro e Statistiche non sono scoped a una singola
+  stagione (la prima mostra tutte le annate insieme, la seconda sceglie stagione/
+  competizione al suo interno), quindi sono route top-level (`/albo-doro`,
+  `/statistiche`), non pagine sotto `stagioni/[season]/**`. Scelta esplicita
+  dell'utente contro il mockup originale, che le metteva come tab per-stagione.
+- **`AppHeader` è un unico blocco sticky** (non più barre sticky indipendenti da
+  coordinare): riga principale (hamburger mobile a sinistra + brand + selettore
+  stagione, quest'ultimo in `variant="compact"` troncato su mobile per non
+  affollare) e riga `GlobalNav` sotto. Chi consuma l'altezza dell'header (offset
+  sticky di `stagioni/[season]/layout.tsx`, hardcoded in px) va ricalibrato ogni
+  volta che l'altezza dell'header cambia — misurare sempre con Playwright
+  (`getBoundingClientRect()`), non a occhio.
+- **Filtri che innescano una query per ogni singola selezione sono un bug UX, non
+  solo un dettaglio**: `StatisticheControls` usa un `<form>` non controllato
+  (`defaultValue`, non `value`) con pulsante "Aggiorna" esplicito che legge tutti i
+  campi e fa un solo `router.push()`, invece di un `onChange` per select che
+  naviga subito. Le select, essendo non controllate, non si "auto-riallineano" ai
+  valori risolti dal server dopo un fallback (es. stagione/competizione/squadra non
+  trovata) — serve una `key` sul form derivata dai valori effettivi risolti lato
+  server, per forzarne il remount.
 - **Ingestion: adapter → schema Zod per concern → `SeasonRepository`**: mai scrivere su
   Supabase direttamente da un parser. Un `SeasonRepository` finto in memoria deve poter
   sostituire quello reale nei test, senza rete.
