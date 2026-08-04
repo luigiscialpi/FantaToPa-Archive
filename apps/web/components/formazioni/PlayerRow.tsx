@@ -23,6 +23,8 @@ const SPRITE_ICON_INDEX: Record<string, number> = {
   rigore_parato: 6,
   autogol: 7,
   gol_subito: 8,
+  subentrato: 9,
+  uscito: 10,
   portiere_imbattuto: 13,
 };
 

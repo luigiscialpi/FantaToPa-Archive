@@ -18,13 +18,21 @@ describe('Html2013BonusAdapter, contro le formazioni reali 2013-14', () => {
     expect(byName.get('Neto')).toEqual(['ammonizione', 'gol_subito', 'gol_subito', 'gol_subito']);
   });
 
-  it('ignora gli indicatori visuali non rappresentati in bonus_kinds', async () => {
+  it('ignora "Gol Pareggio"/"Gol Vittoria" (varianti descrittive di un gol già contato)', async () => {
     const adapter = new Html2013BonusAdapter('2013-14', 'coppa-fase-finale');
     const result = await adapter.parse(BONUS_FILE);
     const byName = new Map(result.players.map((player) => [player.playerName, player.bonusCodes]));
 
     expect(byName.get('Cerci')).toEqual(['ammonizione', 'gol_fatto']);
-    expect(byName.get('Abate')).toEqual([]);
     expect(byName.get('Toni')).toEqual(['rigore_segnato']);
+  });
+
+  it('riconosce le sostituzioni (Entrato/Uscito)', async () => {
+    const adapter = new Html2013BonusAdapter('2013-14', 'coppa-fase-finale');
+    const result = await adapter.parse(BONUS_FILE);
+    const byName = new Map(result.players.map((player) => [player.playerName, player.bonusCodes]));
+
+    expect(byName.get('Abate')).toEqual(['subentrato']);
+    expect(byName.get('Jonathan')).toEqual(['uscito']);
   });
 });

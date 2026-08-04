@@ -15,9 +15,14 @@ const LABEL_TO_CODE: Record<string, string> = {
   'Rigore Parato': 'rigore_parato',
   'Rigore Sbagliato': 'rigore_sbagliato',
   'Rigore Segnato': 'rigore_segnato',
+  Entrato: 'subentrato',
+  Uscito: 'uscito',
 };
 
-const IGNORED_LABELS = new Set(['Entrato', 'Gol Pareggio', 'Gol Vittoria', 'Uscito']);
+// "Gol Pareggio"/"Gol Vittoria" sono varianti descrittive di un gol già
+// contato come "Gol segnato" sulla stessa riga (mai un evento a sé nella
+// fonte) — restano ignorate, non un evento bonus/malus distinto.
+const IGNORED_LABELS = new Set(['Gol Pareggio', 'Gol Vittoria']);
 
 function playerNameFromCell(cellHtml: string): string {
   const name = cellHtml.split(/<img\b/i, 1)[0] ?? '';
