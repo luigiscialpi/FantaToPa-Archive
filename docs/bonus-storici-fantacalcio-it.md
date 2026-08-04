@@ -3,7 +3,8 @@
 > Analisi di fattibilità e piano di sviluppo per estendere l'ingestion di bonus/malus
 > granulari (gol, assist, cartellini, rigori...) alle 5 stagioni classico/mantra che
 > oggi hanno solo voto/fantavoto da xlsx: 2020-21, 2021-22, 2022-23, 2023-24, 2024-25.
-> **Non ancora implementato** — richiamato come sviluppo futuro in
+> **Non ancora implementato** — fonte e percorso confermati (2026-08-04, sezioni 4/6),
+> resta da scrivere adapter/script. Richiamato come sviluppo futuro in
 > `piano-sviluppo-fantatopa-archive.md`, sezione 11 (Roadmap). Sezione 7.1 dello stesso
 > piano descrive l'architettura già esistente per il 2025-26 e il 2017-18, riusata qui
 > senza modifiche.
@@ -94,18 +95,18 @@ dello script finale.
 
 ## 4. Percorso A vs Percorso B
 
-### Percorso A — pagina aggregata per giornata (preferito)
+### Percorso A — pagina aggregata per giornata (CONFERMATO, 2026-08-04)
 
-Una pagina per giornata di Campionato con tutte le squadre/giocatori insieme (es.
-`fantacalcio.it/voti-fantacalcio-serie-a`), il cui markup osservato sembra identico a
-quello già gestito da `HtmlVotiBonusAdapter`.
+Una pagina per giornata di Campionato con tutte le squadre/giocatori insieme:
+`fantacalcio.it/voti-fantacalcio-serie-a/{stagione}/{giornata}` (es. `.../2020-21/38`),
+verificata pubblica (nessun login) per una stagione storica oltre al 2025-26 —
+markup identico a quello già gestito da `HtmlVotiBonusAdapter` (sezione 6).
 
 - **Vantaggi**: ~38 richieste/stagione (una per giornata); riuso quasi diretto di codice
   già scritto e testato; nessun bisogno di enumerare i giocatori uno a uno.
-- **Limiti**: non ancora confermato che esista uno storico stagioni raggiungibile da
-  questa pagina (oggi mostra solo la giornata corrente) — verifica in corso, sezione 6.
+- **Limiti**: nessuno residuo — path scelto.
 
-### Percorso B — pagina per giocatore (fallback, proposta originale)
+### Percorso B — pagina per giocatore (SCARTATO, 2026-08-04 — Percorso A confermato)
 
 Una pagina per giocatore con il riepilogo dell'intera stagione (es. la pagina Muriel
 citata in apertura).
@@ -119,8 +120,7 @@ citata in apertura).
   matrice (dati per-giocatore-tutte-le-giornate → per-giornata-tutti-i-giocatori) prima
   di poter chiamare `upsertMatchdayBonuses`, che si aspetta il secondo formato.
 
-Il Percorso B resta pianificato per intero (non solo menzionato) nel caso la verifica
-in sezione 6 escluda il Percorso A.
+Non più necessario: il Percorso A copre tutte le stagioni con lo stesso URL pattern.
 
 ## 5. Coppa: stato di `matchday_bonus_sources` per stagione
 
@@ -137,12 +137,16 @@ questo piano (non rimandata a un secondo momento).
 
 ## 6. Domande aperte / verifica in corso
 
-- **Bloccante per la scelta tra Percorso A e B**: esiste uno storico per-giornata (tutte
-  le squadre insieme) per le stagioni 2020-21…2024-25, analogo a quello del 2025-26?
-  Verifica in corso lato utente (browser, Network tab + eventuale selettore stagione).
-  Se sì: annotare l'URL esatto e se richiede login.
-- Se anche lo storico per-giornata risultasse dietro login (diversamente dalla pagina
-  attuale, pubblica) → si ricade comunque sul Percorso B.
+- ~~Bloccante per la scelta tra Percorso A e B~~ **RISOLTO (2026-08-04)**: lo storico
+  per-giornata esiste ed è pubblico anche per le stagioni passate, stesso URL pattern
+  del 2025-26: `fantacalcio.it/voti-fantacalcio-serie-a/{stagione}/{giornata}` (es.
+  `.../2020-21/38`, verificato per fetch diretto senza login — solo l'export Excel
+  dietro l'icona di download richiede login, il markup HTML con voti/bonus no).
+  **Percorso A confermato**, Percorso B scartato. Markup osservato: righe `P/D/C/A/All
+  <Nome> [Icona subentrato|Icona sostituito] | <voti multipli separati da spazio> |
+  <colonne bonus separate da spazio, "-" se assente>` — coerente con quanto già
+  gestito da `HtmlVotiBonusAdapter` per il 2025-26, da verificare nel dettaglio le
+  colonne bonus (sembrano più di 8, ordine da confermare contro `LABEL_TO_CODE`).
 - Rate limiting esatto del sito non noto a priori — approccio conservativo di default
   (qualche centinaio di ms tra richieste), da aggiustare se emergono blocchi/429 durante
   il pilota.
@@ -152,11 +156,10 @@ questo piano (non rimandata a un secondo momento).
 
 ## 7. Linee di sviluppo
 
-0. **Verifica sorgente** (in corso) — determina Percorso A vs B (sezioni 4, 6).
-1. **Adapter**: Percorso A, variante leggera di `html-voti/bonus.ts` (fetch live + cache
-   su disco invece di file già salvati, `LABEL_TO_CODE` proprio verificato sui label
-   reali della fonte); Percorso B, nuovo adapter per-giocatore + player directory +
-   inversione della matrice prima di `upsertMatchdayBonuses`.
+1. **Adapter**: variante leggera di `html-voti/bonus.ts` (fetch live + cache su disco
+   invece di file già salvati, `LABEL_TO_CODE` da riverificare sui label reali della
+   fonte — la pagina storica mostra più colonne bonus di quelle già mappate per il
+   2025-26, sezione 6).
 2. **Vocabolario bonus e nomi** (in parallelo al punto 1): catalogare le etichette reali
    di un campione (1-2 giornate o 3-5 giocatori) della stagione pilota, mapparle su
    `bonus_kinds.code` esistenti; etichetta mai vista → nuova entry in `bonus_kinds`
