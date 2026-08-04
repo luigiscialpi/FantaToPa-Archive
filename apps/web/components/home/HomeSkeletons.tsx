@@ -28,6 +28,22 @@ export function TeamPanelSkeleton() {
   );
 }
 
+// Fallback delle 3 card rosa più costose (vedi RosterStatsCards), annidato
+// dentro il TeamPanelSkeleton/il pannello già montato — non un confine
+// <Suspense> di primo livello come le 3 sezioni sopra.
+export function RosterStatsCardsSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-stone-200 bg-white p-4">
+          <div className="mb-2 h-3 w-20 animate-pulse rounded bg-stone-200" />
+          <div className="h-6 w-16 animate-pulse rounded bg-stone-200" />
+        </div>
+      ))}
+    </>
+  );
+}
+
 export function SeasonGallerySkeleton() {
   return (
     <div className="p-4">

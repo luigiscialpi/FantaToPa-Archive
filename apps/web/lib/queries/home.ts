@@ -562,6 +562,29 @@ export type FieldedPlayer = { playerName: string; appearances: number };
 // ciascuna.
 type LineupSeason = { seasonId: string; seasonLabel: string; startsOn: string };
 
+// ID_CHUNK_SIZE va applicato a ogni `.in('id', ...)`/`.in('lineup_id', ...)`
+// la cui lista cresce con "tutte le stagioni di una squadra" (matchIds,
+// matchdayIds, lineupIds): con 7 stagioni (dopo l'aggiunta del 2012-13) la
+// lista di UUID supera la lunghezza URL accettata da Supabase/PostgREST per
+// un filtro `.in()` — fallisce con "fetch failed" lato server, terza volta
+// che ricorre lo stesso bug (già visto con 6 stagioni per matchIds, poi di
+// nuovo qui aggiungendo la 7ª per matchdayIds: NON basta chunkare un solo
+// `.in()` della catena, va rifatto per ognuno che scala con le stagioni).
+// 200 id (~36 caratteri l'uno) restano ben sotto il limite di ~16KB
+// sull'URL anche sommati agli altri filtri della query. competitionIds e
+// seasonIds NON hanno bisogno di chunking: sono già deduplicati a monte e
+// restano limitati al numero di competizioni/stagioni esistenti, non al
+// numero di partite/giornate/formazioni di una squadra.
+const ID_CHUNK_SIZE = 200;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 const getCampionatoLineupSeasons = cache(
   async (supabase: TypedSupabaseClient, teamId: string): Promise<Map<string, LineupSeason>> => {
     const { data: lineups, error: lineupsError } = await supabase
@@ -576,18 +599,29 @@ const getCampionatoLineupSeasons = cache(
     }
 
     const matchIds = [...new Set(lineups.map((lineup) => lineup.match_id))];
-    const { data: matches, error: matchesError } = await supabase.from('matches').select('id, matchday_id').in('id', matchIds);
-    if (matchesError) {
-      throw new Error(`Impossibile leggere le partite: ${matchesError.message}`);
+    const matches: { id: string; matchday_id: string }[] = [];
+    for (const matchIdsChunk of chunk(matchIds, ID_CHUNK_SIZE)) {
+      const { data: matchesPage, error: matchesError } = await supabase
+        .from('matches')
+        .select('id, matchday_id')
+        .in('id', matchIdsChunk);
+      if (matchesError) {
+        throw new Error(`Impossibile leggere le partite: ${matchesError.message}`);
+      }
+      matches.push(...matchesPage);
     }
 
     const matchdayIds = [...new Set(matches.map((match) => match.matchday_id))];
-    const { data: matchdays, error: matchdaysError } = await supabase
-      .from('matchdays')
-      .select('id, competition_id')
-      .in('id', matchdayIds);
-    if (matchdaysError) {
-      throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+    const matchdays: { id: string; competition_id: string }[] = [];
+    for (const matchdayIdsChunk of chunk(matchdayIds, ID_CHUNK_SIZE)) {
+      const { data: matchdaysPage, error: matchdaysError } = await supabase
+        .from('matchdays')
+        .select('id, competition_id')
+        .in('id', matchdayIdsChunk);
+      if (matchdaysError) {
+        throw new Error(`Impossibile leggere le giornate: ${matchdaysError.message}`);
+      }
+      matchdays.push(...matchdaysPage);
     }
 
     const competitionIds = [...new Set(matchdays.map((matchday) => matchday.competition_id))];
@@ -664,20 +698,22 @@ export async function getMostFieldedPlayers(
   // del vero totale).
   const appearancesByPlayer = new Map<string, number>();
   const pageSize = 1000;
-  for (let from = 0; ; from += pageSize) {
-    const { data: page, error: pageError } = await supabase
-      .from('lineup_players')
-      .select('player_id')
-      .in('lineup_id', lineupIds)
-      .eq('slot', 'titolare')
-      .range(from, from + pageSize - 1);
-    if (pageError) {
-      throw new Error(`Impossibile leggere i titolari: ${pageError.message}`);
+  for (const lineupIdsChunk of chunk(lineupIds, ID_CHUNK_SIZE)) {
+    for (let from = 0; ; from += pageSize) {
+      const { data: page, error: pageError } = await supabase
+        .from('lineup_players')
+        .select('player_id')
+        .in('lineup_id', lineupIdsChunk)
+        .eq('slot', 'titolare')
+        .range(from, from + pageSize - 1);
+      if (pageError) {
+        throw new Error(`Impossibile leggere i titolari: ${pageError.message}`);
+      }
+      for (const row of page) {
+        appearancesByPlayer.set(row.player_id, (appearancesByPlayer.get(row.player_id) ?? 0) + 1);
+      }
+      if (page.length < pageSize) break;
     }
-    for (const row of page) {
-      appearancesByPlayer.set(row.player_id, (appearancesByPlayer.get(row.player_id) ?? 0) + 1);
-    }
-    if (page.length < pageSize) break;
   }
 
   const topPlayerIds = [...appearancesByPlayer.entries()]
@@ -1134,23 +1170,25 @@ const getCampionatoFantavotoRows = cache(
     // campionato superano le 1000 righe di default per risposta.
     const rows: FantavotoRow[] = [];
     const pageSize = 1000;
-    for (let from = 0; ; from += pageSize) {
-      const { data: page, error: pageError } = await supabase
-        .from('lineup_players')
-        .select('player_id, fantavoto, lineup_id')
-        .in('lineup_id', lineupIds)
-        .eq('counts_for_total', true)
-        .range(from, from + pageSize - 1);
-      if (pageError) {
-        throw new Error(`Impossibile leggere i fantavoti: ${pageError.message}`);
+    for (const lineupIdsChunk of chunk(lineupIds, ID_CHUNK_SIZE)) {
+      for (let from = 0; ; from += pageSize) {
+        const { data: page, error: pageError } = await supabase
+          .from('lineup_players')
+          .select('player_id, fantavoto, lineup_id')
+          .in('lineup_id', lineupIdsChunk)
+          .eq('counts_for_total', true)
+          .range(from, from + pageSize - 1);
+        if (pageError) {
+          throw new Error(`Impossibile leggere i fantavoti: ${pageError.message}`);
+        }
+        for (const row of page) {
+          if (row.fantavoto === null) continue;
+          const season = lineupSeasons.get(row.lineup_id);
+          if (!season) continue;
+          rows.push({ playerId: row.player_id, fantavoto: row.fantavoto, season });
+        }
+        if (page.length < pageSize) break;
       }
-      for (const row of page) {
-        if (row.fantavoto === null) continue;
-        const season = lineupSeasons.get(row.lineup_id);
-        if (!season) continue;
-        rows.push({ playerId: row.player_id, fantavoto: row.fantavoto, season });
-      }
-      if (page.length < pageSize) break;
     }
     return rows;
   },

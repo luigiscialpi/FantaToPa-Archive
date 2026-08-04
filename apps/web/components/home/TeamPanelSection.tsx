@@ -2,26 +2,28 @@
 //
 // Pannello squadra personale come Server Component asincrono indipendente:
 // isolato in un proprio <Suspense> (vedi page.tsx) così le sue query più
-// pesanti (11 in parallelo, ciascuna su tutte le stagioni della squadra) non
-// bloccano il rendering di galleria stagioni/vetrina generale mentre sono
-// ancora in corso — quelle sezioni hanno un proprio Server Component e
-// possono comparire prima o dopo, indipendentemente da questa.
+// pesanti non bloccano il rendering di galleria stagioni/vetrina generale
+// mentre sono ancora in corso — quelle sezioni hanno un proprio Server
+// Component e possono comparire prima o dopo, indipendentemente da questa.
+// Le 3 query più costose in assoluto (roster stats, vedi RosterStatsCards)
+// hanno un secondo <Suspense> annidato qui dentro: il resto del pannello
+// compare non appena pronto, senza aspettare anche quelle.
+import { Suspense } from 'react';
 import { createClient } from '../../lib/supabase/server';
 import { getTeamBranding, brandingFor } from '../../lib/queries/team-branding';
 import {
   getAllTimeTitleCounts,
-  getBestPlayerSeasons,
   getLongestUnbeatenStreak,
-  getMostFieldedPlayers,
   getOpponentRecords,
   getPersonalRecords,
   getRivalryHighlight,
   getRosterLoyalty,
-  getRosterStandout,
   getStandingHistory,
 } from '../../lib/queries/home';
 import type { StandingsRow } from '../../lib/queries/classifica';
 import { TeamPanel } from './TeamPanel';
+import { RosterStatsCards } from './RosterStatsCards';
+import { RosterStatsCardsSkeleton } from './HomeSkeletons';
 
 type TeamPanelSectionProps = {
   teamId: string;
@@ -40,21 +42,17 @@ export async function TeamPanelSection({
 }: TeamPanelSectionProps) {
   const supabase = await createClient();
 
-  const [titleCounts, rivalry, records, keyPlayers, standingHistory, loyalty, standouts, seasonStandouts, streak, branding, teamRow, opponentRecords] =
-    await Promise.all([
-      getAllTimeTitleCounts(supabase),
-      getRivalryHighlight(supabase, teamId),
-      getPersonalRecords(supabase, teamId),
-      getMostFieldedPlayers(supabase, teamId),
-      getStandingHistory(supabase, teamId),
-      getRosterLoyalty(supabase, teamId),
-      getRosterStandout(supabase, teamId),
-      getBestPlayerSeasons(supabase, teamId),
-      getLongestUnbeatenStreak(supabase, teamId),
-      getTeamBranding(supabase, seasonId, [teamId]),
-      supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
-      getOpponentRecords(supabase, teamId),
-    ]);
+  const [titleCounts, rivalry, records, standingHistory, loyalty, streak, branding, teamRow, opponentRecords] = await Promise.all([
+    getAllTimeTitleCounts(supabase),
+    getRivalryHighlight(supabase, teamId),
+    getPersonalRecords(supabase, teamId),
+    getStandingHistory(supabase, teamId),
+    getRosterLoyalty(supabase, teamId),
+    getLongestUnbeatenStreak(supabase, teamId),
+    getTeamBranding(supabase, seasonId, [teamId]),
+    supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
+    getOpponentRecords(supabase, teamId),
+  ]);
 
   if (teamRow.error) {
     throw new Error(`Impossibile leggere la squadra: ${teamRow.error.message}`);
@@ -75,10 +73,12 @@ export async function TeamPanelSection({
         titles={titleCounts.get(teamId) ?? { campionati: 0, coppe: 0 }}
         rivalry={rivalry}
         records={records}
-        keyPlayers={keyPlayers}
         loyalty={loyalty}
-        standouts={standouts}
-        seasonStandouts={seasonStandouts}
+        rosterStatsSlot={
+          <Suspense fallback={<RosterStatsCardsSkeleton />}>
+            <RosterStatsCards teamId={teamId} />
+          </Suspense>
+        }
         streak={streak}
         bestOpponents={opponentRecords?.best ?? []}
         worstOpponents={opponentRecords?.worst ?? []}

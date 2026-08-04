@@ -4,15 +4,13 @@
 // Home solo se il profilo ha una squadra assegnata (profiles.team_id). Ogni
 // tessera degrada a un messaggio neutro quando manca il dato, invece di
 // nascondersi o mostrare zeri fabbricati.
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Trophy, Swords, TrendingUp } from 'lucide-react';
 import { Crest } from '../shared/Crest';
 import { StatCard } from './StatCard';
-import { KeyPlayersCard } from './KeyPlayersCard';
 import { StandingSparkline } from './StandingSparkline';
 import { RosterLoyaltyCard } from './RosterLoyaltyCard';
-import { RosterStandoutCard } from './RosterStandoutCard';
-import { PlayerSeasonStandoutCard } from './PlayerSeasonStandoutCard';
 import { UnbeatenStreakCard } from './UnbeatenStreakCard';
 import { BestRivalsCard } from './BestRivalsCard';
 import { WorstRivalsCard } from './WorstRivalsCard';
@@ -20,11 +18,8 @@ import type {
   TitleCounts,
   RivalryHighlight,
   MatchHighlight,
-  FieldedPlayer,
   StandingHistoryPoint,
   RosterLoyaltyEntry,
-  RosterStandout,
-  PlayerSeasonStandout,
   UnbeatenStreak,
   OpponentRecord,
 } from '../../lib/queries/home';
@@ -44,10 +39,10 @@ type TeamPanelProps = {
   titles: TitleCounts;
   rivalry: RivalryHighlight | null;
   records: { best: MatchHighlight | null; worst: MatchHighlight | null };
-  keyPlayers: FieldedPlayer[];
   loyalty: RosterLoyaltyEntry[];
-  standouts: RosterStandout[];
-  seasonStandouts: PlayerSeasonStandout[];
+  // Le 3 card rosa più costose: passate già pronte per lo streaming (il
+  // proprio <Suspense> è montato da TeamPanelSection), non come dati grezzi.
+  rosterStatsSlot: ReactNode;
   streak: UnbeatenStreak | null;
   bestOpponents: OpponentRecord[];
   worstOpponents: OpponentRecord[];
@@ -71,10 +66,8 @@ export function TeamPanel({
   titles,
   rivalry,
   records,
-  keyPlayers,
   loyalty,
-  standouts,
-  seasonStandouts,
+  rosterStatsSlot,
   streak,
   bestOpponents,
   worstOpponents,
@@ -139,8 +132,6 @@ export function TeamPanel({
           )}
         </StatCard>
 
-        <KeyPlayersCard players={keyPlayers} />
-
         <RosterLoyaltyCard loyalty={loyalty} />
 
         <StatCard label="Record personali">
@@ -173,9 +164,7 @@ export function TeamPanel({
 
         <WorstRivalsCard records={worstOpponents} />
 
-        <RosterStandoutCard standouts={standouts} />
-
-        <PlayerSeasonStandoutCard standouts={seasonStandouts} />
+        {rosterStatsSlot}
 
         <UnbeatenStreakCard streak={streak} />
 
