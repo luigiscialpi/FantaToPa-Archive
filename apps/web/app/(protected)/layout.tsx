@@ -42,12 +42,14 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   const seasons = await getSeasons(supabase);
 
   return (
-    // pb-20: riserva lo spazio per il banner fisso in basso (min-h-[50px] +
-    // safe-area-inset-bottom su iPhone col notch), solo quando è davvero
-    // configurato (adsEnabled()) — altrimenti resterebbe un margine vuoto
-    // senza motivo.
-    <div className={`min-h-screen bg-stone-200 bg-skin-desktop lg:py-6 ${adsEnabled() ? 'pb-20' : ''}`}>
-      <div className="max-w-5xl mx-auto bg-stone-100 min-h-screen lg:min-h-[calc(100vh-3rem)] lg:rounded-xl lg:shadow-xl border-stone-300 lg:border">
+    <div className="min-h-screen bg-stone-200 bg-skin-desktop lg:py-6">
+      {/* pb-20 va sulla card (bg-stone-100), non sul contenitore esterno
+          (bg-stone-200): altrimenti lo spazio riservato al banner fisso
+          in basso mostrava uno scalino con lo sfondo esterno più scuro,
+          visibile solo scorrendo fino in fondo alla pagina. */}
+      <div
+        className={`max-w-5xl mx-auto bg-stone-100 min-h-screen lg:min-h-[calc(100vh-3rem)] lg:rounded-xl lg:shadow-xl border-stone-300 lg:border ${adsEnabled() ? 'pb-20' : ''}`}
+      >
         <AppHeader profile={profile} seasons={seasons} />
         {children}
       </div>
