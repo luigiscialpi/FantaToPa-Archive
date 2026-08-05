@@ -64,10 +64,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // effetto — senza, il contenitore centrato "saltava" di ~7px tra
     // pagine con e senza scroll verticale.
     <html lang="it" className="[scrollbar-gutter:stable]">
-      <body className="bg-stone-100 text-stone-900 antialiased">
+      <head>
         <AdsenseScript />
-        {children}
-      </body>
+      </head>
+      <body className="bg-stone-100 text-stone-900 antialiased">{children}</body>
     </html>
   );
 }
