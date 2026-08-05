@@ -20,7 +20,8 @@ export function TeamPanelSkeleton() {
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="rounded-xl border border-stone-200 bg-white p-4">
             <div className="mb-2 h-3 w-20 animate-pulse rounded bg-stone-200" />
-            <div className="h-6 w-16 animate-pulse rounded bg-stone-200" />
+            <div className="mb-2 h-8 w-16 animate-pulse rounded bg-stone-200" />
+            <div className="h-16 w-full animate-pulse rounded bg-stone-200" />
           </div>
         ))}
       </div>
@@ -37,7 +38,8 @@ export function RosterStatsCardsSkeleton() {
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="rounded-xl border border-stone-200 bg-white p-4">
           <div className="mb-2 h-3 w-20 animate-pulse rounded bg-stone-200" />
-          <div className="h-6 w-16 animate-pulse rounded bg-stone-200" />
+          <div className="mb-2 h-7 w-16 animate-pulse rounded bg-stone-200" />
+          <div className="h-3 w-full animate-pulse rounded bg-stone-200" />
         </div>
       ))}
     </>
