@@ -7,9 +7,9 @@
 // bonus "porta inviolata" del regolamento Mantra della lega stessa (house
 // rule interna, non legato alla fonte fantacalcio.it).
 //
-// Evidenza raccolta (delta = fantavoto - voto per portieri titolari SENZA
-// nessun altro bonus già importato per quella giornata, quindi già
-// certamente un clean sheet secondo la fonte pubblica):
+// Evidenza raccolta (delta = fantavoto - voto per portieri, titolari o in
+// panchina, SENZA nessun altro bonus già importato per quella giornata,
+// quindi già certamente un clean sheet secondo la fonte pubblica):
 // - 2020-21/2021-22/2022-23: delta quasi sempre 0 -> regola non attiva.
 // - 2023-24: 124/131 righe pulite hanno delta=+1 (95%).
 // - 2024-25: 119/123 righe pulite hanno delta=+1 (97%).
@@ -106,7 +106,6 @@ async function main(): Promise<void> {
           'lineup_id',
           lineups.slice(i, i + 100).map((l) => l.id),
         )
-        .eq('slot', 'titolare')
         .in('player_id', goalkeeperIds)
         .not('voto', 'is', null)
         .not('fantavoto', 'is', null);
