@@ -58,7 +58,12 @@ export async function getCalendario(
     const { data: matchesRows, error: matchesError } = await supabase
       .from('matches')
       .select('id, matchday_id, home_team_id, away_team_id, home_score, away_score, home_goals, away_goals')
-      .in('matchday_id', matchdayIds);
+      .in('matchday_id', matchdayIds)
+      // Senza order esplicito l'ordine delle righe non è garantito e può
+      // cambiare da una query all'altra (visto concretamente: un UPDATE su
+      // una riga la spostava in fondo al suo gruppo giornata). `id` non ha
+      // un significato per l'utente, ma è quantomeno stabile nel tempo.
+      .order('id', { ascending: true });
 
     if (matchesError) {
       throw new Error(`Impossibile leggere le partite: ${matchesError.message}`);

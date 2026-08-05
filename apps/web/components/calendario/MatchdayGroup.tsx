@@ -6,9 +6,10 @@ type MatchdayGroupProps = {
   matchday: MatchdayGroupData;
   seasonSlug: string;
   competitionSlug: string;
+  editMode?: boolean;
 };
 
-export function MatchdayGroup({ matchday, seasonSlug, competitionSlug }: MatchdayGroupProps) {
+export function MatchdayGroup({ matchday, seasonSlug, competitionSlug, editMode = false }: MatchdayGroupProps) {
   return (
     <div
       id={`giornata-${matchday.number}`}
@@ -28,6 +29,7 @@ export function MatchdayGroup({ matchday, seasonSlug, competitionSlug }: Matchda
               seasonSlug={seasonSlug}
               competitionSlug={competitionSlug}
               matchdayNumber={matchday.number}
+              editMode={editMode}
             />
           ))}
         </div>
