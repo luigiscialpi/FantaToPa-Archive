@@ -12,7 +12,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LinkPending } from '../shared/LinkPending';
 
 const ITEMS = [
   { href: '/', label: 'Home', exact: true },
@@ -33,12 +32,11 @@ export function GlobalNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`inline-flex items-center gap-1.5 py-1.5 text-xs sm:text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors ${
+            className={`py-1.5 text-xs sm:text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors ${
               active ? 'border-amber-400 text-amber-300' : 'border-transparent text-brand-200/90 hover:text-white'
             }`}
           >
             {item.label}
-            <LinkPending />
           </Link>
         );
       })}
