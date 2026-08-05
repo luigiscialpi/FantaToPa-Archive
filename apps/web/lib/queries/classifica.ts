@@ -12,6 +12,11 @@ import { getTeamBranding, brandingFor } from './team-branding';
 type TypedSupabaseClient = SupabaseClient<Database>;
 
 export type StandingsRow = {
+  // Solo `getStandings` (snapshot reale della tabella `standings`) valorizza
+  // questo campo: `getStandingsForRange` calcola la classifica al volo dalle
+  // partite, non corrisponde a nessuna riga scrivibile. L'editing admin è
+  // possibile solo quando `id` non è null.
+  id: string | null;
   position: number | null;
   teamId: string;
   teamName: string;
@@ -36,7 +41,7 @@ export async function getStandings(
   const { data: standingsRows, error: standingsError } = await supabase
     .from('standings')
     .select(
-      'position, played, won, drawn, lost, goals_for, goals_against, goal_diff, points, total_fantapoints, team_id',
+      'id, position, played, won, drawn, lost, goals_for, goals_against, goal_diff, points, total_fantapoints, team_id',
     )
     .eq('competition_id', competitionId)
     .order('position', { ascending: true });
@@ -66,6 +71,7 @@ export async function getStandings(
     const team = teamsById.get(row.team_id);
 
     return {
+      id: row.id,
       position: row.position,
       teamId: row.team_id,
       teamName: brandingFor(branding, row.team_id).displayName ?? team?.canonical_name ?? '—',
@@ -257,6 +263,7 @@ export async function getStandingsForRange(
     const goalsAgainst = accumulator.goalsComplete ? accumulator.goalsAgainst : null;
 
     return {
+      id: null,
       position: null,
       teamId,
       teamName: brandingFor(branding, teamId).displayName ?? team?.canonical_name ?? '—',

@@ -22,9 +22,15 @@ export function DeleteUserButton({ userId, userLabel }: { userId: string; userLa
       >
         Elimina
       </button>
-      <dialog ref={dialogRef} className="rounded-lg p-0 backdrop:bg-stone-900/50 max-w-sm w-full">
+      {/* m-auto: il reset margin:0 di Tailwind Preflight sovrascrive il margin:auto
+          nativo con cui il browser centra un <dialog> aperto in showModal(). */}
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={`delete-user-${userId}-desc`}
+        className="m-auto rounded-lg p-0 backdrop:bg-stone-900/50 max-w-sm w-[calc(100%-2rem)]"
+      >
         <form action={deleteUserAction.bind(null, userId)} className="p-5 space-y-4">
-          <p className="text-sm text-stone-700">
+          <p id={`delete-user-${userId}-desc`} className="text-sm text-stone-700">
             Eliminare definitivamente l&apos;account di <span className="font-semibold">{userLabel}</span>? L&apos;azione
             non è reversibile.
           </p>

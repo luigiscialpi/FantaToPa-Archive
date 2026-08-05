@@ -63,11 +63,16 @@ export function MatchCard({ match, expanded, onToggle, editMode = false, bonusKi
       </button>
 
       {expanded && (
-        <div className="px-4 py-3 flex flex-row gap-3 sm:gap-6">
+        // In modifica i form (voto/fantavoto/bonus) hanno bisogno di più
+        // larghezza di quanto ne stia in metà colonna su mobile: due colonne
+        // affiancate a quella larghezza producevano input/testo sovrapposti
+        // e illeggibili. Sola lettura resta affiancata anche su mobile
+        // (righe compatte, nessun problema di spazio).
+        <div className={`px-4 py-3 flex gap-3 sm:gap-6 ${editMode ? 'flex-col sm:flex-row' : 'flex-row'}`}>
           <LineupColumn lineup={home} editMode={editMode} bonusKinds={bonusKinds} />
           {away && (
             <>
-              <div className="w-px bg-stone-200 shrink-0" />
+              <div className={editMode ? 'sm:w-px sm:bg-stone-200 h-px bg-stone-200 sm:h-auto shrink-0' : 'w-px bg-stone-200 shrink-0'} />
               <LineupColumn lineup={away} editMode={editMode} bonusKinds={bonusKinds} />
             </>
           )}

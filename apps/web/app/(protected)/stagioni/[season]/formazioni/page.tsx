@@ -100,12 +100,15 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
     <main>
       <ScrollToAnchor />
       <div className="p-4">
-        <div className="flex flex-row items-center justify-between gap-3 mb-4">
+        <div className="flex flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <div>
             <h1 className="font-serif font-bold text-xl text-brand-950 mb-0.5">{season.label}</h1>
             <p className="text-xs sm:text-sm text-stone-500">{activeCompetition.name}</p>
           </div>
-          <div className="shrink-0 flex items-center gap-2 justify-end">
+          {/* Su mobile "Modifica" sopra la select giornata (non affiancati:
+              la select troncava a "37ª giornat"), da sm in su tornano sulla
+              stessa riga. */}
+          <div className="shrink-0 flex flex-col sm:flex-row items-end sm:items-center gap-2">
             {isAdmin && (
               <Suspense>
                 <EditModeToggle active={editMode} />
