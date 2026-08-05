@@ -6,7 +6,7 @@
 // nascondersi o mostrare zeri fabbricati.
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Trophy, Swords, TrendingUp } from 'lucide-react';
+import { Trophy, Swords, TrendingUp, CalendarDays } from 'lucide-react';
 import { Crest } from '../shared/Crest';
 import { StatCard } from './StatCard';
 import { StandingSparkline } from './StandingSparkline';
@@ -43,6 +43,7 @@ type TeamPanelProps = {
   rosterStatsSlot: ReactNode;
   bestOpponents: OpponentRecord[];
   worstOpponents: OpponentRecord[];
+  seasonsParticipated: number;
 };
 
 function formatMatchdayLink(record: MatchHighlight) {
@@ -67,6 +68,7 @@ export function TeamPanel({
   rosterStatsSlot,
   bestOpponents,
   worstOpponents,
+  seasonsParticipated,
 }: TeamPanelProps) {
   const gap =
     standing && standing.leaderPoints !== null && standing.points !== null ? standing.leaderPoints - standing.points : null;
@@ -113,6 +115,13 @@ export function TeamPanel({
           </div>
           <div className="text-xs text-stone-500">
             2° posto: <strong>{titles.secondiCampionato}</strong> · 3° posto: <strong>{titles.terziCampionato}</strong>
+          </div>
+        </StatCard>
+
+        <StatCard label="Stagioni disputate">
+          <CalendarDays size={18} className="mb-1 text-brand-500" />
+          <div className="font-serif text-2xl font-bold tabular-nums text-brand-800">
+            {seasonsParticipated}
           </div>
         </StatCard>
 

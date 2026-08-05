@@ -1084,6 +1084,22 @@ export async function getStandingHistory(supabase: TypedSupabaseClient, teamId: 
   return points.map(({ seasonSlug, seasonLabel, position }) => ({ seasonSlug, seasonLabel, position }));
 }
 
+// team_seasons: una riga per (team_id, season_id) indipendentemente dalla
+// competizione (Campionato o solo Coppa) — a differenza di getStandingHistory
+// (solo Campionato), è la fonte corretta per "in quante stagioni ha
+// partecipato", altrimenti una stagione senza classifica Campionato
+// risulterebbe non conteggiata pur avendo la squadra effettivamente giocato.
+export async function getSeasonsParticipatedCount(supabase: TypedSupabaseClient, teamId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('team_seasons')
+    .select('id', { count: 'exact', head: true })
+    .eq('team_id', teamId);
+  if (error) {
+    throw new Error(`Impossibile leggere le stagioni disputate: ${error.message}`);
+  }
+  return count ?? 0;
+}
+
 export type RosterLoyaltyEntry = { playerName: string; seasonsCount: number };
 
 // "Fedeltà": in quante stagioni (anche NON consecutive) un giocatore è stato

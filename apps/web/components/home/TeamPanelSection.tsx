@@ -17,6 +17,7 @@ import {
   getPersonalRecords,
   getRivalryHighlight,
   getRosterLoyalty,
+  getSeasonsParticipatedCount,
   getStandingHistory,
   type TitleCounts,
 } from '../../lib/queries/home';
@@ -43,7 +44,7 @@ export async function TeamPanelSection({
 }: TeamPanelSectionProps) {
   const supabase = await createClient();
 
-  const [titleCountEntries, rivalry, records, standingHistory, loyalty, branding, teamRow, opponentRecords] = await Promise.all([
+  const [titleCountEntries, rivalry, records, standingHistory, loyalty, branding, teamRow, opponentRecords, seasonsParticipated] = await Promise.all([
     // unstable_cache serializza il risultato: una Map non sopravvive al
     // round-trip (torna un oggetto vuoto senza .get), quindi si cachea
     // l'array di entries e si ricostruisce la Map subito dopo.
@@ -60,6 +61,7 @@ export async function TeamPanelSection({
     getTeamBranding(supabase, seasonId, [teamId]),
     supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
     cachedHomeStat('opponent-records', teamId, () => getOpponentRecords(supabase, teamId)),
+    cachedHomeStat('seasons-participated', teamId, () => getSeasonsParticipatedCount(supabase, teamId)),
   ]);
   const titleCounts = new Map<string, TitleCounts>(titleCountEntries);
 
@@ -90,6 +92,7 @@ export async function TeamPanelSection({
         }
         bestOpponents={opponentRecords?.best ?? []}
         worstOpponents={opponentRecords?.worst ?? []}
+        seasonsParticipated={seasonsParticipated}
       />
     </div>
   );
