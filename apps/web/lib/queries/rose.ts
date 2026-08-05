@@ -22,6 +22,7 @@ export type TeamOption = {
 };
 
 export type RosterPlayerRow = {
+  rosterId: string;
   playerId: string;
   playerName: string;
   roleCodes: string[];
@@ -115,7 +116,7 @@ export async function getRoster(
 ): Promise<RosterPlayerRow[]> {
   const { data: rosterRows, error: rosterError } = await supabase
     .from('rosters')
-    .select('player_id, real_team, cost')
+    .select('id, player_id, real_team, cost')
     .eq('season_id', seasonId)
     .eq('team_id', teamId);
 
@@ -157,6 +158,7 @@ export async function getRoster(
   }
 
   const players: RosterPlayerRow[] = rosterRows.map((row) => ({
+    rosterId: row.id,
     playerId: row.player_id,
     playerName: playerNameById.get(row.player_id) ?? '—',
     roleCodes: roleCodesByPlayer.get(row.player_id) ?? [],

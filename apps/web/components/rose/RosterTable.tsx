@@ -1,5 +1,6 @@
 // apps/web/components/rose/RosterTable.tsx
 import type { RosterPlayerRow } from '../../lib/queries/rose';
+import { updateRosterPlayerAction } from '../../lib/admin/rose-actions';
 
 function RoleBadges({ roleCodes }: { roleCodes: string[] }) {
   if (roleCodes.length === 0) {
@@ -20,7 +21,7 @@ function RoleBadges({ roleCodes }: { roleCodes: string[] }) {
   );
 }
 
-export function RosterTable({ players }: { players: RosterPlayerRow[] }) {
+export function RosterTable({ players, editMode = false }: { players: RosterPlayerRow[]; editMode?: boolean }) {
   if (players.length === 0) {
     return <div className="bg-white px-4 py-8 text-center text-sm text-stone-500">Rosa non disponibile per questa squadra.</div>;
   }
@@ -51,18 +52,62 @@ export function RosterTable({ players }: { players: RosterPlayerRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {players.map((player) => (
-            <tr key={player.playerId} className="border-t border-stone-100 first:border-t-0">
-              <td className="px-2 py-2">
-                <RoleBadges roleCodes={player.roleCodes} />
-              </td>
-              <td className="px-2 py-2 text-sm font-semibold text-stone-800 whitespace-nowrap">
-                {player.playerName}
-              </td>
-              <td className="px-2 py-2 text-stone-500 whitespace-nowrap">{player.realTeam ?? '–'}</td>
-              <td className="px-2 py-2 text-right tabular-nums text-stone-600 sm:text-center">{player.cost ?? '–'}</td>
-            </tr>
-          ))}
+          {players.map((player) => {
+            if (!editMode) {
+              return (
+                <tr key={player.playerId} className="border-t border-stone-100 first:border-t-0">
+                  <td className="px-2 py-2">
+                    <RoleBadges roleCodes={player.roleCodes} />
+                  </td>
+                  <td className="px-2 py-2 text-sm font-semibold text-stone-800 whitespace-nowrap">
+                    {player.playerName}
+                  </td>
+                  <td className="px-2 py-2 text-stone-500 whitespace-nowrap">{player.realTeam ?? '–'}</td>
+                  <td className="px-2 py-2 text-right tabular-nums text-stone-600 sm:text-center">{player.cost ?? '–'}</td>
+                </tr>
+              );
+            }
+
+            // Ruolo non editabile qui: player_roles è per (giocatore,
+            // stagione), condiviso fra tutte le squadre — non un dato di
+            // questa rosa.
+            const formId = `rosa-${player.rosterId}`;
+            return (
+              <tr key={player.playerId} className="border-t border-stone-100 first:border-t-0 bg-amber-50/40">
+                <td className="px-2 py-2">
+                  <RoleBadges roleCodes={player.roleCodes} />
+                </td>
+                <td className="px-2 py-2 text-sm font-semibold text-stone-800 whitespace-nowrap">
+                  {player.playerName}
+                  <form id={formId} action={updateRosterPlayerAction.bind(null, player.rosterId)} />
+                </td>
+                <td className="px-2 py-2">
+                  <input
+                    type="text"
+                    form={formId}
+                    name="realTeam"
+                    defaultValue={player.realTeam ?? ''}
+                    className="w-full min-w-0 rounded border border-stone-300 text-xs px-1.5 py-1"
+                  />
+                </td>
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-1 justify-end sm:justify-center">
+                    <input
+                      type="number"
+                      step="0.5"
+                      form={formId}
+                      name="cost"
+                      defaultValue={player.cost ?? ''}
+                      className="w-14 rounded border border-stone-300 text-xs px-1.5 py-1 text-center tabular-nums"
+                    />
+                    <button type="submit" form={formId} className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1">
+                      Salva
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
