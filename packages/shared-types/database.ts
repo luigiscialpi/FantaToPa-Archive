@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_edits: {
+        Row: {
+          action: string
+          admin_user_id: string
+          after: Json | null
+          before: Json | null
+          created_at: string
+          id: string
+          row_id: string | null
+          table_name: string
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          row_id?: string | null
+          table_name: string
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          row_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
       bonus_kinds: {
         Row: {
           code: string
@@ -928,6 +961,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          role: string
+          status: string
+          team_id: string
+          team_name: string
+        }[]
+      }
+      admin_set_user_role: {
+        Args: { new_role: string; target_user_id: string }
+        Returns: undefined
+      }
+      admin_set_user_team: {
+        Args: { new_team_id: string; target_user_id: string }
+        Returns: undefined
+      }
       approve_registration: { Args: { request_id: string }; Returns: undefined }
       can_read_league_data: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
