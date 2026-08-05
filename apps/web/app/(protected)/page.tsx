@@ -3,9 +3,12 @@ import { createClient } from '../../lib/supabase/server';
 import { getSessionState } from '../../lib/auth/session';
 import { getCompetitions, getSeasons } from '../../lib/queries/seasons';
 import { getStandings } from '../../lib/queries/classifica';
-import { TeamPanelSection } from '../../components/home/TeamPanelSection';
+import { getAllTeams } from '../../lib/queries/teams';
+import { getTeamBranding } from '../../lib/queries/team-branding';
+import { SeasonHero } from '../../components/home/SeasonHero';
+import { TeamQuickPanel } from '../../components/home/TeamQuickPanel';
 import { LeagueShowcaseSection } from '../../components/home/LeagueShowcaseSection';
-import { TeamPanelSkeleton, LeagueShowcaseSkeleton } from '../../components/home/HomeSkeletons';
+import { LeagueShowcaseSkeleton } from '../../components/home/HomeSkeletons';
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -41,6 +44,15 @@ export default async function HomePage() {
   const ownStanding = profile?.teamId ? (standings.find((row) => row.teamId === profile.teamId) ?? null) : null;
   const leaderStanding = standings.find((row) => row.position === 1) ?? null;
 
+  // Pannello squadra leggero: niente più le query pesanti (rivalità/record/
+  // storico/fedeltà rosa/avversari, ora solo in /profilo-squadra) — solo
+  // dati già disponibili qui più un invito a Profilo Squadra per chi vuole
+  // approfondire. getAllTeams/getTeamBranding sono query leggere (una riga
+  // per squadra), non serve un confine <Suspense> dedicato.
+  const ownTeamId = profile?.teamId ?? null;
+  const ownTeam = ownTeamId ? ((await getAllTeams(supabase)).find((team) => team.id === ownTeamId) ?? null) : null;
+  const ownLogoUrl = ownTeamId ? ((await getTeamBranding(supabase, latestSeason.id, [ownTeamId])).get(ownTeamId)?.logoUrl ?? null) : null;
+
   // Le 2 sezioni sotto sono Server Component asincroni indipendenti, ognuna
   // con le proprie query e il proprio confine <Suspense>: possono comparire
   // in streaming man mano che i rispettivi dati sono pronti, invece di
@@ -49,16 +61,16 @@ export default async function HomePage() {
   // bacheca/galleria/vetrina — erano in un unico await prima del render).
   return (
     <main>
-      {profile?.teamId && (
-        <Suspense fallback={<TeamPanelSkeleton />}>
-          <TeamPanelSection
-            teamId={profile.teamId}
-            seasonId={latestSeason.id}
-            seasonSlug={latestSeason.slug}
-            ownStanding={ownStanding}
-            leaderStanding={leaderStanding}
-          />
-        </Suspense>
+      <SeasonHero seasons={seasons} />
+      {ownTeam && (
+        <TeamQuickPanel
+          teamName={ownTeam.name}
+          teamSlug={ownTeam.slug}
+          logoUrl={ownLogoUrl}
+          seasonSlug={latestSeason.slug}
+          ownStanding={ownStanding}
+          leaderStanding={leaderStanding}
+        />
       )}
       <Suspense fallback={<LeagueShowcaseSkeleton />}>
         <LeagueShowcaseSection
