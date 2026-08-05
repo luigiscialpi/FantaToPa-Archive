@@ -1,5 +1,6 @@
 // apps/web/components/formazioni/PlayerRow.tsx
 import type { LineupPlayerRow, PlayerBonus } from '../../lib/queries/formazioni';
+import { addPlayerBonusAction, removePlayerBonusAction, updateLineupPlayerAction } from '../../lib/admin/formazioni-actions';
 
 // Spritesheet ufficiale fantacalcio.it (self-hosted in public/icons, non
 // linkato dal CDN esterno per non dipendere dalla sua disponibilità): 32
@@ -54,26 +55,32 @@ function SpriteIcon({ index, size, label }: { index: number; size: number; label
   );
 }
 
-function BonusBadges({ bonuses }: { bonuses: PlayerBonus[] }) {
-  if (bonuses.length === 0) return null;
+function BonusBadges({ bonuses, editable }: { bonuses: PlayerBonus[]; editable: boolean }) {
+  if (bonuses.length === 0 && !editable) return null;
   return (
-    <span className="flex items-center gap-1 shrink-0">
+    <span className="flex items-center gap-1 shrink-0 flex-wrap">
       {bonuses.map((bonus, index) => {
         const spriteIndex = SPRITE_ICON_INDEX[bonus.code];
-        if (spriteIndex !== undefined) {
-          return (
-            <SpriteIcon
-              key={`${bonus.code}-${index}`}
-              index={spriteIndex}
-              size={SPRITE_CELL_PX / 2}
-              label={bonus.label}
-            />
+        const icon =
+          spriteIndex !== undefined ? (
+            <SpriteIcon index={spriteIndex} size={SPRITE_CELL_PX / 2} label={bonus.label} />
+          ) : (
+            <span className="text-sm" title={bonus.label}>
+              {FALLBACK_ICON[bonus.code] ?? '•'}
+            </span>
           );
+
+        if (!editable) {
+          return <span key={`${bonus.code}-${index}`}>{icon}</span>;
         }
+
         return (
-          <span key={`${bonus.code}-${index}`} className="text-sm" title={bonus.label}>
-            {FALLBACK_ICON[bonus.code] ?? '•'}
-          </span>
+          <form key={bonus.id} action={removePlayerBonusAction.bind(null, bonus.id)} className="flex items-center">
+            {icon}
+            <button type="submit" title={`Rimuovi ${bonus.label}`} className="text-[10px] text-red-600 leading-none ml-0.5">
+              ✕
+            </button>
+          </form>
         );
       })}
     </span>
@@ -91,7 +98,17 @@ function fantavotoClasses(voto: number | null, fantavoto: number | null): string
   return 'text-stone-600 font-medium';
 }
 
-export function PlayerRow({ player }: { player: LineupPlayerRow }) {
+export function PlayerRow({
+  player,
+  editMode = false,
+  bonusKinds = [],
+  bonusMatchdayId,
+}: {
+  player: LineupPlayerRow;
+  editMode?: boolean;
+  bonusKinds?: { code: string; label: string }[];
+  bonusMatchdayId?: string;
+}) {
   // Come nel file sorgente: chi non conta per il totale squadra è scritto
   // in un colore più leggero (l'intera riga, non solo il fantavoto) — non
   // ha senso enfatizzare con verde/rosso uno scarto che non viene comunque
@@ -100,6 +117,62 @@ export function PlayerRow({ player }: { player: LineupPlayerRow }) {
   const nameColor = muted ? 'text-stone-300' : 'text-stone-700';
   const votoColor = muted ? 'text-stone-300' : 'text-stone-400';
   const fantavotoColor = muted ? 'text-stone-300' : fantavotoClasses(player.voto, player.fantavoto);
+
+  if (editMode && bonusMatchdayId) {
+    return (
+      <div className="py-2 space-y-1.5" title={muted ? 'Non conta per il totale squadra' : undefined}>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm truncate flex-1 min-w-0 ${nameColor}`}>{player.playerName}</span>
+          <BonusBadges bonuses={player.bonuses} editable />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={updateLineupPlayerAction.bind(null, player.lineupPlayerId)} className="flex items-center gap-1.5">
+            <input
+              type="number"
+              step="0.5"
+              name="voto"
+              defaultValue={player.voto ?? ''}
+              placeholder="Voto"
+              className="w-14 rounded border border-stone-300 text-xs px-1.5 py-1"
+            />
+            <input
+              type="number"
+              step="0.5"
+              name="fantavoto"
+              defaultValue={player.fantavoto ?? ''}
+              placeholder="Fvoto"
+              className="w-14 rounded border border-stone-300 text-xs px-1.5 py-1"
+            />
+            <label className="flex items-center gap-1 text-[11px] text-stone-500">
+              <input type="checkbox" name="countsForTotal" defaultChecked={player.countsForTotal} />
+              Conta
+            </label>
+            <button type="submit" className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1">
+              Salva
+            </button>
+          </form>
+          <form
+            action={addPlayerBonusAction.bind(null, bonusMatchdayId, player.playerId)}
+            className="flex items-center gap-1.5"
+          >
+            <select name="kindCode" className="rounded border border-stone-300 text-xs px-1.5 py-1" defaultValue="">
+              <option value="" disabled>
+                + bonus/malus
+              </option>
+              {bonusKinds.map((kind) => (
+                <option key={kind.code} value={kind.code}>
+                  {kind.label}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="rounded bg-stone-200 text-stone-700 text-xs font-semibold px-2 py-1">
+              Aggiungi
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -119,7 +192,7 @@ export function PlayerRow({ player }: { player: LineupPlayerRow }) {
             di squadra: mostrarli anche quando la riga non conta per il
             totale (es. panchinaro andato comunque in campo nella Serie A
             reale) — solo lo stile della riga resta smorzato. */}
-        <BonusBadges bonuses={player.bonuses} />
+        <BonusBadges bonuses={player.bonuses} editable={false} />
         <span className={`text-xs w-6 text-right tabular-nums shrink-0 ${votoColor}`}>{player.voto ?? '–'}</span>
         <span className={`text-xs w-8 text-right tabular-nums shrink-0 ${fantavotoColor}`}>
           {player.fantavoto ?? '–'}

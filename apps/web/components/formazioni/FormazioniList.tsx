@@ -14,9 +14,11 @@ type FormazioniListProps = {
   // Dalla query ?partita=, quando si arriva da un link puntuale (es. una
   // partita in Calendario): apre quella invece della prima di default.
   initialExpandedMatchId?: string | null;
+  editMode?: boolean;
+  bonusKinds?: { code: string; label: string }[];
 };
 
-export function FormazioniList({ matches, initialExpandedMatchId }: FormazioniListProps) {
+export function FormazioniList({ matches, initialExpandedMatchId, editMode = false, bonusKinds = [] }: FormazioniListProps) {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(
     initialExpandedMatchId ?? matches[0]?.matchId ?? null,
   );
@@ -29,6 +31,8 @@ export function FormazioniList({ matches, initialExpandedMatchId }: FormazioniLi
           match={match}
           expanded={expandedMatchId === match.matchId}
           onToggle={() => setExpandedMatchId((current) => (current === match.matchId ? null : match.matchId))}
+          editMode={editMode}
+          bonusKinds={bonusKinds}
         />
       ))}
     </div>

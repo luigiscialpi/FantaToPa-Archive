@@ -13,7 +13,15 @@ function formatSubmittedAt(iso: string): string {
   return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
 }
 
-export function LineupColumn({ lineup }: { lineup: TeamLineup }) {
+export function LineupColumn({
+  lineup,
+  editMode = false,
+  bonusKinds = [],
+}: {
+  lineup: TeamLineup;
+  editMode?: boolean;
+  bonusKinds?: { code: string; label: string }[];
+}) {
   return (
     <div className="flex-1 min-w-0">
       <div className="flex items-center justify-center mb-1.5">
@@ -27,7 +35,13 @@ export function LineupColumn({ lineup }: { lineup: TeamLineup }) {
       ) : (
         <div className="divide-y divide-stone-100">
           {lineup.starters.map((player) => (
-            <PlayerRow key={player.playerId} player={player} />
+            <PlayerRow
+              key={player.playerId}
+              player={player}
+              editMode={editMode}
+              bonusKinds={bonusKinds}
+              bonusMatchdayId={lineup.bonusMatchdayId}
+            />
           ))}
         </div>
       )}
@@ -41,7 +55,13 @@ export function LineupColumn({ lineup }: { lineup: TeamLineup }) {
           </div>
           <div className="divide-y divide-stone-100">
             {lineup.bench.map((player) => (
-              <PlayerRow key={player.playerId} player={player} />
+              <PlayerRow
+                key={player.playerId}
+                player={player}
+                editMode={editMode}
+                bonusKinds={bonusKinds}
+                bonusMatchdayId={lineup.bonusMatchdayId}
+              />
             ))}
           </div>
         </>

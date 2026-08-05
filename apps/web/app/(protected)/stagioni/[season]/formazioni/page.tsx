@@ -1,25 +1,31 @@
 // apps/web/app/(protected)/stagioni/[season]/formazioni/page.tsx
 import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { createClient } from '../../../../../lib/supabase/server';
 import { getCompetitions, getSeasons } from '../../../../../lib/queries/seasons';
-import { getFormazioni, getGironeFormazioni, getMatchdayOptions } from '../../../../../lib/queries/formazioni';
+import { getBonusKinds, getFormazioni, getGironeFormazioni, getMatchdayOptions } from '../../../../../lib/queries/formazioni';
+import { getSessionState } from '../../../../../lib/auth/session';
 import { MatchdaySelector } from '../../../../../components/formazioni/MatchdaySelector';
 import { FormazioniList } from '../../../../../components/formazioni/FormazioniList';
 import { GironeFormazioniList } from '../../../../../components/formazioni/GironeFormazioniList';
 import { DataGapNotice } from '../../../../../components/shared/DataGapNotice';
 import { ScrollToAnchor } from '../../../../../components/shared/ScrollToAnchor';
+import { EditModeToggle } from '../../../../../components/admin/EditModeToggle';
 
 type FormazioniPageProps = {
   params: Promise<{ season: string }>;
-  searchParams: Promise<{ competizione?: string; giornata?: string; partita?: string }>;
+  searchParams: Promise<{ competizione?: string; giornata?: string; partita?: string; modifica?: string }>;
 };
 
 export default async function FormazioniPage({ params, searchParams }: FormazioniPageProps) {
   const { season: seasonSlug } = await params;
-  const { competizione, giornata, partita } = await searchParams;
+  const { competizione, giornata, partita, modifica } = await searchParams;
 
   const supabase = await createClient();
+  const session = await getSessionState();
+  const isAdmin = session.kind === 'autenticato' && session.profile.role === 'admin';
+  const editMode = isAdmin && modifica === '1';
   const seasons = await getSeasons(supabase);
   const season = seasons.find((candidate) => candidate.slug === seasonSlug);
 
@@ -62,13 +68,20 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
   const emptyMessage =
     'Le formazioni di questa giornata non sono disponibili: i dati sorgente per questa stagione non le includono.';
 
+  const bonusKinds = editMode ? await getBonusKinds(supabase) : [];
+
   // Coppa Girone A/B (format_code 'gironi'): "formula uno", non sfide 1v1 —
   // vedi getGironeFormazioni. Il resto delle competizioni (campionato,
   // fase finale) mantiene le MatchCard a coppie di sempre.
   let content: ReactNode;
   if (activeCompetition.formatCode === 'gironi') {
     const teams = await getGironeFormazioni(supabase, activeMatchday.id, season.id);
-    content = teams.length === 0 ? <DataGapNotice message={emptyMessage} /> : <GironeFormazioniList teams={teams} />;
+    content =
+      teams.length === 0 ? (
+        <DataGapNotice message={emptyMessage} />
+      ) : (
+        <GironeFormazioniList teams={teams} editMode={editMode} bonusKinds={bonusKinds} />
+      );
   } else {
     const matches = await getFormazioni(supabase, activeMatchday.id, season.id);
     // Se ?partita= non corrisponde a nessuna partita di questa giornata
@@ -79,7 +92,7 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
       matches.length === 0 ? (
         <DataGapNotice message={emptyMessage} />
       ) : (
-        <FormazioniList matches={matches} initialExpandedMatchId={activeMatchId} />
+        <FormazioniList matches={matches} initialExpandedMatchId={activeMatchId} editMode={editMode} bonusKinds={bonusKinds} />
       );
   }
 
@@ -92,7 +105,12 @@ export default async function FormazioniPage({ params, searchParams }: Formazion
             <h1 className="font-serif font-bold text-xl text-brand-950 mb-0.5">{season.label}</h1>
             <p className="text-xs sm:text-sm text-stone-500">{activeCompetition.name}</p>
           </div>
-          <div className="shrink-0 flex justify-end">
+          <div className="shrink-0 flex items-center gap-2 justify-end">
+            {isAdmin && (
+              <Suspense>
+                <EditModeToggle active={editMode} />
+              </Suspense>
+            )}
             <MatchdaySelector
               seasonSlug={season.slug}
               competitionSlug={activeCompetition.slug}

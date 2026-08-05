@@ -12,9 +12,11 @@ type MatchCardProps = {
   match: FormazioniMatch;
   expanded: boolean;
   onToggle: () => void;
+  editMode?: boolean;
+  bonusKinds?: { code: string; label: string }[];
 };
 
-export function MatchCard({ match, expanded, onToggle }: MatchCardProps) {
+export function MatchCard({ match, expanded, onToggle, editMode = false, bonusKinds = [] }: MatchCardProps) {
   const { home, away } = match;
 
   return (
@@ -62,11 +64,11 @@ export function MatchCard({ match, expanded, onToggle }: MatchCardProps) {
 
       {expanded && (
         <div className="px-4 py-3 flex flex-row gap-3 sm:gap-6">
-          <LineupColumn lineup={home} />
+          <LineupColumn lineup={home} editMode={editMode} bonusKinds={bonusKinds} />
           {away && (
             <>
               <div className="w-px bg-stone-200 shrink-0" />
-              <LineupColumn lineup={away} />
+              <LineupColumn lineup={away} editMode={editMode} bonusKinds={bonusKinds} />
             </>
           )}
         </div>

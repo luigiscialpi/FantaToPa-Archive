@@ -12,9 +12,11 @@ import type { TeamLineup } from '../../lib/queries/formazioni';
 type GironeTeamCardProps = {
   rank: number;
   lineup: TeamLineup;
+  editMode?: boolean;
+  bonusKinds?: { code: string; label: string }[];
 };
 
-export function GironeTeamCard({ rank, lineup }: GironeTeamCardProps) {
+export function GironeTeamCard({ rank, lineup, editMode = false, bonusKinds = [] }: GironeTeamCardProps) {
   return (
     <div className="rounded-xl bg-white border border-stone-200 overflow-hidden">
       <div className="bg-brand-600 text-stone-50 px-3 sm:px-4 py-3 flex items-center gap-3">
@@ -28,7 +30,7 @@ export function GironeTeamCard({ rank, lineup }: GironeTeamCardProps) {
         </div>
       </div>
       <div className="px-3 sm:px-4 py-3">
-        <LineupColumn lineup={lineup} />
+        <LineupColumn lineup={lineup} editMode={editMode} bonusKinds={bonusKinds} />
       </div>
     </div>
   );

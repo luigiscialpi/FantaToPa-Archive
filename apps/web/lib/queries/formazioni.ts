@@ -43,11 +43,13 @@ export async function getMatchdayOptions(
 }
 
 export type PlayerBonus = {
+  id: string;
   code: string;
   label: string;
 };
 
 export type LineupPlayerRow = {
+  lineupPlayerId: string;
   playerId: string;
   playerName: string;
   slot: 'titolare' | 'panchina';
@@ -74,6 +76,12 @@ export type TeamLineup = {
   submittedAt: string | null;
   starters: LineupPlayerRow[];
   bench: LineupPlayerRow[];
+  // Giornata a cui vanno scritti nuovi bonus/malus: coincide con la
+  // giornata mostrata per il Campionato, ma per una Coppa derivata (vedi
+  // matchday_bonus_sources) è la giornata di Campionato sorgente — un bonus
+  // è un evento della partita REALE, condiviso da tutte le squadre che
+  // schierano quel giocatore quella giornata.
+  bonusMatchdayId: string;
 };
 
 export type FormazioniMatch = {
@@ -141,10 +149,22 @@ export async function getFormazioni(
   const lineupIds = lineups.map((lineup) => lineup.id);
   const playersByLineup = new Map<string, LineupPlayerRow[]>();
 
+  // Sempre risolta (indipendentemente da lineupIds), serve anche solo per
+  // sapere DOVE scrivere un nuovo bonus/malus in modalità modifica.
+  const { data: bonusSourceRow, error: bonusSourceError } = await supabase
+    .from('matchday_bonus_sources')
+    .select('source_matchday_id')
+    .eq('matchday_id', matchdayId)
+    .maybeSingle();
+  if (bonusSourceError) {
+    throw new Error(`Impossibile leggere la corrispondenza bonus: ${bonusSourceError.message}`);
+  }
+  const bonusMatchdayId = bonusSourceRow?.source_matchday_id ?? matchdayId;
+
   if (lineupIds.length > 0) {
     const { data: lineupPlayersRows, error: lineupPlayersError } = await supabase
       .from('lineup_players')
-      .select('lineup_id, player_id, slot, voto, fantavoto, counts_for_total')
+      .select('id, lineup_id, player_id, slot, voto, fantavoto, counts_for_total')
       .in('lineup_id', lineupIds)
       .order('position_order', { ascending: true });
 
@@ -175,22 +195,12 @@ export async function getFormazioni(
     // Campionato corrispondente tramite matchday_bonus_sources — se non
     // c'è mapping (Coppa non ancora collegata, o giornata futura), niente
     // bonus mostrati, nessun errore.
-    const { data: bonusSourceRow, error: bonusSourceError } = await supabase
-      .from('matchday_bonus_sources')
-      .select('source_matchday_id')
-      .eq('matchday_id', matchdayId)
-      .maybeSingle();
-    if (bonusSourceError) {
-      throw new Error(`Impossibile leggere la corrispondenza bonus: ${bonusSourceError.message}`);
-    }
-    const bonusMatchdayId = bonusSourceRow?.source_matchday_id ?? matchdayId;
-
     const bonusesByPlayer = new Map<string, PlayerBonus[]>();
     if (playerIds.length > 0) {
       const [bonusRowsResult, bonusKindsResult] = await Promise.all([
         supabase
           .from('player_matchday_bonuses')
-          .select('player_id, kind_code, position_order')
+          .select('id, player_id, kind_code, position_order')
           .eq('matchday_id', bonusMatchdayId)
           .in('player_id', playerIds)
           .order('position_order', { ascending: true }),
@@ -209,7 +219,11 @@ export async function getFormazioni(
       }
 
       for (const row of bonusRowsResult.data) {
-        const bonus: PlayerBonus = { code: row.kind_code, label: labelByCode.get(row.kind_code) ?? row.kind_code };
+        const bonus: PlayerBonus = {
+          id: row.id,
+          code: row.kind_code,
+          label: labelByCode.get(row.kind_code) ?? row.kind_code,
+        };
         const bucket = bonusesByPlayer.get(row.player_id);
         if (bucket) {
           bucket.push(bonus);
@@ -221,6 +235,7 @@ export async function getFormazioni(
 
     for (const row of lineupPlayersRows) {
       const playerRow: LineupPlayerRow = {
+        lineupPlayerId: row.id,
         playerId: row.player_id,
         playerName: playerNameById.get(row.player_id) ?? '—',
         slot: row.slot === 'panchina' ? 'panchina' : 'titolare',
@@ -256,6 +271,7 @@ export async function getFormazioni(
       submittedAt: lineup?.submitted_at ?? null,
       starters: players.filter((player) => player.slot === 'titolare'),
       bench: players.filter((player) => player.slot === 'panchina'),
+      bonusMatchdayId,
     };
   }
 
@@ -286,4 +302,17 @@ export async function getGironeFormazioni(
   teams.sort((a, b) => (b.totalScore ?? -Infinity) - (a.totalScore ?? -Infinity));
 
   return teams;
+}
+
+// Catalogo bonus/malus per il picker di aggiunta in modalità modifica —
+// stessi 13 codici già usati per il badge (vedi player_matchday_bonuses.sql),
+// letti una volta sola per pagina invece che per ogni riga giocatore.
+export async function getBonusKinds(supabase: TypedSupabaseClient): Promise<{ code: string; label: string }[]> {
+  const { data, error } = await supabase.from('bonus_kinds').select('code, label').order('label', { ascending: true });
+
+  if (error) {
+    throw new Error(`Impossibile leggere i tipi di bonus/malus: ${error.message}`);
+  }
+
+  return data;
 }
