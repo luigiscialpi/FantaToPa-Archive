@@ -54,7 +54,7 @@ export function TeamQuickPanel({ teamName, teamSlug, logoUrl, seasonSlug, ownSta
             className="group flex h-full flex-col justify-between rounded-xl border border-brand-200 bg-brand-50 p-4 transition-colors hover:border-brand-400 hover:bg-brand-100"
           >
             <div>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-500">Vuoi saperne di più?</div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-500">Vuoi saperne di più sul tuo percorso?</div>
               <div className="text-sm font-semibold text-brand-900">Bacheca, rivalità storiche, record e tanto altro</div>
             </div>
             <div className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand-700 group-hover:text-brand-900">

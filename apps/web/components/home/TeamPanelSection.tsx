@@ -47,7 +47,12 @@ export async function TeamPanelSection({
     // unstable_cache serializza il risultato: una Map non sopravvive al
     // round-trip (torna un oggetto vuoto senza .get), quindi si cachea
     // l'array di entries e si ricostruisce la Map subito dopo.
-    cachedHomeStat('title-counts', null, async () => Array.from((await getAllTimeTitleCounts(supabase)).entries())),
+    // Chiave rinominata 'title-counts-v2' (era 'title-counts') quando è
+    // cambiata la forma di TitleCounts (aggiunti secondi/terzi posti): con
+    // la stessa chiave, una entry stale su disco/processo restava servita
+    // (stale-while-revalidate) con la forma vecchia anche a lungo, mascherando
+    // silenziosamente i nuovi campi (undefined, non un errore visibile).
+    cachedHomeStat('title-counts-v2', null, async () => Array.from((await getAllTimeTitleCounts(supabase)).entries())),
     cachedHomeStat('rivalry', teamId, () => getRivalryHighlight(supabase, teamId)),
     cachedHomeStat('personal-records', teamId, () => getPersonalRecords(supabase, teamId)),
     cachedHomeStat('standing-history', teamId, () => getStandingHistory(supabase, teamId)),
@@ -74,7 +79,7 @@ export async function TeamPanelSection({
             : null
         }
         standingHistory={standingHistory}
-        titles={titleCounts.get(teamId) ?? { campionati: 0, coppe: 0 }}
+        titles={titleCounts.get(teamId) ?? { campionati: 0, coppe: 0, secondiCampionato: 0, terziCampionato: 0 }}
         rivalry={rivalry}
         records={records}
         loyalty={loyalty}

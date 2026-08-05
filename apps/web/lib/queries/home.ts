@@ -17,7 +17,11 @@ type TypedSupabaseClient = SupabaseClient<Database>;
 // coppa_spareggio sono fasi di qualificazione, non l'ultimo atto della Coppa.
 const TITLE_KIND_CODES = ['campionato', 'coppa_fase_finale'] as const;
 
-export type TitleCounts = { campionati: number; coppe: number };
+// secondiCampionato/terziCampionato: solo Campionato, non Coppa — la fase
+// finale di Coppa è un bracket a eliminazione diretta senza riga standings
+// (vedi getCupFinalWinners), quindi non esiste un "2°/3° posto" derivabile
+// allo stesso modo del vincitore (dedotto dalla finale).
+export type TitleCounts = { campionati: number; coppe: number; secondiCampionato: number; terziCampionato: number };
 
 // La fase finale di Coppa è un tabellone a eliminazione diretta: non produce
 // mai una riga standings (non esiste una "classifica" per un bracket — verificato
@@ -121,25 +125,27 @@ export const getAllTimeTitleCounts = cache(async (supabase: TypedSupabaseClient)
   const counts = new Map<string, TitleCounts>();
 
   function addTitle(teamId: string, kind: keyof TitleCounts) {
-    const existing = counts.get(teamId) ?? { campionati: 0, coppe: 0 };
+    const existing = counts.get(teamId) ?? { campionati: 0, coppe: 0, secondiCampionato: 0, terziCampionato: 0 };
     existing[kind] += 1;
     counts.set(teamId, existing);
   }
 
   const campionatoCompetitionIds = competitions.filter((competition) => competition.kind_code === 'campionato').map((competition) => competition.id);
   if (campionatoCompetitionIds.length > 0) {
-    const { data: winners, error: winnersError } = await supabase
+    const { data: podiums, error: podiumsError } = await supabase
       .from('standings')
-      .select('team_id')
-      .eq('position', 1)
+      .select('team_id, position')
+      .in('position', [1, 2, 3])
       .in('competition_id', campionatoCompetitionIds);
 
-    if (winnersError) {
-      throw new Error(`Impossibile leggere i vincitori: ${winnersError.message}`);
+    if (podiumsError) {
+      throw new Error(`Impossibile leggere il podio: ${podiumsError.message}`);
     }
 
-    for (const winner of winners) {
-      addTitle(winner.team_id, 'campionati');
+    for (const row of podiums) {
+      if (row.position === 1) addTitle(row.team_id, 'campionati');
+      else if (row.position === 2) addTitle(row.team_id, 'secondiCampionato');
+      else if (row.position === 3) addTitle(row.team_id, 'terziCampionato');
     }
   }
 

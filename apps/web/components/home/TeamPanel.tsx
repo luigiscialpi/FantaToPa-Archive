@@ -111,6 +111,9 @@ export function TeamPanel({
           <div className="text-sm text-stone-700">
             Coppe: <strong>{titles.coppe}</strong>
           </div>
+          <div className="text-xs text-stone-500">
+            2° posto: <strong>{titles.secondiCampionato}</strong> · 3° posto: <strong>{titles.terziCampionato}</strong>
+          </div>
         </StatCard>
 
         <StatCard label="Avversario più incontrato">
