@@ -10,6 +10,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { isTopLevelRoute } from '../../lib/navigation/top-level-routes';
 import type { SeasonOption } from '../../lib/queries/seasons';
 
 type SeasonSwitcherProps = {
@@ -24,6 +25,13 @@ type SeasonSwitcherProps = {
 export function SeasonSwitcher({ seasons, variant = 'full' }: SeasonSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
+
+  // Nelle pagine top-level (Home, Albo d'Oro, Statistiche, Profilo Squadra)
+  // non c'è una stagione attiva da mostrare/cambiare: il selettore non ha
+  // senso lì, su nessun breakpoint.
+  if (isTopLevelRoute(pathname)) {
+    return null;
+  }
 
   // Stagioni con solo un podio manuale (nessuna giornata reale) non hanno
   // pagine di dominio da mostrare: fuori dal selettore, non solo "disabled".

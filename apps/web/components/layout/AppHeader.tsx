@@ -23,6 +23,7 @@ import type { SessionProfile } from '../../lib/auth/session';
 import type { SeasonOption } from '../../lib/queries/seasons';
 import { GlobalNav } from './GlobalNav';
 import { SeasonSwitcher } from './SeasonSwitcher';
+import { SiteBrand } from './SiteBrand';
 
 function AccountActions({ profile, itemClassName }: { profile: SessionProfile; itemClassName: string }) {
   return (
@@ -69,13 +70,7 @@ export function AppHeader({ profile, seasons }: { profile: SessionProfile; seaso
         </details>
 
         <div className="min-w-0 flex-1">
-          <Link href="/" className="block font-serif font-bold tracking-tight text-base sm:text-lg truncate hover:text-stone-100 transition-colors">
-            FantaTopa
-          </Link>
-          <div className="hidden sm:flex text-xs text-brand-200/90 truncate items-center gap-1.5">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span>{displayName}</span>
-          </div>
+          <SiteBrand />
         </div>
 
         <div className="sm:hidden shrink-0">
@@ -84,12 +79,21 @@ export function AppHeader({ profile, seasons }: { profile: SessionProfile; seaso
 
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <SeasonSwitcher seasons={seasons} />
-          <div className="flex items-center gap-1">
-            <AccountActions
-              profile={profile}
-              itemClassName="inline-flex items-center text-xs font-medium tracking-wide text-brand-100 hover:text-white hover:bg-brand-600/60 px-2.5 py-1 rounded-md transition-colors"
-            />
-          </div>
+          <details className="relative">
+            <summary
+              aria-label="Account"
+              className="list-none [&::-webkit-details-marker]:hidden cursor-pointer inline-flex items-center gap-1.5 text-xs font-medium tracking-wide text-brand-100 hover:text-white hover:bg-brand-600/60 px-2.5 py-1.5 rounded-md transition-colors"
+            >
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+              <span className="max-w-[10rem] truncate">{displayName}</span>
+            </summary>
+            <div className="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white text-brand-950 shadow-xl border border-stone-200 py-1.5 z-30">
+              <AccountActions
+                profile={profile}
+                itemClassName="block w-full text-left px-3 py-2 text-sm font-medium text-brand-900 hover:bg-stone-100 transition-colors"
+              />
+            </div>
+          </details>
         </div>
       </div>
 
