@@ -2,7 +2,10 @@ name: Supabase keepalive
 
 on:
   schedule:
-    - cron: '0 6 */3 * *'   # ogni 3 giorni, ben sotto il limite di 7
+    # Ogni 6 ore. Supabase mette in pausa i progetti Free con "low activity"
+    # in 7 giorni, non solo quelli a traffico zero: un ping ogni 3 giorni
+    # può non bastare a superare la soglia.
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
