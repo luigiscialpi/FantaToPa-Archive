@@ -3,10 +3,11 @@
 // Nav globale persistente (sezione 10 del piano, mockup TopNav): distinta dai
 // tab per-stagione di PageTabs (Classifica/Calendario/Rose/Formazioni), che
 // vivono solo sotto /stagioni/[season]/**. Questa vive dentro AppHeader,
-// visibile su ogni pagina protetta — Home, Albo d'Oro e Statistiche non sono
-// scoped a una singola stagione (Albo d'Oro mostra tutte le annate insieme,
-// Statistiche sceglie stagione/competizione al suo interno). Client
-// component per usePathname() (evidenzia la voce attiva).
+// visibile su ogni pagina protetta — Home, Albo d'Oro, Statistiche e Profilo
+// Squadra non sono scoped a una singola stagione (Albo d'Oro mostra tutte
+// le annate insieme, Statistiche/Profilo Squadra scelgono stagione/
+// competizione/squadra al loro interno). Client component per
+// usePathname() (evidenzia la voce attiva).
 'use client';
 
 import Link from 'next/link';
@@ -16,6 +17,7 @@ const ITEMS = [
   { href: '/', label: 'Home', exact: true },
   { href: '/albo-doro', label: "Albo d'Oro", exact: false },
   { href: '/statistiche', label: 'Statistiche', exact: false },
+  { href: '/profilo-squadra', label: 'Profilo Squadra', exact: false },
 ];
 
 export function GlobalNav() {
