@@ -34,6 +34,7 @@ export default async function ProfiloSquadraPage({ searchParams }: ProfiloSquadr
   }
 
   const activeTeam = teams.find((team) => team.slug === squadra) ?? teams[0]!;
+
   const latestSeason = seasons[0] ?? null;
 
   let ownStanding = null;
@@ -47,8 +48,10 @@ export default async function ProfiloSquadraPage({ searchParams }: ProfiloSquadr
   }
 
   return (
-    <main className="p-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+    <main>
+      {/* TeamPanelSection sotto ha già il proprio p-4 interno (come in
+          Home) — un p-4 anche qui raddoppierebbe il gutter laterale. */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4">
         <h1 className="font-serif font-bold text-xl text-brand-950">Profilo Squadra</h1>
         <TeamSelector teams={teams} activeTeamSlug={activeTeam.slug} />
       </div>
@@ -64,7 +67,7 @@ export default async function ProfiloSquadraPage({ searchParams }: ProfiloSquadr
           />
         </Suspense>
       ) : (
-        <p className="text-sm text-stone-500">Nessuna stagione ancora importata.</p>
+        <p className="px-4 pb-4 text-sm text-stone-500">Nessuna stagione ancora importata.</p>
       )}
     </main>
   );
