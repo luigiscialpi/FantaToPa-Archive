@@ -81,13 +81,13 @@ export function TeamPanel({
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
-          label="Ultima stagione"
+          label="Storico"
           href={`/stagioni/${seasonSlug}/classifica`}
         >
           {standing?.position ? (
             <>
               <div className="font-serif text-2xl font-bold tabular-nums text-brand-800">
-                {standing.position}°
+                Ultima stagione: {standing.position}°
               </div>
               <div className="text-xs text-stone-500">
                 {standing.points ?? "–"} pt
