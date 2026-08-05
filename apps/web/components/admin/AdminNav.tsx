@@ -1,8 +1,8 @@
 // apps/web/components/admin/AdminNav.tsx
 //
-// Tab tra le sotto-pagine di /admin (Registrazioni, Utenti) — stesso
-// pattern visivo di GlobalNav (components/layout/), sezione separata perché
-// vive solo dentro l'area admin, non su ogni pagina protetta.
+// Tab tra le sotto-pagine di /admin (Registrazioni, Utenti, Stagioni) —
+// stesso pattern visivo di GlobalNav (components/layout/), sezione separata
+// perché vive solo dentro l'area admin, non su ogni pagina protetta.
 'use client';
 
 import Link from 'next/link';
@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 const ITEMS = [
   { href: '/admin/registrazioni', label: 'Registrazioni' },
   { href: '/admin/utenti', label: 'Utenti' },
+  { href: '/admin/stagioni', label: 'Stagioni' },
 ];
 
 export function AdminNav() {
