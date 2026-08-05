@@ -5,10 +5,13 @@
 // insieme (piano, sezione 10). Riusa getSeasonGallery tramite
 // AlboDoroSection: stessa query già usata dalla galleria stagioni della
 // Home, nessuna nuova query necessaria.
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { getSessionState } from '../../../lib/auth/session';
 import { AlboDoroSection } from '../../../components/albo-doro/AlboDoroSection';
 import { AlboDoroSkeleton } from '../../../components/albo-doro/AlboDoroSkeleton';
+
+export const metadata: Metadata = { title: "Albo d'Oro" };
 
 export default async function AlboDoroPage() {
   const session = await getSessionState();

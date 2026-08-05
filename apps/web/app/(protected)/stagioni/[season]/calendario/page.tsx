@@ -1,4 +1,5 @@
 // apps/web/app/(protected)/stagioni/[season]/calendario/page.tsx
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
@@ -17,6 +18,11 @@ type CalendarioPageProps = {
   params: Promise<{ season: string }>;
   searchParams: Promise<{ competizione?: string; modifica?: string }>;
 };
+
+export async function generateMetadata({ params }: CalendarioPageProps): Promise<Metadata> {
+  const { season } = await params;
+  return { title: `Calendario ${season}` };
+}
 
 export default async function CalendarioPage({ params, searchParams }: CalendarioPageProps) {
   const { season: seasonSlug } = await params;

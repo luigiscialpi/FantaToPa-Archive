@@ -7,6 +7,7 @@
 // quest'ultimo riusa ClassificaTable/ClassificaRow in editMode così com'è
 // (updateStandingsRowAction, classifica-actions.ts), stesso componente
 // della pagina pubblica /stagioni/[season]/classifica.
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '../../../../../lib/supabase/server';
@@ -20,6 +21,11 @@ import { ClassificaTable } from '../../../../../components/classifica/Classifica
 type AdminStagionePageProps = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateMetadata({ params }: AdminStagionePageProps): Promise<Metadata> {
+  const { slug } = await params;
+  return { title: `Admin · Stagione ${slug}` };
+}
 
 export default async function AdminStagionePage({ params }: AdminStagionePageProps) {
   const { slug } = await params;

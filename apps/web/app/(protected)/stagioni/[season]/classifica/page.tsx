@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { createClient } from '../../../../../lib/supabase/server';
@@ -12,6 +13,12 @@ type ClassificaPageProps = {
   params: Promise<{ season: string }>;
   searchParams: Promise<{ competizione?: string; da?: string; a?: string; modifica?: string }>;
 };
+
+// Lo slug è già leggibile ("2025-26"): nessuna query in più solo per il titolo.
+export async function generateMetadata({ params }: ClassificaPageProps): Promise<Metadata> {
+  const { season } = await params;
+  return { title: `Classifica ${season}` };
+}
 
 export default async function ClassificaPage({ params, searchParams }: ClassificaPageProps) {
   const { season: seasonSlug } = await params;

@@ -4,6 +4,7 @@
 // barra in alto che scrolla alla rosa scelta invece di cambiare pagina — vedi
 // RosterJumpBar. Niente searchParams qui: la squadra "attiva" non è più uno
 // stato di navigazione, è solo il punto di scroll iniziale.
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { createClient } from '../../../../../lib/supabase/server';
@@ -22,6 +23,11 @@ type RosePageProps = {
   params: Promise<{ season: string }>;
   searchParams: Promise<{ modifica?: string }>;
 };
+
+export async function generateMetadata({ params }: RosePageProps): Promise<Metadata> {
+  const { season } = await params;
+  return { title: `Rose ${season}` };
+}
 
 // Squadra di fallback quando l'utente loggato non ha una squadra assegnata
 // (es. admin): richiesta esplicitamente come rosa di riferimento di default.

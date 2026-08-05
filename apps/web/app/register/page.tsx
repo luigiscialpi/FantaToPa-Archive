@@ -1,9 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionState } from '../../lib/auth/session';
 import { createClient } from '../../lib/supabase/server';
 import { getTeamsAvailableForRegistration } from '../../lib/queries/registration';
 import { RegisterForm } from './RegisterForm';
+
+export const metadata: Metadata = { title: 'Registrati' };
 
 export default async function RegisterPage() {
   const session = await getSessionState();

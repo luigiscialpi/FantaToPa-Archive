@@ -4,11 +4,14 @@
 // Classifica/Formazioni, qui stagione e competizione sono un filtro della
 // pagina stessa (searchParams), non il contesto del selettore persistente in
 // header — vedi mockup StatisticheView, che ha i propri select interni.
+import type { Metadata } from 'next';
 import { createClient } from '../../../lib/supabase/server';
 import { getCompetitions, getSeasons } from '../../../lib/queries/seasons';
 import { getComparableTeams, getHeadToHeadSeries } from '../../../lib/queries/statistiche';
 import { StatisticheControls } from '../../../components/statistiche/StatisticheControls';
 import { HeadToHeadChart } from '../../../components/statistiche/HeadToHeadChart';
+
+export const metadata: Metadata = { title: 'Statistiche' };
 
 type StatisticheSearchParams = {
   stagione?: string;

@@ -1,4 +1,5 @@
 // apps/web/app/(protected)/admin/utenti/page.tsx
+import type { Metadata } from 'next';
 import { createClient } from '../../../../lib/supabase/server';
 import { getAllUsers } from '../../../../lib/queries/admin-users';
 import { getAllTeams } from '../../../../lib/queries/teams';
@@ -6,6 +7,8 @@ import { getSessionState } from '../../../../lib/auth/session';
 import { setUserRoleAction, setUserTeamAction } from '../../../../lib/admin/user-actions';
 import { AdminNav } from '../../../../components/admin/AdminNav';
 import { DeleteUserButton } from '../../../../components/admin/DeleteUserButton';
+
+export const metadata: Metadata = { title: 'Admin · Utenti' };
 
 export default async function AdminUtentiPage() {
   const supabase = await createClient();

@@ -3,11 +3,14 @@
 // Sezione admin "Stagioni": creare una nuova annata (es. una manuale come
 // 2008-09) e vedere a colpo d'occhio quali hanno la classifica Campionato
 // incompleta, prima di aprirle una per una in /admin/stagioni/[slug].
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSeasonsAdminOverview } from '../../../../lib/queries/admin-seasons';
 import { createSeasonAction } from '../../../../lib/admin/season-actions';
 import { AdminNav } from '../../../../components/admin/AdminNav';
+
+export const metadata: Metadata = { title: 'Admin · Stagioni' };
 
 export default async function AdminStagioniPage() {
   const supabase = await createClient();

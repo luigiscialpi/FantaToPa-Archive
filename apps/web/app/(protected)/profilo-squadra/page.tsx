@@ -5,6 +5,7 @@
 // (selettore in searchParams, come Statistiche). Riusa TeamPanelSection
 // così com'è — è già parametrizzata per qualunque teamId/seasonId, nessuna
 // nuova query: stesso identico contenuto del pannello squadra di Home.
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { createClient } from '../../../lib/supabase/server';
 import { getSeasons, getCompetitions } from '../../../lib/queries/seasons';
@@ -13,6 +14,8 @@ import { getStandings } from '../../../lib/queries/classifica';
 import { TeamPanelSection } from '../../../components/home/TeamPanelSection';
 import { TeamPanelSkeleton } from '../../../components/home/HomeSkeletons';
 import { TeamSelector } from '../../../components/profilo-squadra/TeamSelector';
+
+export const metadata: Metadata = { title: 'Profilo Squadra' };
 
 type ProfiloSquadraPageProps = {
   searchParams: Promise<{ squadra?: string }>;

@@ -1,0 +1,25 @@
+<!-- Sorgente degli icon-*.png / apple-icon-*.png di questa cartella. Per
+     rigenerarli su macOS, una dimensione per volta (produce app-icon.svg.png):
+     qlmanage -t -s 512 -o . app-icon.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2e6be6"/>
+      <stop offset="1" stop-color="#153068"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- scale 0.9 attorno al centro: tiene il gufo dentro la safe zone dell'80%
+       richiesta dalle icone maskable di Android, che ritagliano i bordi. -->
+  <g transform="translate(25.6 25.6) scale(0.9)">
+    <path d="M150 168 L142 74 L214 116 Z" fill="#cbdaf9"/>
+    <path d="M362 168 L370 74 L298 116 Z" fill="#cbdaf9"/>
+    <path d="M256 96 C186 96 132 150 132 220 L132 330 C132 400 187 458 256 458 C325 458 380 400 380 330 L380 220 C380 150 326 96 256 96 Z" fill="#cbdaf9"/>
+    <circle cx="206" cy="212" r="46" fill="#153068"/>
+    <circle cx="306" cy="212" r="46" fill="#153068"/>
+    <circle cx="206" cy="212" r="19" fill="#fbbf24"/>
+    <circle cx="306" cy="212" r="19" fill="#fbbf24"/>
+    <path d="M256 248 L280 288 L232 288 Z" fill="#fbbf24"/>
+    <text x="256" y="418" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="700" font-size="112" fill="#1d428f" text-anchor="middle">FT</text>
+  </g>
+</svg>

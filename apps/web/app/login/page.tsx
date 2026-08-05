@@ -1,7 +1,10 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionState } from '../../lib/auth/session';
 import { LoginForm } from './LoginForm';
+
+export const metadata: Metadata = { title: 'Accedi' };
 
 export default async function LoginPage() {
   const session = await getSessionState();

@@ -1,9 +1,12 @@
+import type { Metadata } from 'next';
 import { createClient } from '../../../../lib/supabase/server';
 import { getPendingRegistrationRequests } from '../../../../lib/queries/registration';
 import { approveRegistration, rejectRegistration } from '../../../../lib/admin/actions';
 import { ResendConfirmationForm } from '../../../../components/admin/ResendConfirmationForm';
 import { AdminNav } from '../../../../components/admin/AdminNav';
 import { SubmitButton } from '../../../../components/shared/SubmitButton';
+
+export const metadata: Metadata = { title: 'Admin · Registrazioni' };
 
 export default async function AdminRegistrazioniPage() {
   const supabase = await createClient();

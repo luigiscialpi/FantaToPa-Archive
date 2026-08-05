@@ -1,4 +1,5 @@
 // apps/web/app/(protected)/stagioni/[season]/formazioni/page.tsx
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
@@ -17,6 +18,11 @@ type FormazioniPageProps = {
   params: Promise<{ season: string }>;
   searchParams: Promise<{ competizione?: string; giornata?: string; partita?: string; modifica?: string }>;
 };
+
+export async function generateMetadata({ params }: FormazioniPageProps): Promise<Metadata> {
+  const { season } = await params;
+  return { title: `Formazioni ${season}` };
+}
 
 export default async function FormazioniPage({ params, searchParams }: FormazioniPageProps) {
   const { season: seasonSlug } = await params;
