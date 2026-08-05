@@ -31,6 +31,7 @@
 // residuo), quindi quel bonus non viene importato per queste stagioni.
 import { BonusImportSchema, type BonusImport } from '../../schema/imports.js';
 import type { SourceAdapter } from '../types.js';
+import { decodeHtmlEntities } from '../html-legacy/decode.js';
 
 // Etichette osservate scansionando il markup reale (attributo `title` dentro
 // `<span class="player-bonus ...">`) — elenco chiuso, un'etichetta mai vista
@@ -148,7 +149,7 @@ export class FantacalcioItBonusAdapter implements SourceAdapter<BonusImport> {
       if (!nameMatch) {
         throw new Error('Riga giocatore senza link nome riconoscibile (struttura pagina inattesa)');
       }
-      const playerName = nameMatch[1]!.trim();
+      const playerName = decodeHtmlEntities(nameMatch[1]!.trim());
       const codes = bonusCodesFromRow(rowHtml, playerName);
       codes.push(...deriveCardCodes(rowHtml));
 

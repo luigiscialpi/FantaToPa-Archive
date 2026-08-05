@@ -65,8 +65,19 @@ const KNOWN_ENTITIES: Record<string, string> = {
   '&times;': '×',
 };
 
+// Oltre alla tabella fissa (entità nominali), decodifica genericamente le
+// entità numeriche `&#N;`/`&#xHEX;` — coprono qualunque carattere accentato o
+// punteggiatura, senza dover elencare ogni codepoint mai incontrato (visto
+// mancare per `&#x27;`, apostrofo esadecimale, in fantacalcio-it/bonus.ts:
+// faceva fallire silenziosamente la risoluzione di "Montipò" per l'intera
+// stagione, mai un errore visibile perché il nome semplicemente non
+// matchava nessun alias).
 export function decodeHtmlEntities(text: string): string {
-  return text.replace(/&#?\w+;/g, (match) => KNOWN_ENTITIES[match] ?? match);
+  return text.replace(/&#x([0-9a-fA-F]+);|&#(\d+);|&\w+;/g, (match, hex, dec) => {
+    if (hex) return String.fromCodePoint(parseInt(hex, 16));
+    if (dec) return String.fromCodePoint(parseInt(dec, 10));
+    return KNOWN_ENTITIES[match] ?? match;
+  });
 }
 
 // Il testo visibile nelle tabelle rose*.html è tutto minuscolo (stilizzato

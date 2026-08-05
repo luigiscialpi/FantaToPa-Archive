@@ -115,7 +115,11 @@ export function PlayerRow({ player }: { player: LineupPlayerRow }) {
         {player.playerName}
       </span>
       <div className="flex items-center gap-2 ml-auto sm:contents">
-        {!muted && <BonusBadges bonuses={player.bonuses} />}
+        {/* I bonus/malus sono eventi reali del giocatore, non del conteggio
+            di squadra: mostrarli anche quando la riga non conta per il
+            totale (es. panchinaro andato comunque in campo nella Serie A
+            reale) — solo lo stile della riga resta smorzato. */}
+        <BonusBadges bonuses={player.bonuses} />
         <span className={`text-xs w-6 text-right tabular-nums shrink-0 ${votoColor}`}>{player.voto ?? '–'}</span>
         <span className={`text-xs w-8 text-right tabular-nums shrink-0 ${fantavotoColor}`}>
           {player.fantavoto ?? '–'}
