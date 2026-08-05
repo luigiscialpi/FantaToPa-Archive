@@ -9,6 +9,7 @@
 
 import { useRef } from 'react';
 import { deleteUserAction } from '../../lib/admin/user-actions';
+import { SubmitButton } from '../shared/SubmitButton';
 
 export function DeleteUserButton({ userId, userLabel }: { userId: string; userLabel: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -42,9 +43,12 @@ export function DeleteUserButton({ userId, userLabel }: { userId: string; userLa
             >
               Annulla
             </button>
-            <button type="submit" className="rounded-lg bg-red-700 text-white text-sm font-semibold px-3 py-1.5">
+            <SubmitButton
+              pendingLabel="Elimino…"
+              className="rounded-lg bg-red-700 text-white text-sm font-semibold px-3 py-1.5 disabled:opacity-60 disabled:cursor-wait"
+            >
               Conferma eliminazione
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </dialog>

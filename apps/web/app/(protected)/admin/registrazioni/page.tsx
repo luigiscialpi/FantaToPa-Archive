@@ -3,6 +3,7 @@ import { getPendingRegistrationRequests } from '../../../../lib/queries/registra
 import { approveRegistration, rejectRegistration } from '../../../../lib/admin/actions';
 import { ResendConfirmationForm } from '../../../../components/admin/ResendConfirmationForm';
 import { AdminNav } from '../../../../components/admin/AdminNav';
+import { SubmitButton } from '../../../../components/shared/SubmitButton';
 
 export default async function AdminRegistrazioniPage() {
   const supabase = await createClient();
@@ -37,20 +38,20 @@ export default async function AdminRegistrazioniPage() {
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <form action={approveRegistration.bind(null, request.id)}>
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5"
+                    <SubmitButton
+                      pendingLabel="Approvo…"
+                      className="rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5 disabled:opacity-60 disabled:cursor-wait"
                     >
                       Approva
-                    </button>
+                    </SubmitButton>
                   </form>
                   <form action={rejectRegistration.bind(null, request.id)}>
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-red-300 text-red-700 text-sm font-semibold px-3 py-1.5"
+                    <SubmitButton
+                      pendingLabel="Rifiuto…"
+                      className="rounded-lg border border-red-300 text-red-700 text-sm font-semibold px-3 py-1.5 disabled:opacity-60 disabled:cursor-wait"
                     >
                       Rifiuta
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
               </li>

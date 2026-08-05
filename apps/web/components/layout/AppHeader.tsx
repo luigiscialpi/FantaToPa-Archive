@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { signOut } from '../../lib/auth/actions';
 import type { SessionProfile } from '../../lib/auth/session';
 import type { SeasonOption } from '../../lib/queries/seasons';
+import { SubmitButton } from '../shared/SubmitButton';
 import { GlobalNav } from './GlobalNav';
 import { SeasonSwitcher } from './SeasonSwitcher';
 import { SiteBrand } from './SiteBrand';
@@ -34,9 +35,9 @@ function AccountActions({ profile, itemClassName }: { profile: SessionProfile; i
         </Link>
       )}
       <form action={signOut} className="contents">
-        <button type="submit" className={itemClassName}>
+        <SubmitButton pendingLabel="Esco…" className={`${itemClassName} disabled:opacity-60`}>
           Esci
-        </button>
+        </SubmitButton>
       </form>
     </>
   );
