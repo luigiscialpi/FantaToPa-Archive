@@ -94,11 +94,13 @@ export function TeamPanel({
                 {gap !== null && gap > 0 && <> · a {gap} dalla vetta</>}
                 {gap === 0 && <> · in vetta</>}
               </div>
-              <StandingSparkline history={standingHistory} />
             </>
           ) : (
-            <div className="text-sm text-stone-400">Ancora nessun dato</div>
+            <div className="text-sm text-stone-400">Non in classifica quest&apos;anno</div>
           )}
+          {/* Indipendente dalla stagione corrente: una squadra assente
+              quest'anno può comunque avere uno storico da mostrare. */}
+          <StandingSparkline history={standingHistory} />
         </StatCard>
 
         <StatCard label="Bacheca">
