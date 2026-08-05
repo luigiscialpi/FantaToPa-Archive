@@ -28,8 +28,22 @@ const PADDING = 5;
 export function StandingSparkline({ history }: { history: StandingHistoryPoint[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  if (history.length < 2) {
+  if (history.length === 0) {
     return null;
+  }
+
+  // Una sola stagione nota (tipico delle stagioni manuali 2004-05→2012-13,
+  // dove solo il podio è documentato) non permette una linea: mostrare
+  // comunque quell'unico dato invece di "niente", altrimenti una squadra con
+  // un piazzamento noto sembra non avere storico affatto.
+  if (history.length === 1) {
+    const onlySeason = history[0];
+    if (!onlySeason) return null;
+    return (
+      <div className="mt-2.5 text-xs text-stone-500">
+        {onlySeason.seasonLabel}: <span className="font-semibold text-brand-700">{onlySeason.position}°</span>
+      </div>
+    );
   }
 
   const positions = history.map((point) => point.position);

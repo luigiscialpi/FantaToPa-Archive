@@ -1089,15 +1089,46 @@ export async function getStandingHistory(supabase: TypedSupabaseClient, teamId: 
 // (solo Campionato), è la fonte corretta per "in quante stagioni ha
 // partecipato", altrimenti una stagione senza classifica Campionato
 // risulterebbe non conteggiata pur avendo la squadra effettivamente giocato.
-export async function getSeasonsParticipatedCount(supabase: TypedSupabaseClient, teamId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('team_seasons')
-    .select('id', { count: 'exact', head: true })
-    .eq('team_id', teamId);
+export type SeasonsParticipated = { count: number; isAtLeast: boolean };
+
+export async function getSeasonsParticipatedCount(supabase: TypedSupabaseClient, teamId: string): Promise<SeasonsParticipated> {
+  const { data: teamSeasonRows, error } = await supabase.from('team_seasons').select('season_id').eq('team_id', teamId);
   if (error) {
     throw new Error(`Impossibile leggere le stagioni disputate: ${error.message}`);
   }
-  return count ?? 0;
+  const trackedSeasonIds = new Set(teamSeasonRows.map((row) => row.season_id));
+
+  // Stagioni 2004-05→2012-13 (import-historical-seasons.ts): nota storica
+  // testuale, solo podio Campionato/vincitore Coppa in `standings`, MAI una
+  // riga `team_seasons` (nessun logo/manager da salvare per quell'epoca).
+  // Una squadra lì presente ha comunque partecipato: conteggiarla come "in
+  // più" rispetto a team_seasons, non ometterla.
+  const { data: standingsRows, error: standingsError } = await supabase
+    .from('standings')
+    .select('competition_id')
+    .eq('team_id', teamId);
+  if (standingsError) {
+    throw new Error(`Impossibile leggere le classifiche: ${standingsError.message}`);
+  }
+  const competitionIds = [...new Set(standingsRows.map((row) => row.competition_id))];
+  if (competitionIds.length === 0) {
+    return { count: trackedSeasonIds.size, isAtLeast: false };
+  }
+
+  const { data: competitions, error: competitionsError } = await supabase
+    .from('competitions')
+    .select('id, season_id')
+    .in('id', competitionIds);
+  if (competitionsError) {
+    throw new Error(`Impossibile leggere le competizioni: ${competitionsError.message}`);
+  }
+  const knownSeasonIds = new Set(competitions.map((competition) => competition.season_id));
+  const extraSeasonIds = [...knownSeasonIds].filter((seasonId) => !trackedSeasonIds.has(seasonId));
+
+  // Anche con questa aggiunta il totale resta un minimo: una stagione
+  // manuale dove la squadra non è arrivata sul podio non lascia traccia in
+  // `standings`, quindi non è recuperabile da nessuna fonte già importata.
+  return { count: trackedSeasonIds.size + extraSeasonIds.length, isAtLeast: extraSeasonIds.length > 0 };
 }
 
 export type RosterLoyaltyEntry = { playerName: string; seasonsCount: number };

@@ -61,7 +61,11 @@ export async function TeamPanelSection({
     getTeamBranding(supabase, seasonId, [teamId]),
     supabase.from('teams').select('canonical_name').eq('id', teamId).maybeSingle(),
     cachedHomeStat('opponent-records', teamId, () => getOpponentRecords(supabase, teamId)),
-    cachedHomeStat('seasons-participated', teamId, () => getSeasonsParticipatedCount(supabase, teamId)),
+    // Chiave rinominata 'seasons-participated-v2' (era 'seasons-participated')
+    // quando la funzione è passata da restituire un number a un oggetto
+    // {count, isAtLeast} — stessa insidia già vista per title-counts-v2: una
+    // chiave invariata avrebbe servito un valore stale a forma vecchia.
+    cachedHomeStat('seasons-participated-v2', teamId, () => getSeasonsParticipatedCount(supabase, teamId)),
   ]);
   const titleCounts = new Map<string, TitleCounts>(titleCountEntries);
 

@@ -20,6 +20,7 @@ import type {
   StandingHistoryPoint,
   RosterLoyaltyEntry,
   OpponentRecord,
+  SeasonsParticipated,
 } from '../../lib/queries/home';
 
 type CurrentStanding = {
@@ -43,7 +44,7 @@ type TeamPanelProps = {
   rosterStatsSlot: ReactNode;
   bestOpponents: OpponentRecord[];
   worstOpponents: OpponentRecord[];
-  seasonsParticipated: number;
+  seasonsParticipated: SeasonsParticipated;
 };
 
 function formatMatchdayLink(record: MatchHighlight) {
@@ -121,7 +122,8 @@ export function TeamPanel({
         <StatCard label="Stagioni disputate">
           <CalendarDays size={18} className="mb-1 text-brand-500" />
           <div className="font-serif text-2xl font-bold tabular-nums text-brand-800">
-            {seasonsParticipated}
+            {seasonsParticipated.isAtLeast && 'Almeno '}
+            {seasonsParticipated.count}
           </div>
         </StatCard>
 
