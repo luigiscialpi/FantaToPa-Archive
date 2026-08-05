@@ -1,8 +1,9 @@
 // apps/web/components/classifica/GiornataRangeFilter.tsx
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { LoaderCircle } from "lucide-react";
 
 type GiornataRangeFilterProps = {
   seasonSlug: string;
@@ -29,12 +30,15 @@ export function GiornataRangeFilter({
   const [localTo, setLocalTo] = useState(to);
   const [isDragging, setIsDragging] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const navigate = useCallback(
     (nextFrom: number, nextTo: number) => {
-      router.push(
-        `/stagioni/${seasonSlug}/classifica?competizione=${competitionSlug}&da=${nextFrom}&a=${nextTo}`,
-      );
+      startTransition(() => {
+        router.push(
+          `/stagioni/${seasonSlug}/classifica?competizione=${competitionSlug}&da=${nextFrom}&a=${nextTo}`,
+        );
+      });
     },
     [router, seasonSlug, competitionSlug],
   );
@@ -80,8 +84,11 @@ export function GiornataRangeFilter({
 
   return (
     <div className="mb-4 rounded-xl bg-white border border-stone-200 px-4 py-3">
-      <div className="text-xs text-stone-500 mb-3">
-        Classifica calcolata sull&apos;intervallo di giornate scelto
+      <div className="flex items-center gap-1.5 text-xs text-stone-500 mb-3">
+        {isPending && <LoaderCircle size={12} aria-hidden className="shrink-0 animate-spin" />}
+        {isPending
+          ? "Ricalcolo la classifica sull'intervallo scelto\u2026"
+          : "Classifica calcolata sull'intervallo di giornate scelto"}
       </div>
 
       {/* Valori correnti */}

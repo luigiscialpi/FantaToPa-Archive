@@ -13,10 +13,10 @@
 // è un intento esplicito, non una modifica accidentale in corso.
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useTransition } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, LoaderCircle } from 'lucide-react';
 import type { SeasonOption, CompetitionOption } from '../../lib/queries/seasons';
 import type { ComparableTeam } from '../../lib/queries/statistiche';
 
@@ -43,6 +43,7 @@ export function StatisticheControls({
 }: StatisticheControlsProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
 
   function navigateWith(overrides: Record<string, string | null>) {
     const form = formRef.current;
@@ -61,7 +62,9 @@ export function StatisticheControls({
         params.set(key, value);
       }
     }
-    router.push(`/statistiche?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/statistiche?${params.toString()}`);
+    });
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -115,8 +118,9 @@ export function StatisticheControls({
         <button
           type="button"
           onClick={swapTeams}
+          disabled={isPending}
           aria-label="Scambia le due squadre"
-          className="shrink-0 p-1.5 text-stone-400 hover:text-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 rounded-md"
+          className="shrink-0 p-1.5 text-stone-400 hover:text-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 rounded-md disabled:opacity-50"
         >
           <ArrowLeftRight size={15} />
         </button>
@@ -144,9 +148,12 @@ export function StatisticheControls({
         </select>
         <button
           type="submit"
-          className="shrink-0 rounded-lg bg-brand-700 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 transition-colors"
+          disabled={isPending}
+          aria-busy={isPending}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 transition-colors disabled:opacity-70 disabled:cursor-wait"
         >
-          Aggiorna
+          {isPending && <LoaderCircle size={13} aria-hidden className="animate-spin" />}
+          {isPending ? 'Aggiorno…' : 'Aggiorna'}
         </button>
       </div>
     </form>
