@@ -1,13 +1,13 @@
 // apps/web/components/home/HomeSkeletons.tsx
 //
-// Skeleton delle 3 sezioni della Home, condivisi da app/(protected)/loading.tsx
+// Skeleton delle sezioni della Home, condivisi da app/(protected)/loading.tsx
 // (fallback per la primissima navigazione, prima che HomePage inizi a
 // renderizzare) e dai confini <Suspense> dentro page.tsx (fallback
 // per-sezione durante lo streaming: ogni sezione mostra il proprio finché
 // non è pronta, indipendentemente dalle altre). Un'unica fonte per
 // struttura e ordine: prima erano duplicati e l'ordine nello skeleton
-// (vetrina prima di galleria) non corrispondeva a quello reale (galleria
-// prima di vetrina), causando un salto di layout al primo swap.
+// non corrispondeva a quello reale, causando un salto di layout al primo
+// swap.
 
 export function TeamPanelSkeleton() {
   return (
@@ -30,7 +30,7 @@ export function TeamPanelSkeleton() {
 
 // Fallback delle 3 card rosa più costose (vedi RosterStatsCards), annidato
 // dentro il TeamPanelSkeleton/il pannello già montato — non un confine
-// <Suspense> di primo livello come le 3 sezioni sopra.
+// <Suspense> di primo livello come le 2 sezioni sopra.
 export function RosterStatsCardsSkeleton() {
   return (
     <>
@@ -41,21 +41,6 @@ export function RosterStatsCardsSkeleton() {
         </div>
       ))}
     </>
-  );
-}
-
-export function SeasonGallerySkeleton() {
-  return (
-    <div className="p-4">
-      <div className="mb-2 h-3 w-24 animate-pulse rounded bg-stone-200" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-stone-200 bg-white p-4">
-            <div className="h-4 w-24 animate-pulse rounded bg-stone-200" />
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 

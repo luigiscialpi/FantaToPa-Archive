@@ -4,9 +4,8 @@ import { getSessionState } from '../../lib/auth/session';
 import { getCompetitions, getSeasons } from '../../lib/queries/seasons';
 import { getStandings } from '../../lib/queries/classifica';
 import { TeamPanelSection } from '../../components/home/TeamPanelSection';
-import { SeasonGallerySection } from '../../components/home/SeasonGallerySection';
 import { LeagueShowcaseSection } from '../../components/home/LeagueShowcaseSection';
-import { TeamPanelSkeleton, SeasonGallerySkeleton, LeagueShowcaseSkeleton } from '../../components/home/HomeSkeletons';
+import { TeamPanelSkeleton, LeagueShowcaseSkeleton } from '../../components/home/HomeSkeletons';
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -42,7 +41,7 @@ export default async function HomePage() {
   const ownStanding = profile?.teamId ? (standings.find((row) => row.teamId === profile.teamId) ?? null) : null;
   const leaderStanding = standings.find((row) => row.position === 1) ?? null;
 
-  // Le 3 sezioni sotto sono Server Component asincroni indipendenti, ognuna
+  // Le 2 sezioni sotto sono Server Component asincroni indipendenti, ognuna
   // con le proprie query e il proprio confine <Suspense>: possono comparire
   // in streaming man mano che i rispettivi dati sono pronti, invece di
   // bloccare l'intera pagina finché la più lenta non finisce (in
@@ -61,9 +60,6 @@ export default async function HomePage() {
           />
         </Suspense>
       )}
-      <Suspense fallback={<SeasonGallerySkeleton />}>
-        <SeasonGallerySection userTeamId={profile?.teamId} />
-      </Suspense>
       <Suspense fallback={<LeagueShowcaseSkeleton />}>
         <LeagueShowcaseSection
           seasonId={latestSeason.id}
