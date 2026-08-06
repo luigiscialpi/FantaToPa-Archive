@@ -50,7 +50,7 @@ export function RosterStandoutCard({ standouts }: { standouts: RosterStandout[] 
           lungo ("Stagione 2017/2018 – 2021/2022") e su una riga sola
           schiacciava il nome fino a troncarlo a 1-2 lettere. */}
       <div className="relative">
-        <ol className="max-h-36 space-y-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] [scrollbar-color:var(--color-stone-300)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-transparent">
+        <ol className="max-h-36 space-y-1 overflow-y-auto pr-1 [scrollbar-gutter:stable] [scrollbar-color:var(--color-stone-300)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-transparent">
           {standouts.slice(0, count).map((standout, index) => {
             const sameSeason = standout.fromSeasonLabel === standout.toSeasonLabel;
             // Le label sono già "Stagione AAAA/AAAA": per l'intervallo si

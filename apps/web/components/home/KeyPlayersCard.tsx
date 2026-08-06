@@ -48,7 +48,7 @@ export function KeyPlayersCard({ players }: { players: FieldedPlayer[] }) {
           spinge le altre tessere della riga (StatCard è h-full in una grid). */}
       <div className="relative">
         <ol
-          className="max-h-28 space-y-0.5 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] [scrollbar-color:var(--color-stone-300)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-transparent"
+          className="max-h-28 space-y-0.5 overflow-y-auto pr-1 [scrollbar-gutter:stable] [scrollbar-color:var(--color-stone-300)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-transparent"
         >
           {players.slice(0, count).map((player, index) => (
             <li key={index} className="flex items-baseline justify-between gap-2">

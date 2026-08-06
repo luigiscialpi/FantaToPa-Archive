@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Soglia in px, ma limitata a una frazione dello scroll disponibile: pagine
 // come la classifica su mobile hanno poco scroll totale (~150-300px), quindi
@@ -13,19 +13,38 @@ const MAX_SCROLL_FRACTION = 0.4;
 
 export function BackToTop() {
   const [visible, setVisible] = useState(false);
+  const thresholdRef = useRef(0);
 
   useEffect(() => {
-    function handleScroll() {
+    function recomputeThreshold() {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      const threshold = Math.min(MAX_THRESHOLD_PX, maxScroll * MAX_SCROLL_FRACTION);
-      setVisible(window.scrollY > threshold);
+      thresholdRef.current = Math.min(MAX_THRESHOLD_PX, maxScroll * MAX_SCROLL_FRACTION);
     }
-    handleScroll();
+
+    // ponytail: `scrollHeight` dipende dal layout, quindi leggerlo dentro
+    // l'handler di 'scroll' (che su un flick veloce spara a frequenza
+    // nativa) forzava un reflow sincrono ad ogni evento — su mobile
+    // abbastanza pesante da far "perdere" al browser il touch di uno
+    // scorrimento successivo. La soglia ora si ricalcola solo al mount/
+    // resize; l'handler di scroll fa solo un confronto numerico, throttlato
+    // in un frame con rAF.
+    let scheduled = false;
+    function handleScroll() {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        setVisible(window.scrollY > thresholdRef.current);
+        scheduled = false;
+      });
+    }
+
+    recomputeThreshold();
+    setVisible(window.scrollY > thresholdRef.current);
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll);
+    window.addEventListener('resize', recomputeThreshold);
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('resize', recomputeThreshold);
     };
   }, []);
 

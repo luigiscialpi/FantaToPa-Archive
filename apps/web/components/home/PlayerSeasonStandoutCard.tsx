@@ -46,7 +46,7 @@ export function PlayerSeasonStandoutCard({ standouts }: { standouts: PlayerSeaso
           scelta di RosterStandoutCard, "Stagione AAAA/AAAA" accanto a un
           nome lungo schiacciava il nome. */}
       <div className="relative">
-        <ol className="max-h-36 space-y-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] [scrollbar-color:var(--color-stone-300)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-transparent">
+        <ol className="max-h-36 space-y-1 overflow-y-auto pr-1 [scrollbar-gutter:stable] [scrollbar-color:var(--color-stone-300)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-300 [&::-webkit-scrollbar-track]:bg-transparent">
           {standouts.slice(0, count).map((standout, index) => (
             <li key={index}>
               <div className="flex items-baseline justify-between gap-2">
