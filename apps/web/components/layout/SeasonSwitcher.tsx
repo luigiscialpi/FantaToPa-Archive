@@ -22,17 +22,27 @@ type SeasonSwitcherProps = {
   // aperto. 'full' (default): riga propria o affiancato ad AccountActions su
   // desktop, dove lo spazio non manca.
   variant?: 'full' | 'compact';
+  // Usato dal sottomenu stagione dell'hamburger mobile per richiudere
+  // l'intero menu alla scelta, senza attendere che la navigazione (in
+  // transition) sia completata.
+  onSelect?: () => void;
+  // Il sottomenu dell'hamburger mobile vuole il selettore anche nelle route
+  // top-level (Albo d'Oro, Statistiche, Profilo Squadra) per navigare verso
+  // una stagione da lì — solo Home ne è esclusa (mostra già un selettore in
+  // pagina), esclusione decisa dal chiamante, non qui.
+  alwaysVisible?: boolean;
 };
 
-export function SeasonSwitcher({ seasons, variant = 'full' }: SeasonSwitcherProps) {
+export function SeasonSwitcher({ seasons, variant = 'full', onSelect, alwaysVisible = false }: SeasonSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   // Nelle pagine top-level (Home, Albo d'Oro, Statistiche, Profilo Squadra)
-  // non c'è una stagione attiva da mostrare/cambiare: il selettore non ha
-  // senso lì, su nessun breakpoint.
-  if (isTopLevelRoute(pathname)) {
+  // non c'è una stagione attiva da mostrare/cambiare: il selettore inline non
+  // ha senso lì, su nessun breakpoint (il sottomenu hamburger opta fuori con
+  // alwaysVisible per restare utilizzabile anche in quelle route).
+  if (!alwaysVisible && isTopLevelRoute(pathname)) {
     return null;
   }
 
@@ -52,6 +62,7 @@ export function SeasonSwitcher({ seasons, variant = 'full' }: SeasonSwitcherProp
     const nextPath = seasonMatch
       ? pathname.replace(`/stagioni/${activeSeasonSlug}`, `/stagioni/${nextSlug}`)
       : `/stagioni/${nextSlug}/classifica`;
+    onSelect?.();
     startTransition(() => {
       router.push(nextPath);
     });
