@@ -15,17 +15,19 @@ export function PreventPullToRefresh() {
     let startX = 0;
 
     function handleTouchStart(event: TouchEvent) {
-      if (event.touches.length === 1) {
-        startY = event.touches[0].clientY;
-        startX = event.touches[0].clientX;
+      const touch = event.touches[0];
+      if (touch) {
+        startY = touch.clientY;
+        startX = touch.clientX;
       }
     }
 
     function handleTouchMove(event: TouchEvent) {
-      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      if (!touch) return;
 
-      const y = event.touches[0].clientY;
-      const x = event.touches[0].clientX;
+      const y = touch.clientY;
+      const x = touch.clientX;
       const deltaY = y - startY;
       const deltaX = x - startX;
 
