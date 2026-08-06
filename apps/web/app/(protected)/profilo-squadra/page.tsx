@@ -1,13 +1,16 @@
 // apps/web/app/(protected)/profilo-squadra/page.tsx
 //
-// Route top-level (come /albo-doro, /statistiche): il pannello squadra qui
-// non è quello dell'utente loggato ma di una squadra scelta liberamente
-// (selettore in searchParams, come Statistiche). Riusa TeamPanelSection
-// così com'è — è già parametrizzata per qualunque teamId/seasonId, nessuna
-// nuova query: stesso identico contenuto del pannello squadra di Home.
+// Route top-level (come /albo-doro, /statistiche): la squadra mostrata è
+// scelta liberamente (selettore in searchParams, come Statistiche), non
+// vincolata all'utente loggato — ma senza selezione esplicita si parte
+// dalla propria squadra (profiles.team_id), non dalla prima della lista.
+// Riusa TeamPanelSection così com'è — è già parametrizzata per qualunque
+// teamId/seasonId, nessuna nuova query: stesso identico contenuto del
+// pannello squadra di Home.
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { createClient } from '../../../lib/supabase/server';
+import { getSessionState } from '../../../lib/auth/session';
 import { getSeasons, getCompetitions } from '../../../lib/queries/seasons';
 import { getAllTeams } from '../../../lib/queries/teams';
 import { getStandings } from '../../../lib/queries/classifica';
@@ -25,7 +28,9 @@ export default async function ProfiloSquadraPage({ searchParams }: ProfiloSquadr
   const { squadra } = await searchParams;
   const supabase = await createClient();
 
-  const [seasons, teams] = await Promise.all([getSeasons(supabase), getAllTeams(supabase)]);
+  // getSessionState() è wrappata in cache(): il layout protetto l'ha già
+  // invocata in questa stessa render request (AGENTS.md), riuso gratuito.
+  const [session, seasons, teams] = await Promise.all([getSessionState(), getSeasons(supabase), getAllTeams(supabase)]);
 
   if (teams.length === 0) {
     return (
@@ -36,7 +41,12 @@ export default async function ProfiloSquadraPage({ searchParams }: ProfiloSquadr
     );
   }
 
-  const activeTeam = teams.find((team) => team.slug === squadra) ?? teams[0]!;
+  // Senza selezione esplicita in searchParams, un utente proprietario di una
+  // squadra (profiles.team_id) atterra sulla propria, non sulla prima della
+  // lista.
+  const ownTeamId = session.kind === 'autenticato' ? session.profile.teamId : null;
+  const defaultTeam = (ownTeamId ? teams.find((team) => team.id === ownTeamId) : null) ?? teams[0]!;
+  const activeTeam = (squadra ? teams.find((team) => team.slug === squadra) : null) ?? defaultTeam;
 
   const latestSeason = seasons[0] ?? null;
 
