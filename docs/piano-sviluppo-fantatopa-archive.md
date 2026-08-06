@@ -1063,7 +1063,24 @@ Rilettura completa del piano con una domanda sola: cosa manca per iniziare senza
 ### Cosa manca davvero
 
 **Blocca un avvio sicuro, da risolvere prima della Fase 0:**
-- **Backup Supabase**: il piano free **non ha backup automatici né point-in-time recovery** — confermato dalla documentazione ufficiale, che raccomanda esplicitamente `supabase db dump` via CLI più backup off-site per i progetti free. Per un archivio storico con dati non recuperabili da altrove, non è opzionale: **GitHub Action schedulata** (settimanale basta, a questi volumi) che fa `supabase db dump`, comprime, e carica su uno storage separato dal progetto stesso. Va in Fase 0, non rimandata.
+- **Backup Supabase**: il piano free **non ha backup automatici né point-in-time recovery** — confermato dalla documentazione ufficiale, che raccomanda esplicitamente `supabase db dump` via CLI più backup off-site per i progetti free. Per un archivio storico con dati non recuperabili da altrove, non è opzionale.
+  **Aggiornamento (2026-08-06)**: `supabase db dump --linked` richiede Docker (spawna un
+  container per il `pg_dump` versione-matchata) — non disponibile su questa macchina, quindi
+  sostituito da `pg_dump` nativo via `libpq` (`brew install libpq`), puntato direttamente al
+  pooler URL del progetto (`supabase/.temp/pooler-url`). Due script permanenti in repo,
+  eseguibili manualmente quando serve un nuovo backup completo:
+  - `scripts/backup-supabase-db.sh <cartella-destinazione>` — dump schema-only +
+    data-only dello schema `public` (password DB chiesta interattivamente, mai salvata).
+  - `packages/ingestion/scripts/backup-storage.ts` (`npm run backup:storage -- <cartella>`)
+    — scarica ricorsivamente tutti i file di tutti i bucket di Storage (oggi solo
+    `team-branding`, 125 file), preservando la struttura di cartelle.
+  Una copia standalone di entrambi (senza dipendenze dal resto del repo, solo `pg_dump` e
+  Node nativo con `fetch`) viene salvata anche dentro ogni cartella di backup generata,
+  proprio per il caso limite in cui in futuro resti solo il backup + l'accesso a Supabase,
+  senza più la codebase — vedi `docs/STRUTTURA.md` del backup per l'uso. Resta comunque
+  valida l'idea originale di una **GitHub Action schedulata** che automatizzi l'esecuzione
+  periodica: non ancora implementata, il backup ad oggi è manuale, va rilanciato a mano
+  quando serve uno snapshot aggiornato.
 - **TypeScript**: non l'avevi mai detto esplicitamente in questa conversazione — l'ho assunto dal resto del tuo lavoro. Lo confermo/fisso ora esplicitamente: sì, TypeScript, `strict: true` da subito (dettagli sotto).
 - **Variabili d'ambiente**: mai elencate. Servono almeno `SUPABASE_URL`, `SUPABASE_ANON_KEY` (client pubblico), `SUPABASE_SERVICE_ROLE_KEY` (solo script di ingestion, mai nel client/nel browser), `RESEND_API_KEY` (Edge Function) — duplicate per staging/prod, scoping corretto su Netlify (preview ≠ prod, sezione 4).
 - **Framework di test**: mai scelto. Consiglio **Vitest** — sintassi Jest-like, integrazione naturale con Vite/Next, veloce — sia per la regressione dei parser che per gli unit test del loader (sezione 7).
