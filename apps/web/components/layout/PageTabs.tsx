@@ -27,7 +27,7 @@ export function PageTabs({ seasonSlug }: { seasonSlug: string }) {
   const activeCompetitionSlug = useSearchParams().get('competizione');
 
   return (
-    <div className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-none min-w-0 flex-1">
+    <div className="flex gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden scrollbar-none min-w-0 flex-1">
       {TABS.map((tab) => {
         const preserveCompetition = activeCompetitionSlug && COMPETITION_SCOPED_SEGMENTS.includes(tab.segment);
         const href = preserveCompetition

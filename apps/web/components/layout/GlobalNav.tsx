@@ -24,7 +24,7 @@ export function GlobalNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-none min-w-0">
+    <nav className="flex gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden scrollbar-none min-w-0">
       {ITEMS.map((item) => {
         const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
