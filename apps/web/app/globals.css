@@ -1,10 +1,28 @@
 @import "tailwindcss";
+/* Percorso relativo esplicito, non solo il nome pacchetto: nel monorepo npm
+   workspaces (nessun node_modules locale in apps/web, tutto hoistato alla
+   root) il resolver CSS di Turbopack per @plugin non risale l'albero come fa
+   la risoluzione Node standard dei moduli JS — verificato che il bare
+   specifier "@tailwindcss/typography" fallisce con "Can't resolve", pur
+   essendo risolvibile da Node stesso (require.resolve funziona). */
+@plugin "../../../node_modules/@tailwindcss/typography";
 
 /* Impedisce il pull-to-refresh del browser mobile (Android Chrome, iOS Safari 16+)
    mantenendo lo scroll naturale all'interno della pagina. */
 html,
 body {
   overscroll-behavior-y: contain;
+}
+
+/* Tabelle importate da un .docx (pagina Doc) possono avere più colonne di
+   quante ne stia una larghezza mobile — il contenuto minimo per cella non è
+   risolvibile con width:100% (il browser ignora un width troppo stretto pur
+   di non tagliare il contenuto). Scroll orizzontale contenuto nella singola
+   tabella invece di far traboccare l'intera pagina.*/
+.prose table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 /* Scala colori "brand" derivata da #2E6BE6, posizionato come tonalità

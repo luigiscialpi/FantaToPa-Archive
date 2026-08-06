@@ -151,6 +151,66 @@ export type Database = {
           },
         ]
       }
+      document_versions: {
+        Row: {
+          content_html: string
+          created_at: string
+          created_by: string
+          created_by_name: string
+          id: string
+          kind: string
+          original_filename: string | null
+          source: string
+          storage_path: string | null
+        }
+        Insert: {
+          content_html: string
+          created_at?: string
+          created_by: string
+          created_by_name: string
+          id?: string
+          kind: string
+          original_filename?: string | null
+          source: string
+          storage_path?: string | null
+        }
+        Update: {
+          content_html?: string
+          created_at?: string
+          created_by?: string
+          created_by_name?: string
+          id?: string
+          kind?: string
+          original_filename?: string | null
+          source?: string
+          storage_path?: string | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          content_html: string
+          kind: string
+          updated_at: string
+          updated_by: string | null
+          updated_by_name: string | null
+        }
+        Insert: {
+          content_html?: string
+          kind: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string | null
+        }
+        Update: {
+          content_html?: string
+          kind?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string | null
+        }
+        Relationships: []
+      }
       import_batches: {
         Row: {
           confirmed_at: string | null
