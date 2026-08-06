@@ -6,12 +6,14 @@
 // contesto. Client component per usePathname() (evidenzia il tab attivo) e
 // useSearchParams() (preserva ?competizione= cambiando tab, altrimenti si
 // resetterebbe al primo torneo della lista sulla pagina di destinazione).
+// Niente LinkPending qui: il click cambia sempre segmento di route, quindi
+// loading.tsx mostra già lo skeleton — un secondo indicatore era ridondante
+// (stessa scelta già fatta per GlobalNav).
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { COMPETITION_SCOPED_SEGMENTS } from '../classifica/CompetitionSwitcher';
-import { LinkPending } from '../shared/LinkPending';
 
 const TABS = [
   { segment: 'classifica', label: 'Classifica' },
@@ -44,10 +46,10 @@ export function PageTabs({ seasonSlug }: { seasonSlug: string }) {
             }`}
           >
             {tab.label}
-            <LinkPending />
           </Link>
         );
       })}
     </div>
   );
 }
+
