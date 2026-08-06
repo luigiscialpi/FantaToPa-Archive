@@ -21,7 +21,6 @@ import Link from 'next/link';
 import { signOut } from '../../lib/auth/actions';
 import type { SessionProfile } from '../../lib/auth/session';
 import type { SeasonOption } from '../../lib/queries/seasons';
-import { RewardedAdButton } from '../ads/RewardedAdButton';
 import { SubmitButton } from '../shared/SubmitButton';
 import { GlobalNav } from './GlobalNav';
 import { SeasonSwitcher } from './SeasonSwitcher';
@@ -35,7 +34,6 @@ function AccountActions({ profile, itemClassName }: { profile: SessionProfile; i
           Admin
         </Link>
       )}
-      <RewardedAdButton itemClassName={itemClassName} />
       <form action={signOut} className="contents">
         <SubmitButton pendingLabel="Esco…" className={`${itemClassName} disabled:opacity-60`}>
           Esci
