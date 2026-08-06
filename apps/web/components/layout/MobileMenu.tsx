@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { RefreshCw } from 'lucide-react';
 import type { SessionProfile } from '../../lib/auth/session';
 import type { SeasonOption } from '../../lib/queries/seasons';
 import { AccountActions } from './AccountActions';
@@ -44,6 +45,10 @@ export function MobileMenu({ profile, seasons }: { profile: SessionProfile; seas
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [open]);
+
+  function handleReload() {
+    window.location.reload();
+  }
 
   return (
     <div ref={rootRef} className="relative sm:hidden shrink-0">
@@ -90,6 +95,15 @@ export function MobileMenu({ profile, seasons }: { profile: SessionProfile; seas
               )}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={handleReload}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-brand-900 hover:bg-stone-100 transition-colors border-t border-stone-100"
+          >
+            <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+            Ricarica
+          </button>
 
           <AccountActions
             profile={profile}

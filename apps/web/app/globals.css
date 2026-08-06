@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Impedisce il pull-to-refresh del browser mobile (Android Chrome, iOS Safari 16+)
+   mantenendo lo scroll naturale all'interno della pagina. */
+html,
+body {
+  overscroll-behavior-y: contain;
+}
+
 /* Scala colori "brand" derivata da #2E6BE6, posizionato come tonalità
    medio-scura (600) invece che come anchor centrale: header/nav/bottoni
    usano le tinte chiare (100-400) della stessa scala, non quelle scure. */

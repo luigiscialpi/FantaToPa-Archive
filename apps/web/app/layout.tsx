@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { PreventPullToRefresh } from '../components/prevent-pull-to-refresh';
 import { siteOrigin } from '../lib/auth/actions';
 import './globals.css';
 
@@ -63,7 +64,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // effetto — senza, il contenitore centrato "saltava" di ~7px tra
     // pagine con e senza scroll verticale.
     <html lang="it" className="[scrollbar-gutter:stable]">
-      <body className="bg-stone-100 text-stone-900 antialiased">{children}</body>
+      <body className="bg-stone-100 text-stone-900 antialiased">
+        <PreventPullToRefresh />
+        {children}
+      </body>
     </html>
   );
 }
