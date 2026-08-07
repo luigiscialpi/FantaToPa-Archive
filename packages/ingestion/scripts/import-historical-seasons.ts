@@ -162,27 +162,21 @@ const SEASONS: HistoricalSeason[] = [
       { teamName: 'MR EKO - C&W F.C.', position: 10, points: 29, goalsFor: 32, goalsAgainst: 59, won: 5, drawn: 14 },
     ],
   },
-  {
-    slug: '2011-12',
-    label: 'Stagione 2011/2012',
-    startsOn: '2011-08-01',
-    endsOn: '2012-06-30',
-    // Pier 92 esclusa per fair play finanziario, sostituita da AC Smokingbianco.
-    standings: [
-      { teamName: 'Prozalpi S.F.', position: 1 },
-      { teamName: 'pierpaologranata', position: 2 },
-    ],
-  },
+  // 2011-12 rimossa da qui (2026-08-07): ha un import reale dedicato
+  // (import-season-2011-12.ts, mirror HTML con calendario/classifica veri).
+  // Tenerla anche qui, con solo "teamName+position" e nessun punto/gol,
+  // sovrascriveva silenziosamente (stesso conflict key competition_id+team_id)
+  // le righe standings reali con statistiche NULL a ogni rilancio dello
+  // script — vedi recompute-standings-2011-12-2012-13.ts per il fix dati.
   {
     slug: '2012-13',
     label: 'Stagione 2012/2013',
     startsOn: '2012-08-01',
     endsOn: '2013-06-30',
-    standings: [
-      { teamName: 'pierpaologranata', position: 1 },
-      { teamName: 'MR EKO - C&W F.C.', position: 2 },
-      { teamName: 'AC Smokingbianco', position: 3 },
-    ],
+    // Campionato: nessuna riga qui (2026-08-07, stessa causa di 2011-12 sopra)
+    // — import reale dedicato in import-season-2012-13.ts. Questa voce serve
+    // solo per il vincitore Coppa Lelle, che non ha una fonte migliore.
+    standings: [],
     // Prima edizione della Coppa Lelle: finale ai rigori, Real Cocu batte Goliardic F.C.
     coppaLelleWinner: 'Real Cocu 2003 Fc',
   },

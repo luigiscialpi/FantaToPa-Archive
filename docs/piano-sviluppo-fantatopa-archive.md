@@ -1026,20 +1026,64 @@ stagioni coperte da un mirror/xlsx reale (2011-12 → 2025-26 esclusa la sola cl
 2013-14) sono importate**; le stagioni 2004-05 → 2010-11 restano solo podio manuale
 (nota storica utente, vedi sotto).
 
+**Bug scoperto e corretto (2026-08-07)**: `import-historical-seasons.ts` ripete
+l'intero suo elenco di stagioni a ogni lancio — comprese, per inerzia, le vecchie voci
+"solo podio" di 2011-12/2012-13 rimaste lì da prima che esistessero questi import reali
+dedicati. Un rilancio dello script per un motivo non collegato (l'arricchimento
+2005-06→2010-11 descritto sotto) ha silenziosamente sovrascritto le righe standings
+reali di queste due stagioni per le sole squadre di podio, azzerandone punti/gol/V-N-P/
+fantavoto (upsert su `competition_id, team_id` — l'ultimo scrittore vince). Fix: le due
+voci rimosse dall'elenco storico (2012-13 vi resta solo per il vincitore Coppa Lelle, che
+non ha fonte migliore); dati ripristinati ricalcolandoli dalle 190 partite reali già in
+`matches` per ciascuna stagione (`recompute-standings-2011-12-2012-13.ts`). Lezione: un
+import "storico" che itera un intero elenco a ogni lancio va disallineato subito quando
+una delle sue voci guadagna altrove un import reale — lasciarla lì "tanto non fa danno"
+non è vero, l'upsert sovrascrive silenziosamente.
+
 **Estensione — bonus subentrato/uscito 2011-12/2012-13/2013-14** *(completata)*
 Icone "Entrato"/"Uscito" già presenti nella fonte condivisa di queste tre stagioni ma
 scartate esplicitamente; recuperate con due nuovi `bonus_kinds` (sezione 7.2). Nessuna
 fonte legacy indagata contiene un'icona di infortunio: gap di dato, non riproposto.
 
-**Estensione — stagioni 2004-05 → 2010-11, podio manuale** *(completata)*
+**Estensione — stagioni 2004-05 → 2010-11, podio manuale** *(completata, arricchita
+2026-08-07)*
 Nessun mirror/file sorgente esiste per queste 7 stagioni (precedono il primo mirror
-disponibile, 2013-14): unica fonte una nota storica testuale dell'utente (podio
-Campionato + vincitore Coppa Lelle dove esiste, nata solo dal 2012-13). Niente
-calendario/formazioni/rose — restano fuori dal selettore stagione in header e dalla
-galleria stagioni cliccabile in home (`hasSchedule: false`, sezione 10), ma compaiono in
-Albo d'Oro/Statistiche storiche. Script unico per tutte e 7 (`import-historical-seasons.ts`),
-non un file per stagione: il volume di dati per stagione (1-3 righe standings) non
-giustifica la separazione.
+disponibile, 2013-14): la fonte originale era solo una nota storica testuale dell'utente
+(podio Campionato + vincitore Coppa Lelle dove esiste, nata solo dal 2012-13). **Un
+secondo documento dell'utente, `docs/classifiche.md`, ha poi fornito la classifica
+finale COMPLETA (posizione/punti/gol fatti-subiti, V/N/P dove riportati dalla fonte) per
+2005-06→2010-11** — le posizioni di podio già importate combaciavano esattamente,
+confermando l'attendibilità della fonte. 2004-05 resta l'unica di queste 7 con solo il
+podio (nessuna tabella completa disponibile per quell'anno). Niente calendario/
+formazioni/rose per nessuna delle 7 — restano fuori dal selettore stagione in header e
+dalla galleria stagioni cliccabile in home (`hasSchedule: false`, sezione 10), ma
+compaiono in Albo d'Oro/Statistiche storiche. Script unico per tutte e 7
+(`import-historical-seasons.ts`), non un file per stagione: il volume di dati per
+stagione non giustifica la separazione.
+
+**Estensione — stagione 2015-16, classifica finale manuale** *(completata, 2026-08-07)*
+Buco tra il 2014-15 e il 2016-17 (entrambi reali): nessun mirror/file sorgente esiste per
+questa stagione, mai importata prima. Fonte: la stessa tabella completa in
+`docs/classifiche.md` usata per arricchire 2005-06→2010-11 sopra. Nomi squadra
+(soprannomi manager, non nomi squadra) risolti incrociando posizione/punti/fantavoto con
+la classifica reale 2014-15 già in DB (stessa lega, stessi 10 manager) — corrispondenza
+esatta su tutte e 10 le righe. Script dedicato `import-season-2015-16.ts` (stesso
+pattern manuale delle 7 stagioni sopra: solo `standings`, niente calendario/formazioni/
+rose).
+
+**Correzione — stagione 2014-15: 38ª giornata mancante + partite fantasma giornata 1**
+*(2026-08-07)*
+La classifica finale completa di `docs/classifiche.md` per il 2014-15 (sopra) ha
+rivelato che mancava la 38ª giornata: presente nel calendario sorgente solo come
+accoppiamenti, mai finalizzata con un risultato sulla piattaforma originale. Risultati
+derivati per sottrazione (cumulato delle 37 giornate note meno la classifica finale,
+verificato con controlli incrociati indipendenti su tutte e 5 le partite) —
+`backfill-giornata38-2014-15.ts`. Nello stesso lavoro, scoperte e rimosse 3 partite/
+formazioni spurie della giornata 1, contenuto duplicato/corrotto della giornata 22 per
+un bug di rendering della piattaforma originale (la stessa pagina aveva già un glitch
+noto sull'etichetta giornata) — `cleanup-giornata1-phantom-matches-2014-15.ts`.
+Verificato: la classifica ricalcolata su tutte le 38 giornate combacia esattamente con
+lo snapshot finale.
 
 
 
