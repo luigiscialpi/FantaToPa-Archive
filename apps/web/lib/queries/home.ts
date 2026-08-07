@@ -166,8 +166,9 @@ export async function getMostTitledTeam(
   let topTeamId: string | null = null;
   let topTitles: TitleCounts | null = null;
   for (const [teamId, titles] of counts) {
-    const topTotal = topTitles ? topTitles.campionati + topTitles.coppe : -1;
-    if (titles.campionati + titles.coppe > topTotal) {
+    const topTotal = topTitles ? topTitles.campionati * 10 + topTitles.coppe : -1;
+    const currentTotal = titles.campionati * 10 + titles.coppe;
+    if (currentTotal > topTotal) {
       topTeamId = teamId;
       topTitles = titles;
     }
