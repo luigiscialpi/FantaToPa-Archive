@@ -9,17 +9,16 @@ import type { StandingsRow } from '../../lib/queries/classifica';
 // cliccabili come nello screenshot di riferimento, tabella reale invece del
 // riepilogo su una riga — l'orizzontale scroll (overflow-x-auto sul
 // contenitore) copre gli schermi stretti invece di rinunciare alle colonne.
-type SortKey = 'position' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDiff' | 'points' | 'totalFantapoints';
+type SortKey = 'position' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'goalDiff' | 'points' | 'totalFantapoints';
 
 const COLUMNS: { key: SortKey; label: string; title: string }[] = [
-  { key: 'played', label: 'G', title: 'Giocate' },
+  { key: 'points', label: 'Pt', title: 'Punti' },
   { key: 'won', label: 'V', title: 'Vinte' },
   { key: 'drawn', label: 'N', title: 'Nulle (pareggi)' },
   { key: 'lost', label: 'P', title: 'Perse' },
   { key: 'goalsFor', label: 'Gf', title: 'Gol fatti' },
   { key: 'goalsAgainst', label: 'Gs', title: 'Gol subiti' },
   { key: 'goalDiff', label: 'Dr', title: 'Differenza reti' },
-  { key: 'points', label: 'Pt', title: 'Punti' },
   { key: 'totalFantapoints', label: 'Pt Totali', title: 'Fantapunti totali' },
 ];
 

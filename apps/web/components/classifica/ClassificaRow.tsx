@@ -72,7 +72,7 @@ export function ClassificaRow({
             </span>
           </span>
         </td>
-        <EditableCell formId={formId} name="played" defaultValue={row.played} />
+        <EditableCell formId={formId} name="points" defaultValue={row.points} />
         <EditableCell formId={formId} name="won" defaultValue={row.won} />
         <EditableCell formId={formId} name="drawn" defaultValue={row.drawn} />
         <EditableCell formId={formId} name="lost" defaultValue={row.lost} />
@@ -81,7 +81,6 @@ export function ClassificaRow({
         <td className="px-2 py-1 text-center tabular-nums text-stone-400" title="Ricalcolata da Gf/Gs al salvataggio">
           {goalDiffLabel}
         </td>
-        <EditableCell formId={formId} name="points" defaultValue={row.points} />
         <EditableCell formId={formId} name="totalFantapoints" defaultValue={row.totalFantapoints} step="0.5" />
         <td className="px-1 py-1">
           <SaveButton
@@ -120,16 +119,15 @@ export function ClassificaRow({
           </span>
         </Link>
       </td>
-      <StatCell value={row.played} />
+      <td className="px-2 py-2 text-center font-serif font-bold text-brand-800 tabular-nums">
+        {row.points ?? '–'}
+      </td>
       <StatCell value={row.won} />
       <StatCell value={row.drawn} />
       <StatCell value={row.lost} />
       <StatCell value={row.goalsFor} />
       <StatCell value={row.goalsAgainst} />
       <td className="px-2 py-2 text-center tabular-nums text-stone-600">{goalDiffLabel}</td>
-      <td className="px-2 py-2 text-center font-serif font-bold text-brand-800 tabular-nums">
-        {row.points ?? '–'}
-      </td>
       <td className="px-2 py-2 text-center text-stone-500 tabular-nums">{row.totalFantapoints ?? '–'}</td>
     </tr>
   );
