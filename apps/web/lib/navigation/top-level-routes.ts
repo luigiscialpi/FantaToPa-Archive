@@ -4,7 +4,7 @@
 // Squadra): non scoped a una singola stagione. Condivisa da SiteBrand (nome
 // esteso) e SeasonSwitcher (nessuna stagione attiva da mostrare/cambiare lì),
 // per non tenere due liste di route allineate a mano.
-const TOP_LEVEL_ROUTES = [
+export const TOP_LEVEL_ROUTES = [
   { href: '/', exact: true },
   { href: '/albo-doro', exact: false },
   { href: '/statistiche', exact: false },

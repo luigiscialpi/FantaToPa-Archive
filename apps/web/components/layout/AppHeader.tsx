@@ -17,8 +17,12 @@
 // dell'header, invece di un'ulteriore barra sticky indipendente — chi
 // consuma l'altezza dell'header (sticky offset di stagioni/[season]/layout.tsx)
 // aggiorna un solo valore, non ne inserisce uno nuovo da coordinare.
+'use client';
+
+import { usePathname } from 'next/navigation';
 import type { SessionProfile } from '../../lib/auth/session';
 import type { SeasonOption } from '../../lib/queries/seasons';
+import { TOP_LEVEL_ROUTES } from '../../lib/navigation/top-level-routes';
 import { AccountActions } from './AccountActions';
 import { GlobalNav } from './GlobalNav';
 import { MobileMenu } from './MobileMenu';
@@ -26,7 +30,13 @@ import { SeasonSwitcher } from './SeasonSwitcher';
 import { SiteBrand } from './SiteBrand';
 
 export function AppHeader({ profile, seasons }: { profile: SessionProfile; seasons: SeasonOption[] }) {
+  const pathname = usePathname();
   const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email || 'Membro';
+
+  const targetRoutes = TOP_LEVEL_ROUTES.filter((r) => r.href !== '/');
+  const isTargetRoute = targetRoutes.some(
+    (route) => (route.exact ? pathname === route.href : pathname.startsWith(route.href))
+  );
 
   return (
     <header className="bg-brand-700 text-stone-50 sticky top-0 z-20 lg:rounded-t-xl">
@@ -38,11 +48,15 @@ export function AppHeader({ profile, seasons }: { profile: SessionProfile; seaso
         </div>
 
         <div className="sm:hidden shrink-0">
-          <SeasonSwitcher seasons={seasons} variant="compact" />
+          <SeasonSwitcher seasons={seasons} variant="compact" alwaysVisible={isTargetRoute} />
         </div>
 
         <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <SeasonSwitcher seasons={seasons} />
+          {isTargetRoute ? (
+            <SeasonSwitcher seasons={seasons} variant="compact" alwaysVisible />
+          ) : (
+            <SeasonSwitcher seasons={seasons} />
+          )}
           <details className="relative">
             <summary
               aria-label="Account"
