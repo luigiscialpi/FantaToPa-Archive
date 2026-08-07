@@ -16,19 +16,37 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { COMPETITION_SCOPED_SEGMENTS } from '../classifica/CompetitionSwitcher';
 
 const TABS = [
-  { segment: 'classifica', label: 'Classifica' },
-  { segment: 'calendario', label: 'Calendario' },
-  { segment: 'rose', label: 'Rose' },
-  { segment: 'formazioni', label: 'Formazioni' },
+  { segment: 'classifica', label: 'Classifica', requiresSchedule: false },
+  { segment: 'calendario', label: 'Calendario', requiresSchedule: true },
+  { segment: 'rose', label: 'Rose', requiresSchedule: true },
+  { segment: 'formazioni', label: 'Formazioni', requiresSchedule: true },
 ];
 
-export function PageTabs({ seasonSlug }: { seasonSlug: string }) {
+// hasSchedule (stessa fonte del selettore stagione in header): stagioni
+// senza giornate reali (es. podio storico manuale 2005-06→2010-11) non
+// hanno calendario/rose/formazioni da mostrare — quei tab restano visibili
+// ma non navigabili, invece di portare a una pagina vuota. Classifica resta
+// sempre navigabile: può avere dati (standings) anche senza calendario.
+export function PageTabs({ seasonSlug, hasSchedule }: { seasonSlug: string; hasSchedule: boolean }) {
   const pathname = usePathname();
   const activeCompetitionSlug = useSearchParams().get('competizione');
 
   return (
     <div className="flex gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden scrollbar-none min-w-0 flex-1">
       {TABS.map((tab) => {
+        if (tab.requiresSchedule && !hasSchedule) {
+          return (
+            <span
+              key={tab.segment}
+              aria-disabled="true"
+              title="Dati non disponibili per questa stagione"
+              className="inline-flex items-center gap-1.5 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent -mb-px whitespace-nowrap text-stone-300 cursor-not-allowed"
+            >
+              {tab.label}
+            </span>
+          );
+        }
+
         const preserveCompetition = activeCompetitionSlug && COMPETITION_SCOPED_SEGMENTS.includes(tab.segment);
         const href = preserveCompetition
           ? `/stagioni/${seasonSlug}/${tab.segment}?competizione=${activeCompetitionSlug}`

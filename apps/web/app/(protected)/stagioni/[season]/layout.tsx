@@ -36,7 +36,7 @@ export default async function SeasonLayout({ children, params }: SeasonLayoutPro
         <div className="bg-white border-b border-stone-200/90 px-4 h-[41px] sticky top-[87px] sm:top-[89px] z-10" aria-hidden="true" />
       }>
         <div className="bg-white border-b border-stone-200/90 px-4 flex items-center gap-3 sticky top-[87px] sm:top-[89px] z-10">
-          <PageTabs seasonSlug={season.slug} />
+          <PageTabs seasonSlug={season.slug} hasSchedule={season.hasSchedule} />
         </div>
       </Suspense>
       <Suspense fallback={

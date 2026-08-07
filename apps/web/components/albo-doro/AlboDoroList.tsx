@@ -39,10 +39,14 @@ export function AlboDoroList({ seasons }: { seasons: SeasonGalleryEntry[] }) {
             </>
           );
 
-          // Stesso trattamento di SeasonGallery (Home): stagioni con solo un
-          // podio manuale (nessuna giornata reale) non hanno click verso
-          // classifica/calendario/formazioni, sarebbero vuote.
-          if (!season.hasSchedule) {
+          // A differenza di SeasonGallery (Home, che porta anche a
+          // calendario/formazioni/rose): qui il click va SOLO a classifica,
+          // quindi basta che esista una classifica reale (podium non nullo)
+          // anche senza giornate/calendario (es. stagioni storiche
+          // 2005-06→2010-11, note manuali con classifica completa ma nessun
+          // mirror sorgente). `hasSchedule` resta necessario in OR per le
+          // stagioni in corso, dove il podio è sempre null per definizione.
+          if (!season.hasSchedule && !season.podium) {
             return (
               <div
                 key={season.id}
