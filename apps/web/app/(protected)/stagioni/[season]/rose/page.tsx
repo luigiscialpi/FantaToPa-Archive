@@ -109,7 +109,10 @@ export default async function RosePage({ params, searchParams }: RosePageProps) 
                   teamName={team.name}
                   logoUrl={teamBranding.logoUrl}
                   jerseyUrl={teamBranding.jerseyUrl}
-                  managerName={managers.get(team.id) ?? null}
+                  // Utente registrato oggi su questa squadra, altrimenti il
+                  // proprietario storico di team_seasons (stagioni senza
+                  // alcun account collegato).
+                  managerName={managers.get(team.id) ?? teamBranding.managerName}
                   creditsRemaining={teamBranding.creditsRemaining}
                   seasonId={season.id}
                   teamId={team.id}

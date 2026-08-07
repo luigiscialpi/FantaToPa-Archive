@@ -42,7 +42,12 @@ export const getSeasons = cache(async (supabase: TypedSupabaseClient): Promise<S
   const { data, error } = await supabase
     .from('seasons')
     .select('id, slug, label, ends_on')
-    .order('starts_on', { ascending: false });
+    // nullsFirst: false come rete di sicurezza — `starts_on` è obbligatorio
+    // in creazione (createSeasonAction) proprio per evitare che una stagione
+    // senza data nota scavalchi tutte le altre in testa (Postgres mette i
+    // NULL per primi in un ORDER BY DESC di default), ma una riga storica
+    // creata prima di quel vincolo non deve comunque saltare in cima.
+    .order('starts_on', { ascending: false, nullsFirst: false });
 
   if (error) {
     throw new Error(`Impossibile leggere le stagioni: ${error.message}`);

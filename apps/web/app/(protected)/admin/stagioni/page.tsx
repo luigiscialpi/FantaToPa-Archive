@@ -9,6 +9,8 @@ import { createClient } from '../../../../lib/supabase/server';
 import { getSeasonsAdminOverview } from '../../../../lib/queries/admin-seasons';
 import { createSeasonAction } from '../../../../lib/admin/season-actions';
 import { AdminNav } from '../../../../components/admin/AdminNav';
+import { DeleteSeasonButton } from '../../../../components/admin/DeleteSeasonButton';
+import { SubmitButton } from '../../../../components/shared/SubmitButton';
 
 export const metadata: Metadata = { title: 'Admin · Stagioni' };
 
@@ -33,19 +35,27 @@ export default async function AdminStagioniPage() {
             <input name="label" required placeholder="Stagione 2008/2009" className="rounded border border-stone-300 text-sm px-2 py-1.5" />
           </label>
           <label className="flex flex-col text-xs text-stone-500 gap-1">
-            Inizio (opzionale)
-            <input type="date" name="startsOn" className="rounded border border-stone-300 text-sm px-2 py-1.5" />
+            Inizio (obbligatoria, serve per ordinare le stagioni)
+            <input type="date" name="startsOn" required className="rounded border border-stone-300 text-sm px-2 py-1.5" />
           </label>
           <label className="flex flex-col text-xs text-stone-500 gap-1">
             Fine (opzionale)
             <input type="date" name="endsOn" className="rounded border border-stone-300 text-sm px-2 py-1.5" />
           </label>
-          <button
-            type="submit"
-            className="sm:col-span-2 rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5 justify-self-start"
+          <label className="flex items-center gap-2 text-xs text-stone-600">
+            <input type="checkbox" name="isCompleted" />
+            Stagione conclusa (anche con dati mancanti/data di fine ignota)
+          </label>
+          <label className="flex items-center gap-2 text-xs text-stone-600">
+            <input type="checkbox" name="createCoppa" />
+            Crea anche la Coppa (fase finale)
+          </label>
+          <SubmitButton
+            pendingLabel="Creo…"
+            className="sm:col-span-2 rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5 justify-self-start disabled:opacity-60"
           >
             Crea stagione
-          </button>
+          </SubmitButton>
         </form>
         <p className="text-xs text-stone-400">
           Viene creata anche la competizione "Campionato" di default — la classifica si completa dalla pagina della
@@ -63,12 +73,15 @@ export default async function AdminStagioniPage() {
                 {!season.hasSchedule && ' · senza calendario reale'}
               </p>
             </div>
-            <Link
-              href={`/admin/stagioni/${season.slug}`}
-              className="shrink-0 rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5"
-            >
-              Gestisci
-            </Link>
+            <div className="shrink-0 flex items-center gap-2">
+              <Link
+                href={`/admin/stagioni/${season.slug}`}
+                className="rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5"
+              >
+                Gestisci
+              </Link>
+              <DeleteSeasonButton seasonId={season.id} seasonLabel={season.label} />
+            </div>
           </li>
         ))}
       </ul>

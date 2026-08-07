@@ -20,9 +20,17 @@ export type TeamBranding = {
   // null se non ancora popolato per questa stagione: il chiamante deve fare
   // fallback al nome canonico, non un nome fittizio.
   displayName: string | null;
+  // Proprietario/i storico della squadra quella stagione (testo libero,
+  // supporta "doppia gestione" come "Mario e Luca"): a differenza di
+  // team_managers() (RPC, nome del profilo REGISTRATO attualmente assegnato
+  // a teams.id, indipendente dalla stagione) questo campo copre le stagioni
+  // senza alcun utente registrato collegato (es. annate storiche). I
+  // chiamanti che mostrano "chi gestisce" preferiscono team_managers() e
+  // ricadono qui solo in sua assenza.
+  managerName: string | null;
 };
 
-const EMPTY_BRANDING: TeamBranding = { logoUrl: null, jerseyUrl: null, creditsRemaining: null, displayName: null };
+const EMPTY_BRANDING: TeamBranding = { logoUrl: null, jerseyUrl: null, creditsRemaining: null, displayName: null, managerName: null };
 
 export async function getTeamBranding(
   supabase: TypedSupabaseClient,
@@ -36,7 +44,7 @@ export async function getTeamBranding(
 
   const { data, error } = await supabase
     .from('team_seasons')
-    .select('team_id, logo_url, jersey_url, credits_remaining, display_name')
+    .select('team_id, logo_url, jersey_url, credits_remaining, display_name, manager_name')
     .eq('season_id', seasonId)
     .in('team_id', teamIds);
 
@@ -50,6 +58,7 @@ export async function getTeamBranding(
       jerseyUrl: row.jersey_url,
       creditsRemaining: row.credits_remaining,
       displayName: row.display_name,
+      managerName: row.manager_name,
     });
   }
 

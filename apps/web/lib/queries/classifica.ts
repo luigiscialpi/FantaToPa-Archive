@@ -22,6 +22,7 @@ export type StandingsRow = {
   teamName: string;
   teamSlug: string;
   jerseyUrl: string | null;
+  managerName: string | null;
   played: number | null;
   won: number | null;
   drawn: number | null;
@@ -77,6 +78,7 @@ export async function getStandings(
       teamName: brandingFor(branding, row.team_id).displayName ?? team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
       jerseyUrl: brandingFor(branding, row.team_id).jerseyUrl,
+      managerName: brandingFor(branding, row.team_id).managerName,
       played: row.played,
       won: row.won,
       drawn: row.drawn,
@@ -269,6 +271,7 @@ export async function getStandingsForRange(
       teamName: brandingFor(branding, teamId).displayName ?? team?.canonical_name ?? '—',
       teamSlug: team?.slug ?? '',
       jerseyUrl: brandingFor(branding, teamId).jerseyUrl,
+      managerName: brandingFor(branding, teamId).managerName,
       played: accumulator.played,
       won: accumulator.won,
       drawn: accumulator.drawn,
