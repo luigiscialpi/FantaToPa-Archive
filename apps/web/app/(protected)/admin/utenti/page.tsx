@@ -7,6 +7,7 @@ import { getSessionState } from '../../../../lib/auth/session';
 import { setUserRoleAction, setUserTeamAction } from '../../../../lib/admin/user-actions';
 import { AdminNav } from '../../../../components/admin/AdminNav';
 import { DeleteUserButton } from '../../../../components/admin/DeleteUserButton';
+import { SaveButton } from '../../../../components/shared/SaveButton';
 
 export const metadata: Metadata = { title: 'Admin · Utenti' };
 
@@ -43,7 +44,7 @@ export default async function AdminUtentiPage() {
                 </div>
 
                 <div className="flex flex-wrap items-end gap-3">
-                  <form action={setUserRoleAction.bind(null, user.id)} className="flex items-end gap-2">
+                  <form id={`user-role-${user.id}`} action={setUserRoleAction.bind(null, user.id)} className="flex items-end gap-2">
                     <label className="flex flex-col text-xs text-stone-500 gap-1">
                       Ruolo
                       <select
@@ -56,16 +57,18 @@ export default async function AdminUtentiPage() {
                         <option value="admin">Admin</option>
                       </select>
                     </label>
-                    <button
-                      type="submit"
-                      disabled={isSelf}
+                    <SaveButton
+                      formId={`user-role-${user.id}`}
+                      resetKey={user.role}
+                      forceDisabled={isSelf}
+                      pendingLabel="Salvo…"
                       className="rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5 disabled:opacity-50"
                     >
                       Salva
-                    </button>
+                    </SaveButton>
                   </form>
 
-                  <form action={setUserTeamAction.bind(null, user.id)} className="flex items-end gap-2">
+                  <form id={`user-team-${user.id}`} action={setUserTeamAction.bind(null, user.id)} className="flex items-end gap-2">
                     <label className="flex flex-col text-xs text-stone-500 gap-1">
                       Squadra
                       <select name="teamId" defaultValue={user.teamId ?? ''} className="rounded border border-stone-300 text-sm px-2 py-1">
@@ -77,9 +80,14 @@ export default async function AdminUtentiPage() {
                         ))}
                       </select>
                     </label>
-                    <button type="submit" className="rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5">
+                    <SaveButton
+                      formId={`user-team-${user.id}`}
+                      resetKey={user.teamId ?? ''}
+                      pendingLabel="Salvo…"
+                      className="rounded-lg bg-brand-400 text-brand-950 text-sm font-semibold px-3 py-1.5 disabled:opacity-50"
+                    >
                       Salva
-                    </button>
+                    </SaveButton>
                   </form>
 
                   {!isSelf && <DeleteUserButton userId={user.id} userLabel={name} />}

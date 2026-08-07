@@ -1,6 +1,7 @@
 // apps/web/components/rose/RosterTable.tsx
 import type { RosterPlayerRow } from '../../lib/queries/rose';
 import { updateRosterPlayerAction } from '../../lib/admin/rose-actions';
+import { SaveButton } from '../shared/SaveButton';
 
 function RoleBadges({ roleCodes }: { roleCodes: string[] }) {
   if (roleCodes.length === 0) {
@@ -100,9 +101,14 @@ export function RosterTable({ players, editMode = false }: { players: RosterPlay
                       defaultValue={player.cost ?? ''}
                       className="w-14 rounded border border-stone-300 text-xs px-1.5 py-1 text-center tabular-nums"
                     />
-                    <button type="submit" form={formId} className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1">
+                    <SaveButton
+                      formId={formId}
+                      resetKey={JSON.stringify({ realTeam: player.realTeam, cost: player.cost })}
+                      pendingLabel="Salvo…"
+                      className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       Salva
-                    </button>
+                    </SaveButton>
                   </div>
                 </td>
               </tr>

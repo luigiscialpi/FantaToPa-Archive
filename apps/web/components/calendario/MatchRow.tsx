@@ -1,6 +1,7 @@
 // apps/web/components/calendario/MatchRow.tsx
 import Link from 'next/link';
 import { Crest } from '../shared/Crest';
+import { SaveButton } from '../shared/SaveButton';
 import { updateMatchAction } from '../../lib/admin/calendario-actions';
 import type { MatchRow as MatchRowData } from '../../lib/queries/calendario';
 
@@ -22,6 +23,7 @@ export function MatchRow({ match, seasonSlug, competitionSlug, matchdayNumber, e
   // un <a> (contenuto interattivo annidato non valido), quindi in modifica
   // la riga diventa un <div> con un form vero e proprio invece del link.
   if (editMode) {
+    const formId = `calendario-match-${match.id}`;
     return (
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 bg-amber-50/40">
         <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -29,6 +31,7 @@ export function MatchRow({ match, seasonSlug, competitionSlug, matchdayNumber, e
           <span className="text-sm font-semibold text-stone-800 truncate">{match.homeTeamName}</span>
         </div>
         <form
+          id={formId}
           action={updateMatchAction.bind(null, match.id)}
           className="flex flex-wrap items-center justify-center gap-1.5 shrink-0"
         >
@@ -73,9 +76,14 @@ export function MatchRow({ match, seasonSlug, competitionSlug, matchdayNumber, e
               />
             </>
           )}
-          <button type="submit" className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1">
+          <SaveButton
+            formId={formId}
+            resetKey={JSON.stringify(match)}
+            pendingLabel="Salvo…"
+            className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Salva
-          </button>
+          </SaveButton>
         </form>
         <div className="flex-1 min-w-0 flex items-center gap-2 justify-end">
           {match.awayTeamName ? (

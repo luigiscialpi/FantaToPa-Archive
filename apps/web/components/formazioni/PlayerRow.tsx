@@ -1,6 +1,8 @@
 // apps/web/components/formazioni/PlayerRow.tsx
 import type { LineupPlayerRow, PlayerBonus } from '../../lib/queries/formazioni';
 import { addPlayerBonusAction, removePlayerBonusAction, updateLineupPlayerAction } from '../../lib/admin/formazioni-actions';
+import { SaveButton } from '../shared/SaveButton';
+import { SubmitButton } from '../shared/SubmitButton';
 
 // Spritesheet ufficiale fantacalcio.it (self-hosted in public/icons, non
 // linkato dal CDN esterno per non dipendere dalla sua disponibilità): 32
@@ -77,9 +79,13 @@ function BonusBadges({ bonuses, editable }: { bonuses: PlayerBonus[]; editable: 
         return (
           <form key={bonus.id} action={removePlayerBonusAction.bind(null, bonus.id)} className="flex items-center">
             {icon}
-            <button type="submit" title={`Rimuovi ${bonus.label}`} className="text-[10px] text-red-600 leading-none ml-0.5">
+            <SubmitButton
+              pendingLabel="…"
+              title={`Rimuovi ${bonus.label}`}
+              className="text-[10px] text-red-600 leading-none ml-0.5 disabled:opacity-50"
+            >
               ✕
-            </button>
+            </SubmitButton>
           </form>
         );
       })}
@@ -126,7 +132,11 @@ export function PlayerRow({
           <BonusBadges bonuses={player.bonuses} editable />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <form action={updateLineupPlayerAction.bind(null, player.lineupPlayerId)} className="flex items-center gap-1.5">
+          <form
+            id={`lineup-player-${player.lineupPlayerId}`}
+            action={updateLineupPlayerAction.bind(null, player.lineupPlayerId)}
+            className="flex items-center gap-1.5"
+          >
             <input
               type="number"
               step="0.5"
@@ -147,9 +157,14 @@ export function PlayerRow({
               <input type="checkbox" name="countsForTotal" defaultChecked={player.countsForTotal} />
               Conta
             </label>
-            <button type="submit" className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1">
+            <SaveButton
+              formId={`lineup-player-${player.lineupPlayerId}`}
+              resetKey={JSON.stringify({ voto: player.voto, fantavoto: player.fantavoto, countsForTotal: player.countsForTotal })}
+              pendingLabel="Salvo…"
+              className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Salva
-            </button>
+            </SaveButton>
           </form>
           <form
             action={addPlayerBonusAction.bind(null, bonusMatchdayId, player.playerId)}
@@ -165,9 +180,9 @@ export function PlayerRow({
                 </option>
               ))}
             </select>
-            <button type="submit" className="rounded bg-stone-200 text-stone-700 text-xs font-semibold px-2 py-1">
+            <SubmitButton pendingLabel="Aggiungo…" className="rounded bg-stone-200 text-stone-700 text-xs font-semibold px-2 py-1 disabled:opacity-50">
               Aggiungi
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </div>

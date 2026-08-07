@@ -6,6 +6,7 @@
 // gestisce la squadra (se presente, da team_managers()) e crediti residui
 // asta (da team_seasons.credits_remaining).
 import { TeamCrests } from '../shared/TeamCrests';
+import { SaveButton } from '../shared/SaveButton';
 import { updateTeamCreditsAction } from '../../lib/admin/rose-actions';
 
 type TeamRosterHeaderProps = {
@@ -38,6 +39,7 @@ export function TeamRosterHeader({
       </div>
       {editMode ? (
         <form
+          id={`team-credits-${teamId}`}
           action={updateTeamCreditsAction.bind(null, seasonId, teamId)}
           className="shrink-0 flex items-end flex-col gap-1"
         >
@@ -50,9 +52,14 @@ export function TeamRosterHeader({
               defaultValue={creditsRemaining ?? ''}
               className="w-16 rounded border border-brand-300 text-stone-900 text-sm px-1.5 py-0.5 text-center tabular-nums"
             />
-            <button type="submit" className="rounded bg-amber-300 text-brand-950 text-xs font-semibold px-2 py-1">
+            <SaveButton
+              formId={`team-credits-${teamId}`}
+              resetKey={String(creditsRemaining)}
+              pendingLabel="Salvo…"
+              className="rounded bg-amber-300 text-brand-950 text-xs font-semibold px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Salva
-            </button>
+            </SaveButton>
           </div>
         </form>
       ) : (

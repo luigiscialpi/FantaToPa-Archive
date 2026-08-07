@@ -1,6 +1,7 @@
 // apps/web/components/classifica/ClassificaRow.tsx
 import Link from 'next/link';
 import { Crest } from '../shared/Crest';
+import { SaveButton } from '../shared/SaveButton';
 import { updateStandingsRowAction } from '../../lib/admin/classifica-actions';
 import type { StandingsRow } from '../../lib/queries/classifica';
 
@@ -65,7 +66,10 @@ export function ClassificaRow({
         <td className="px-2 py-1">
           <span className="flex items-center gap-2 whitespace-nowrap">
             <Crest name={row.teamName} imageUrl={row.jerseyUrl} />
-            <span className="text-sm font-semibold text-stone-800">{row.teamName}</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-stone-800">{row.teamName}</span>
+              {row.managerName && <span className="block text-[11px] text-stone-400">{row.managerName}</span>}
+            </span>
           </span>
         </td>
         <EditableCell formId={formId} name="played" defaultValue={row.played} />
@@ -80,9 +84,14 @@ export function ClassificaRow({
         <EditableCell formId={formId} name="points" defaultValue={row.points} />
         <EditableCell formId={formId} name="totalFantapoints" defaultValue={row.totalFantapoints} step="0.5" />
         <td className="px-1 py-1">
-          <button type="submit" form={formId} className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1 whitespace-nowrap">
+          <SaveButton
+            formId={formId}
+            resetKey={JSON.stringify(row)}
+            pendingLabel="Salvo…"
+            className="rounded bg-brand-400 text-brand-950 text-xs font-semibold px-2 py-1 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Salva
-          </button>
+          </SaveButton>
         </td>
       </tr>
     );
@@ -105,7 +114,10 @@ export function ClassificaRow({
           className="flex items-center gap-2 whitespace-nowrap hover:text-brand-700"
         >
           <Crest name={row.teamName} imageUrl={row.jerseyUrl} />
-          <span className="text-sm font-semibold text-stone-800">{row.teamName}</span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-stone-800">{row.teamName}</span>
+            {row.managerName && <span className="block text-[11px] text-stone-400">{row.managerName}</span>}
+          </span>
         </Link>
       </td>
       <StatCell value={row.played} />
