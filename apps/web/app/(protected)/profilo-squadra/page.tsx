@@ -17,6 +17,7 @@ import { getStandings } from '../../../lib/queries/classifica';
 import { TeamPanelSection } from '../../../components/home/TeamPanelSection';
 import { TeamPanelSkeleton } from '../../../components/home/HomeSkeletons';
 import { TeamSelector } from '../../../components/profilo-squadra/TeamSelector';
+import { ChiediAllArchivio } from '../../../components/assistente/ChiediAllArchivio';
 
 export const metadata: Metadata = { title: 'Profilo Squadra' };
 
@@ -67,6 +68,10 @@ export default async function ProfiloSquadraPage({ searchParams }: ProfiloSquadr
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4">
         <h1 className="font-serif font-bold text-xl text-brand-950">Profilo Squadra</h1>
         <TeamSelector teams={teams} activeTeamSlug={activeTeam.slug} />
+      </div>
+
+      <div className="px-4 pb-4">
+        <ChiediAllArchivio placeholder={`Chiedi qualcosa su ${activeTeam.name}…`} />
       </div>
 
       {latestSeason ? (

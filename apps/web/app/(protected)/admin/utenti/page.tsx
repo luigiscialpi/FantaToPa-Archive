@@ -18,7 +18,15 @@ export default async function AdminUtentiPage() {
 
   return (
     <main className="p-4 space-y-4 max-w-3xl mx-auto">
-      <h1 className="font-serif font-bold text-lg text-brand-950">Utenti</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-serif font-bold text-lg text-brand-950">Utenti</h1>
+        <a
+          href="/api/admin/assistente-logs"
+          className="rounded-lg bg-brand-400 px-3 py-1.5 text-sm font-semibold text-brand-950 hover:bg-brand-500 transition-colors"
+        >
+          Scarica log assistente IA
+        </a>
+      </div>
       <AdminNav />
 
       {users.length === 0 ? (

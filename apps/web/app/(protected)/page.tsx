@@ -6,6 +6,7 @@ import { getStandings } from '../../lib/queries/classifica';
 import { getAllTeams } from '../../lib/queries/teams';
 import { getTeamBranding } from '../../lib/queries/team-branding';
 import { SeasonHero } from '../../components/home/SeasonHero';
+import { ChiediAllArchivio } from '../../components/assistente/ChiediAllArchivio';
 import { TeamQuickPanel } from '../../components/home/TeamQuickPanel';
 import { LeagueShowcaseSection } from '../../components/home/LeagueShowcaseSection';
 import { LeagueShowcaseSkeleton } from '../../components/home/HomeSkeletons';
@@ -62,6 +63,9 @@ export default async function HomePage() {
   return (
     <main>
       <SeasonHero seasons={seasons} />
+      <div className="p-4">
+        <ChiediAllArchivio />
+      </div>
       {ownTeam && (
         <TeamQuickPanel
           teamName={ownTeam.name}
