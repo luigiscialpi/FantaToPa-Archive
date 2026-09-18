@@ -12,6 +12,7 @@ export interface RispostaGenerazioneSql {
   sql: string | null;
   usa_contesto_utente: boolean;
   modello_usato?: string;
+  fallback?: boolean;
 }
 
 /**
@@ -89,10 +90,16 @@ function eErroreRecuperabileConFallback(err: ErroreGeminiDettagli): boolean {
  * Se un modello ha la quota esaurita (429) o non è temporaneamente disponibile (503/404),
  * passa automaticamente al modello successivo nella catena.
  */
+interface RisultatoChiamataGemini<T> {
+  data: T;
+  modelloUsato: string;
+  fallback: boolean;
+}
+
 async function chiamaGeminiConFallback<T>(
   fn: (modello: string) => Promise<T>,
-  catena: string[] = CATENA_MODELLI
-): Promise<{ data: T; modelloUsato: string }> {
+  catena: string[] = CATENA_MODELLI,
+): Promise<RisultatoChiamataGemini<T>> {
   const errori: { modello: string; errore: string }[] = [];
   const lista = catena.length > 0 ? catena : CATENA_MODELLI;
 
@@ -105,45 +112,62 @@ async function chiamaGeminiConFallback<T>(
       const data = await fn(modello);
       if (i > 0) {
         console.warn(
-          `[gemini-client] Modello precedente non disponibile, fallback riuscito con ${modello}.`
+          `[gemini-client] Modello precedente non disponibile, fallback riuscito con ${modello}.`,
         );
       }
-      return { data, modelloUsato: modello };
+      return {
+        data,
+        modelloUsato: modello,
+        fallback: i > 0,
+      };
     } catch (e) {
       const info = estraiDettagliErrore(e);
-      errori.push({ modello, errore: `[${info.statusCode ?? 'err'}] ${info.message}` });
+      errori.push({
+        modello,
+        errore: `[${info.statusCode ?? "err"}] ${info.message}`,
+      });
 
       const prossimoModello = lista[i + 1];
-      if (eErroreRecuperabileConFallback(info) && !isUltimo && prossimoModello) {
+      if (
+        eErroreRecuperabileConFallback(info) &&
+        !isUltimo &&
+        prossimoModello
+      ) {
         console.warn(
-          `[gemini-client] Modello ${modello} non disponibile (${info.statusCode ?? info.message}). Fallback su ${prossimoModello}...`
+          `[gemini-client] Modello ${modello} non disponibile (${info.statusCode ?? info.message}). Fallback su ${prossimoModello}...`,
         );
         continue;
       }
 
       // Errore non recuperabile o tutti i modelli hanno fallito
-      const dettaglio = errori.map((x) => `${x.modello}: ${x.errore}`).join('; ');
+      const dettaglio = errori
+        .map((x) => `${x.modello}: ${x.errore}`)
+        .join("; ");
       throw new GeminiApiError(
         `Tutti i modelli gratuiti configurati hanno fallito. Dettagli: ${dettaglio}`,
-        info.statusCode
+        info.statusCode,
       );
     }
   }
 
-  throw new GeminiApiError('Nessun modello configurato per l\'assistente IA.');
+  throw new GeminiApiError("Nessun modello configurato per l'assistente IA.");
 }
 
 export async function generaSql(
   domandaUtente: string,
   catenaModelli?: string[]
 ): Promise<RispostaGenerazioneSql> {
-  const { data: response, modelloUsato } = await chiamaGeminiConFallback(
+  const {
+    data: response,
+    modelloUsato,
+    fallback,
+  } = await chiamaGeminiConFallback(
     (modello) =>
       ai.models.generateContent({
         model: modello,
         contents: `${PROMPT_GENERAZIONE_SQL}\n\nDomanda dell'utente: "${domandaUtente}"`,
         config: {
-          responseMimeType: 'application/json',
+          responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -151,34 +175,50 @@ export async function generaSql(
               sql: { type: Type.STRING, nullable: true },
               usa_contesto_utente: { type: Type.BOOLEAN },
             },
-            required: ['in_scope', 'sql', 'usa_contesto_utente'],
+            required: ["in_scope", "sql", "usa_contesto_utente"],
           },
         },
       }),
-    catenaModelli
+    catenaModelli,
   );
 
   const parsed = JSON.parse(response.text ?? '{}') as RispostaGenerazioneSql;
   return {
     ...parsed,
     modello_usato: modelloUsato,
+    fallback,
   };
+}
+
+export interface RispostaComposizione {
+  risposta: string;
+  modello_usato: string;
+  fallback: boolean;
 }
 
 export async function componiRisposta(
   domandaUtente: string,
   righeRisultato: unknown,
-  catenaModelli?: string[]
-): Promise<string> {
-  const { data: response } = await chiamaGeminiConFallback(
+  catenaModelli?: string[],
+): Promise<RispostaComposizione> {
+  const {
+    data: response,
+    modelloUsato,
+    fallback,
+  } = await chiamaGeminiConFallback(
     (modello) =>
       ai.models.generateContent({
         model: modello,
         contents: `${PROMPT_COMPOSIZIONE_RISPOSTA}\n\nDomanda originale: "${domandaUtente}"\n\nRisultati (JSON): ${JSON.stringify(righeRisultato)}`,
       }),
-    catenaModelli
+    catenaModelli,
   );
-  return response.text ?? 'Non sono riuscito a formulare una risposta.';
+
+  return {
+    risposta: response.text ?? "Non sono riuscito a formulare una risposta.",
+    modello_usato: modelloUsato,
+    fallback,
+  };
 }
 
 export class IdentitaUtenteMancanteError extends Error {}

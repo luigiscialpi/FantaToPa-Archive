@@ -38,6 +38,10 @@ team_seasons(id, team_id, season_id, manager_name, display_name, credits_remaini
   teams.canonical_name, es. una squadra rinominata); se display_name è NULL usa
   teams.canonical_name come fallback.
 competitions(id, season_id, parent_competition_id, name, kind_code, format_code)
+  — ATTENZIONE: competitions NON ha colonne di data (nessuna colonna starts_on/ends_on!).
+  Le date sono in seasons (seasons.starts_on, seasons.ends_on). Per ordinare cronologicamente
+  partite o giornate nel tempo: fai JOIN con competitions c, poi con seasons s (c.season_id = s.id),
+  e ordina per s.starts_on ASC (o DESC), matchdays.number ASC (o DESC).
 competition_kinds(code, label) — es. 'campionato', 'coppa_girone'
 roles(code, label) — ruoli Mantra: Por, Dc, Ds, Dd, B, E, M, C, W, T, A, Pc
 players(id, canonical_name, slug)

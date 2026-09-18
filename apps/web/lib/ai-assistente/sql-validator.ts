@@ -1,4 +1,4 @@
-import { Parser } from 'node-sql-parser';
+import { Parser, type AST } from 'node-sql-parser';
 import { TABELLE_AMMESSE } from './schema-context';
 
 const parser = new Parser();
@@ -39,32 +39,43 @@ export class QueryNonValidaError extends Error {}
 export function validaEWrappa(sqlGenerata: string): string {
   const opt = { database: DIALETTO };
 
+  // Rimuovi punto e virgola terminale e spazi bianchi
+  const sqlPulita = sqlGenerata.trim().replace(/;+$/, '').trim();
+
   let ast;
   try {
-    ast = parser.astify(sqlGenerata, opt);
+    ast = parser.astify(sqlPulita, opt);
   } catch (e) {
     throw new QueryNonValidaError(
       `SQL non valida sintatticamente: ${(e as Error).message}`
     );
   }
 
-  // Più di uno statement (es. "SELECT ...; DROP TABLE ..."): astify restituisce
-  // un array invece di un singolo oggetto quando ci sono più statement
-  // separati da ';' — verificato empiricamente, non solo dedotto dai types.
-  if (Array.isArray(ast)) {
-    throw new QueryNonValidaError('Più di uno statement SQL nella stessa richiesta.');
-  }
+  // Se astify restituisce un array (ad es. per via di punto e virgola o statement multipli):
+  // se c'è un solo statement lo estraiamo; se sono più di uno rifiutiamo.
+  const astSingolo: AST = (() => {
+    if (Array.isArray(ast)) {
+      if (ast.length === 1 && ast[0]) {
+        return ast[0];
+      } else if (ast.length > 1) {
+        throw new QueryNonValidaError('Più di uno statement SQL nella stessa richiesta.');
+      } else {
+        throw new QueryNonValidaError('Nessuno statement SQL trovato.');
+      }
+    }
+    return ast;
+  })();
 
-  if (ast.type !== 'select') {
-    throw new QueryNonValidaError(`Tipo di statement non ammesso: ${ast.type}`);
+  if (astSingolo.type !== 'select') {
+    throw new QueryNonValidaError(`Tipo di statement non ammesso: ${astSingolo.type}`);
   }
 
   // Una funzione chiamata al posto di una tabella in FROM/JOIN (es. "FROM
   // qualche_funzione()") è INVISIBILE al controllo whitelist sotto — verificato
   // empiricamente: tableList() non la conta come tabella referenziata, quindi
   // whiteListCheck() non avrebbe nulla da rifiutare. Va intercettata qui,
-  // ispezionando direttamente ast.from.
-  const fromClause = (ast as { from?: unknown[] }).from ?? [];
+  // ispezionando direttamente astSingolo.from.
+  const fromClause = (astSingolo as { from?: unknown[] }).from ?? [];
   const contieneFunzioneInFrom = fromClause.some((voce) => {
     const v = voce as { expr?: { type?: string } };
     return v?.expr?.type === 'function';
@@ -73,7 +84,7 @@ export function validaEWrappa(sqlGenerata: string): string {
     throw new QueryNonValidaError('Chiamata a funzione nel FROM/JOIN non ammessa.');
   }
 
-  const tabelle = parser.tableList(sqlGenerata, opt);
+  const tabelle = parser.tableList(sqlPulita, opt);
   if (tabelle.length === 0) {
     throw new QueryNonValidaError('Nessuna tabella reale referenziata.');
   }
@@ -82,7 +93,7 @@ export function validaEWrappa(sqlGenerata: string): string {
   // per ammetterle come tabelle/alias legittimi nei riferimenti della query.
   // Le tabelle referenziate DENTRO la CTE vengono comunque controllate e
   // devono appartenere a TABELLE_AMMESSE.
-  const astWith = (ast as { with?: Array<{ name?: { value?: string } }> }).with ?? [];
+  const astWith = (astSingolo as { with?: Array<{ name?: { value?: string } }> }).with ?? [];
   const nomiCte = astWith.map((item) => item?.name?.value).filter(Boolean) as string[];
   const whitelistEffettiva = [
     `^select::(null|public)::(${[...TABELLE_AMMESSE, ...nomiCte].join('|')})$`,
@@ -92,7 +103,7 @@ export function validaEWrappa(sqlGenerata: string): string {
   // WHERE (verificato empiricamente) — copre il caso di una tabella vietata
   // nascosta in una sottoquery, non solo nel FROM di primo livello.
   try {
-    parser.whiteListCheck(sqlGenerata, whitelistEffettiva, { ...opt, type: 'table' });
+    parser.whiteListCheck(sqlPulita, whitelistEffettiva, { ...opt, type: 'table' });
   } catch (e) {
     throw new QueryNonValidaError(`Tabella non ammessa: ${(e as Error).message}`);
   }
@@ -103,7 +114,7 @@ export function validaEWrappa(sqlGenerata: string): string {
   // rete aggiuntiva, resta valido anche se in futuro qualcuno aggiunge una
   // tabella "esca" con lo stesso nome di una funzione pericolosa (scenario
   // remoto, ma il controllo non costa nulla).
-  const testoLower = sqlGenerata.toLowerCase();
+  const testoLower = sqlPulita.toLowerCase();
   const funzioneVietata = FUNZIONI_VIETATE.find((fn) =>
     testoLower.includes(fn.toLowerCase())
   );
@@ -115,7 +126,7 @@ export function validaEWrappa(sqlGenerata: string): string {
   // originale: qualunque stranezza di formattazione o commento che il parser
   // abbia tollerato ma non abbia portato nell'AST viene eliminata dalla
   // ricostruzione, invece di restare nel testo che poi arriva a Postgres.
-  const sqlCanonica = parser.sqlify(ast, opt);
+  const sqlCanonica = parser.sqlify(astSingolo, opt);
 
   return `SELECT * FROM (${sqlCanonica}) AS _assistente_query LIMIT 200`;
 }

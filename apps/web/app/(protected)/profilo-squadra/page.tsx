@@ -71,7 +71,10 @@ export default async function ProfiloSquadraPage({ searchParams }: ProfiloSquadr
       </div>
 
       <div className="px-4 pb-4">
-        <ChiediAllArchivio placeholder={`Chiedi qualcosa su ${activeTeam.name}…`} />
+        <ChiediAllArchivio
+          placeholder={`Chiedi qualcosa su ${activeTeam.name}…`}
+          isAdmin={session.kind === 'autenticato' && session.profile.role === 'admin'}
+        />
       </div>
 
       {latestSeason ? (

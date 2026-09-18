@@ -64,7 +64,7 @@ export default async function HomePage() {
     <main>
       <SeasonHero seasons={seasons} />
       <div className="p-4">
-        <ChiediAllArchivio />
+        <ChiediAllArchivio isAdmin={profile?.role === 'admin'} />
       </div>
       {ownTeam && (
         <TeamQuickPanel

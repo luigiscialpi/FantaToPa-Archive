@@ -27,6 +27,7 @@ describe('sql-validator — casi da rifiutare', () => {
 describe('sql-validator — casi da accettare', () => {
   const casi = [
     "SELECT count(*) FROM matches WHERE home_team_id = 'x'",
+    "SELECT count(*) FROM matches WHERE home_team_id = 'x';",
     "SELECT t.canonical_name, sum(m.home_score) FROM matches m JOIN teams t ON t.id = m.home_team_id GROUP BY t.canonical_name",
     "SELECT * FROM (SELECT id, home_score FROM matches WHERE home_score IS NOT NULL) AS sub",
     "WITH team_sub AS (SELECT id FROM teams) SELECT * FROM team_sub",

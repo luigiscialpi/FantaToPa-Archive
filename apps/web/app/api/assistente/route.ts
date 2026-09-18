@@ -12,7 +12,7 @@ import {
 import { validaEWrappa, QueryNonValidaError } from '../../../lib/ai-assistente/sql-validator';
 import { getCatenaModelliAttiva } from '../../../lib/ai-assistente/settings';
 
-const MASSIMO_TENTATIVI = 2;
+const MASSIMO_TENTATIVI = 3;
 const LUNGHEZZA_MASSIMA_DOMANDA = 500;
 
 // Le uniche cinque stringhe che il browser vede in caso di mancata risposta.
@@ -98,7 +98,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         });
         if (error) throw new QueryNonValidaError(error.message);
 
-        const risposta = await componiRisposta(domanda, righe, catenaModelli);
+        const composizione = await componiRisposta(domanda, righe, catenaModelli);
         await registraLog(
           supabase,
           richiestaId,
@@ -112,7 +112,20 @@ export async function POST(request: Request): Promise<NextResponse> {
           Array.isArray(righe) ? righe.length : 0
         );
 
-        return NextResponse.json({ risposta, righe, sql: sqlValidata });
+        const isAdmin = profile.role === 'admin';
+        return NextResponse.json({
+          risposta: composizione.risposta,
+          righe,
+          modello: {
+            id: composizione.modello_usato,
+            fallback: composizione.fallback,
+          },
+          modelloSql: {
+            id: generazione.modello_usato,
+            fallback: generazione.fallback ?? false,
+          },
+          ...(isAdmin ? { sql: sqlValidata } : {}),
+        });
       } catch (e) {
         if (e instanceof IdentitaUtenteMancanteError) {
           await registraLog(
