@@ -23,7 +23,7 @@ import { usePathname } from 'next/navigation';
 import type { SessionProfile } from '../../lib/auth/session';
 import type { SeasonOption } from '../../lib/queries/seasons';
 import { TOP_LEVEL_ROUTES } from '../../lib/navigation/top-level-routes';
-import { AccountActions } from './AccountActions';
+import { AccountMenu } from './AccountMenu';
 import { GlobalNav } from './GlobalNav';
 import { MobileMenu } from './MobileMenu';
 import { SeasonSwitcher } from './SeasonSwitcher';
@@ -31,7 +31,6 @@ import { SiteBrand } from './SiteBrand';
 
 export function AppHeader({ profile, seasons }: { profile: SessionProfile; seasons: SeasonOption[] }) {
   const pathname = usePathname();
-  const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email || 'Membro';
 
   const targetRoutes = TOP_LEVEL_ROUTES.filter((r) => r.href !== '/');
   const isTargetRoute = targetRoutes.some(
@@ -57,21 +56,7 @@ export function AppHeader({ profile, seasons }: { profile: SessionProfile; seaso
           ) : (
             <SeasonSwitcher seasons={seasons} />
           )}
-          <details className="relative">
-            <summary
-              aria-label="Account"
-              className="list-none [&::-webkit-details-marker]:hidden cursor-pointer inline-flex items-center gap-1.5 text-xs font-medium tracking-wide text-brand-100 hover:text-white hover:bg-brand-600/60 px-2.5 py-1.5 rounded-md transition-colors"
-            >
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-              <span className="max-w-[10rem] truncate">{displayName}</span>
-            </summary>
-            <div className="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white text-brand-950 shadow-xl border border-stone-200 py-1.5 z-30">
-              <AccountActions
-                profile={profile}
-                itemClassName="block w-full text-left px-3 py-2 text-sm font-medium text-brand-900 hover:bg-stone-100 transition-colors"
-              />
-            </div>
-          </details>
+          <AccountMenu profile={profile} />
         </div>
       </div>
 

@@ -33,6 +33,10 @@ export function MobileMenu({ profile, seasons }: { profile: SessionProfile; seas
   const showSeasonSubmenu = pathname !== '/' && seasons.filter((season) => season.hasSchedule).length > 1;
 
   useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     if (!open) {
       setSeasonMenuOpen(false);
       return;
@@ -42,8 +46,17 @@ export function MobileMenu({ profile, seasons }: { profile: SessionProfile; seas
         setOpen(false);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
     document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [open]);
 
   function handleReload() {
