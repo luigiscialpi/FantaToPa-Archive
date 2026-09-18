@@ -23,6 +23,8 @@ interface ModelloScoperto {
   displayName: string;
   description: string;
   raccomandato: boolean;
+  categoria?: 'flash' | 'pro' | 'altro';
+  gratuito?: boolean;
 }
 
 export function AssistenteModelliConfig() {
@@ -83,6 +85,15 @@ export function AssistenteModelliConfig() {
     setMessaggioSuccesso(null);
   }
 
+  function aggiungiTuttiGratuiti() {
+    const daAggiungere = modelliDisponibili
+      .map((m) => m.id)
+      .filter((id) => !catena.includes(id));
+    if (daAggiungere.length === 0) return;
+    setCatena([...catena, ...daAggiungere]);
+    setMessaggioSuccesso(null);
+  }
+
   async function salva() {
     if (catena.length === 0) return;
     setSalvataggio(true);
@@ -120,17 +131,43 @@ export function AssistenteModelliConfig() {
           </h3>
           <p className="text-xs text-stone-500 mt-0.5">
             Il primo modello è usato come predefinito. Se la quota del primo si esaurisce (429) o
-            non risponde, il sistema passa automaticamente a quelli successivi.
+            subisce un picco di traffico (503), il sistema passa automaticamente a quelli successivi.
           </p>
         </div>
-        <button
-          onClick={caricaDati}
-          disabled={caricamento}
-          className="flex items-center gap-1.5 self-start text-xs font-medium text-stone-600 hover:text-stone-900 px-2.5 py-1.5 rounded-md border border-stone-200 hover:bg-stone-50 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${caricamento ? 'animate-spin' : ''}`} />
-          Rileva da Google
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {modelliEsclusi.length > 0 && (
+            <button
+              onClick={aggiungiTuttiGratuiti}
+              className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-md transition-colors shadow-sm"
+              title="Aggiungi tutti i modelli gratuiti scoperti alla catena"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Aggiungi tutti i gratuiti ({modelliEsclusi.length})
+            </button>
+          )}
+          <button
+            onClick={caricaDati}
+            disabled={caricamento}
+            className="flex items-center gap-1.5 text-xs font-medium text-stone-600 hover:text-stone-900 px-2.5 py-1.5 rounded-md border border-stone-200 hover:bg-stone-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${caricamento ? 'animate-spin' : ''}`} />
+            Rileva da Google
+          </button>
+        </div>
+      </div>
+
+      {/* Banner esplicativo Free Tier */}
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-950 space-y-1">
+        <div className="flex items-center gap-1.5 font-semibold text-emerald-900">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span>Tutti i modelli rilevati operano al 100% nel Free Tier di Google AI Studio</span>
+        </div>
+        <p className="text-emerald-800/90 leading-relaxed pl-5.5">
+          La chiave API opera esclusivamente con le quote gratuite di Google (nessun addebito e nessuna carta richiesta).
+          Ciascuna versione di modello ha contatori di quota separati (RPM e RPD): ordinare più modelli nella catena permette
+          di assorbire automaticamente sia i sovraccarichi temporanei (503) sia l&apos;esaurimento di quota (429), scalando
+          sui successivi senza interruzioni.
+        </p>
       </div>
 
       {errore && (
@@ -193,10 +230,18 @@ export function AssistenteModelliConfig() {
                           Fallback #{index}
                         </span>
                       )}
-                      {scoperto?.raccomandato && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      {scoperto?.categoria === 'flash' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
                           <Sparkles className="h-3 w-3" />
-                          Consigliato Free
+                          Free Tier · Flash
+                        </span>
+                      ) : scoperto?.categoria === 'pro' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">
+                          Free Tier · Pro
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+                          Free Tier
                         </span>
                       )}
                     </div>
@@ -258,9 +303,17 @@ export function AssistenteModelliConfig() {
       {/* Altri modelli disponibili rilevati */}
       {modelliEsclusi.length > 0 && (
         <div className="border-t border-stone-200 pt-5 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-            Altri modelli disponibili sulla tua chiave API Google
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+              Altri modelli gratuiti disponibili sulla tua chiave API ({modelliEsclusi.length})
+            </p>
+            <button
+              onClick={aggiungiTuttiGratuiti}
+              className="text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
+            >
+              Aggiungi tutti alla catena
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {modelliEsclusi.map((m) => (
               <div
@@ -272,8 +325,21 @@ export function AssistenteModelliConfig() {
                     <span className="font-mono text-xs font-semibold text-stone-800 truncate">
                       {m.id}
                     </span>
+                    {m.categoria === 'flash' ? (
+                      <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                        Free · Flash
+                      </span>
+                    ) : m.categoria === 'pro' ? (
+                      <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">
+                        Free · Pro
+                      </span>
+                    ) : (
+                      <span className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-medium text-stone-700">
+                        Free Tier
+                      </span>
+                    )}
                     {m.raccomandato && (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.2 text-[10px] font-medium text-amber-800">
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
                         Consigliato
                       </span>
                     )}
@@ -292,6 +358,12 @@ export function AssistenteModelliConfig() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {modelliDisponibili.length > 0 && modelliEsclusi.length === 0 && (
+        <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-center text-xs text-stone-600">
+          Tutti i modelli gratuiti scoperti sono attualmente inclusi nella catena attiva.
         </div>
       )}
     </div>

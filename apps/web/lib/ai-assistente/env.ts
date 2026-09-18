@@ -3,6 +3,8 @@ import { z } from 'zod';
 // Modelli gratuiti supportati da Google AI Studio per structured JSON e chat.
 // Ogni modello ha quote indipendenti nel Free tier (RPM e RPD).
 export const MODELLI_GEMINI_DEFAULT = [
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
   'gemini-3.5-flash-lite',

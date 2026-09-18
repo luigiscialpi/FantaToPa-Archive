@@ -10,13 +10,21 @@ export interface ModelloScoperto {
   displayName: string;
   description: string;
   raccomandato: boolean;
+  categoria: 'flash' | 'pro' | 'altro';
+  gratuito: boolean;
 }
 
 const MODELLI_FLASH_RACCOMANDATI = new Set([
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-3-flash-preview',
 ]);
 
 const PATTERN_ESCLUSI = [
@@ -30,6 +38,12 @@ const PATTERN_ESCLUSI = [
   'customtools',
   'banana',
   'lyria',
+  'omni',
+  'gemini-2.5',
+  'antigravity',
+  'deep-research',
+  'veo',
+  'aqa',
 ];
 
 export async function scopriModelliGoogle(): Promise<ModelloScoperto[]> {
@@ -45,18 +59,24 @@ export async function scopriModelliGoogle(): Promise<ModelloScoperto[]> {
     if (!cleanId.startsWith('gemini-')) continue;
     if (!m.supportedActions?.includes('generateContent')) continue;
 
-    // Filtra modelli audio, video, robotica, tts, embedding
+    // Filtra modelli audio, video, robotica, tts, embedding o ritirati
     if (PATTERN_ESCLUSI.some((pat) => cleanId.includes(pat))) continue;
+
+    const isFlash = cleanId.includes('flash');
+    const isPro = cleanId.includes('pro');
+    const categoria: 'flash' | 'pro' | 'altro' = isFlash ? 'flash' : isPro ? 'pro' : 'altro';
 
     modelli.push({
       id: cleanId,
       displayName: m.displayName || cleanId,
       description: m.description || '',
       raccomandato: MODELLI_FLASH_RACCOMANDATI.has(cleanId),
+      categoria,
+      gratuito: true,
     });
   }
 
-  // Ordina: prima i raccomandati (3.6-flash, 3.5-flash, ecc.), poi per nome decrescente
+  // Ordina: prima i raccomandati (Flash recenti), poi Pro, poi per id
   modelli.sort((a, b) => {
     if (a.raccomandato && !b.raccomandato) return -1;
     if (!a.raccomandato && b.raccomandato) return 1;
