@@ -6,8 +6,9 @@
 // query_assistant_logs: è un test di diagnostica, non una richiesta utente.
 import { NextResponse } from 'next/server';
 import { getSessionState } from '../../../../lib/auth/session';
+import { createClient } from '../../../../lib/supabase/server';
 import { generaSql } from '../../../../lib/ai-assistente/gemini-client';
-import { aiAssistenteEnv } from '../../../../lib/ai-assistente/env';
+import { getCatenaModelliAttiva } from '../../../../lib/ai-assistente/settings';
 
 const DOMANDA_TEST = 'Quante stagioni sono archiviate?';
 
@@ -17,13 +18,21 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
   }
 
+  const supabase = await createClient();
+  const catenaModelli = await getCatenaModelliAttiva(supabase);
+  const modelloPredefinito = catenaModelli[0] ?? 'gemini-3.6-flash';
+
   const inizio = Date.now();
   try {
-    const risultato = await generaSql(DOMANDA_TEST);
+    const risultato = await generaSql(DOMANDA_TEST, catenaModelli);
     const latenzaMs = Date.now() - inizio;
+    const modelloEffettivo = risultato.modello_usato ?? modelloPredefinito;
     return NextResponse.json({
       ok: true,
-      modello: aiAssistenteEnv.GEMINI_MODEL,
+      modello: modelloEffettivo,
+      modelloConfigurato: modelloPredefinito,
+      catenaModelli,
+      fallbackAttivo: modelloEffettivo !== modelloPredefinito,
       latenzaMs,
       inScope: risultato.in_scope,
       sqlGenerata: risultato.sql,
@@ -34,7 +43,8 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json(
       {
         ok: false,
-        modello: aiAssistenteEnv.GEMINI_MODEL,
+        modello: modelloPredefinito,
+        catenaModelli,
         latenzaMs,
         errore: messaggio,
       },

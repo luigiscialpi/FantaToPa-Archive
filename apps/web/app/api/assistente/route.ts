@@ -10,6 +10,7 @@ import {
   GeminiApiError,
 } from '../../../lib/ai-assistente/gemini-client';
 import { validaEWrappa, QueryNonValidaError } from '../../../lib/ai-assistente/sql-validator';
+import { getCatenaModelliAttiva } from '../../../lib/ai-assistente/settings';
 
 const MASSIMO_TENTATIVI = 2;
 const LUNGHEZZA_MASSIMA_DOMANDA = 500;
@@ -49,6 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
   const { profile } = session;
   const supabase = await createClient(); // sessione utente reale, RLS attiva, mai service role
+  const catenaModelli = await getCatenaModelliAttiva(supabase);
 
   try {
     const body = await request.json().catch(() => null);
@@ -64,7 +66,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         const generazione = await generaSql(
           tentativo === 1
             ? domanda
-            : `${domanda}\n\n(Il tentativo precedente ha prodotto una query non valida: ${ultimoErrore}. Correggi.)`
+            : `${domanda}\n\n(Il tentativo precedente ha prodotto una query non valida: ${ultimoErrore}. Correggi.)`,
+          catenaModelli
         );
 
         if (!generazione.in_scope) {
@@ -95,7 +98,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         });
         if (error) throw new QueryNonValidaError(error.message);
 
-        const risposta = await componiRisposta(domanda, righe);
+        const risposta = await componiRisposta(domanda, righe, catenaModelli);
         await registraLog(
           supabase,
           richiestaId,

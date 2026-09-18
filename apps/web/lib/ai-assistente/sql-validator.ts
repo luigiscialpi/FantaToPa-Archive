@@ -4,8 +4,6 @@ import { TABELLE_AMMESSE } from './schema-context';
 const parser = new Parser();
 const DIALETTO = 'PostgresQL';
 
-const WHITELIST_TABELLE = [`^select::(null|public)::(${TABELLE_AMMESSE.join('|')})$`];
-
 // Denylist di funzioni note per essere pericolose (DoS, lettura filesystem,
 // connessioni di rete, lettura di configurazione). Non è la difesa primaria —
 // la tabella whitelist e la transazione read-only del Passo 2 lo sono — è uno

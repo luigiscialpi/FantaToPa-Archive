@@ -6,6 +6,9 @@ import { Activity, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 interface RispostaPing {
   ok: boolean;
   modello: string;
+  modelloConfigurato?: string;
+  catenaModelli?: string[];
+  fallbackAttivo?: boolean;
   latenzaMs: number;
   inScope?: boolean;
   sqlGenerata?: string | null;
@@ -71,8 +74,19 @@ export function AssistentePingButton() {
           }`}
         >
           <p>
-            <span className="font-medium">Modello:</span> {dati.modello}
+            <span className="font-medium">Modello che ha risposto:</span>{' '}
+            <code className="rounded bg-black/5 px-1 py-0.5 font-mono">{dati.modello}</code>
+            {dati.fallbackAttivo && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-amber-200/80 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                Fallback attivo ({dati.modelloConfigurato} esaurito o non disponibile)
+              </span>
+            )}
           </p>
+          {dati.catenaModelli && dati.catenaModelli.length > 0 && (
+            <p className="text-xs opacity-75">
+              <span className="font-medium">Catena fallback:</span> {dati.catenaModelli.join(' → ')}
+            </p>
+          )}
           <p>
             <span className="font-medium">Latenza:</span> {dati.latenzaMs} ms
           </p>
