@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, AlertCircle, ServerCrash } from 'lucide-react';
+import { Search, Loader2, AlertCircle, ServerCrash, Wifi, WifiOff } from 'lucide-react';
+
+// ─── Tipi ────────────────────────────────────────────────────────────────────
 
 type TipoErrore =
   | 'fuori_tema'
@@ -17,11 +19,16 @@ interface Risultato {
   tipoErrore?: TipoErrore;
 }
 
-/** Restituisce stili e icona in base alla natura dell'errore. */
+type StatoPing = 'idle' | 'loading' | 'online' | 'offline';
+
+interface DatiPing {
+  latenzaMs: number;
+  errore?: string;
+}
+
+// ─── Errore visivo ────────────────────────────────────────────────────────────
+
 function useErroreVisivo(tipoErrore: TipoErrore | undefined) {
-  // errore_servizio_ia = problema infrastrutturale, non della domanda → tono
-  // giallo/warning (non rosso/critico) e icona ServerCrash per distinguerlo
-  // visivamente da errori della domanda (rosso).
   if (tipoErrore === 'errore_servizio_ia') {
     return {
       bordo: 'border-amber-200 bg-amber-50',
@@ -40,6 +47,85 @@ function useErroreVisivo(tipoErrore: TipoErrore | undefined) {
   }
   return null;
 }
+
+// ─── Pill di stato IA ─────────────────────────────────────────────────────────
+//
+// Siede nell'angolo in alto a destra del widget. Cliccabile in qualsiasi stato
+// (tranne "loading"). Pattern: status-dot + etichetta, comune nei pannelli
+// SaaS per mostrare la disponibilità di un servizio esterno.
+
+function StatoPill() {
+  const [stato, setStato] = useState<StatoPing>('idle');
+  const [dati, setDati] = useState<DatiPing | null>(null);
+
+  async function eseguiPing() {
+    if (stato === 'loading') return;
+    setStato('loading');
+    setDati(null);
+    try {
+      const res = await fetch('/api/assistente/ping');
+      const json = (await res.json()) as { ok: boolean; latenzaMs: number; errore?: string };
+      setDati({ latenzaMs: json.latenzaMs, errore: json.errore });
+      setStato(json.ok ? 'online' : 'offline');
+    } catch {
+      setDati(null);
+      setStato('offline');
+    }
+  }
+
+  // Stili per ogni stato
+  const config = {
+    idle: {
+      pill: 'text-stone-400 hover:text-brand-600 hover:bg-brand-100',
+      dot: null,
+      label: 'Verifica disponibilità',
+    },
+    loading: {
+      pill: 'text-stone-400 cursor-wait',
+      dot: null,
+      label: 'Verifico…',
+    },
+    online: {
+      pill: 'text-green-700 bg-green-50 hover:bg-green-100',
+      dot: 'bg-green-500',
+      label: dati ? `Online · ${dati.latenzaMs} ms` : 'Online',
+    },
+    offline: {
+      pill: 'text-red-600 bg-red-50 hover:bg-red-100',
+      dot: 'bg-red-500',
+      label: 'Non disponibile',
+    },
+  }[stato];
+
+  return (
+    <button
+      onClick={eseguiPing}
+      disabled={stato === 'loading'}
+      title={
+        stato === 'offline' && dati?.errore
+          ? dati.errore
+          : stato === 'idle'
+          ? 'Clicca per verificare se l\'assistente IA è raggiungibile'
+          : undefined
+      }
+      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${config.pill}`}
+    >
+      {stato === 'loading' ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : stato === 'online' ? (
+        <Wifi className="h-3 w-3" />
+      ) : stato === 'offline' ? (
+        <WifiOff className="h-3 w-3" />
+      ) : null}
+      {config.dot && (
+        <span className={`inline-block h-1.5 w-1.5 rounded-full ${config.dot} animate-pulse`} />
+      )}
+      {config.label}
+    </button>
+  );
+}
+
+// ─── Componente principale ────────────────────────────────────────────────────
 
 export function ChiediAllArchivio({
   placeholder = 'Chiedi qualcosa alla lega…',
@@ -82,12 +168,21 @@ export function ChiediAllArchivio({
 
   return (
     <section className="rounded-xl border border-brand-200 bg-brand-50 p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">
-        Chiedi all&apos;Archivio
-      </p>
-      <h2 className="mt-1 font-serif text-lg font-bold text-brand-950">
-        Una domanda, tutte le stagioni
-      </h2>
+      {/* Header: label + titolo a sinistra, pill di stato a destra */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">
+            Chiedi all&apos;Archivio
+          </p>
+          <h2 className="mt-1 font-serif text-lg font-bold text-brand-950">
+            Una domanda, tutte le stagioni
+          </h2>
+        </div>
+        {/* Pill sempre visibile, invita a verificare prima di digitare */}
+        <div className="pt-0.5 shrink-0">
+          <StatoPill />
+        </div>
+      </div>
 
       <div className="mt-3 flex gap-2">
         <input

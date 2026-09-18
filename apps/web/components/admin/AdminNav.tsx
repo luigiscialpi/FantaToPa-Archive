@@ -12,6 +12,7 @@ const ITEMS = [
   { href: '/admin/registrazioni', label: 'Registrazioni' },
   { href: '/admin/utenti', label: 'Utenti' },
   { href: '/admin/stagioni', label: 'Stagioni' },
+  { href: '/admin/assistente', label: 'Assistente IA' },
 ];
 
 export function AdminNav() {
