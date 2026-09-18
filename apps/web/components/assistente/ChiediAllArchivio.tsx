@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Search, Loader2, AlertCircle, ServerCrash, Wifi, WifiOff } from 'lucide-react';
 
 // ─── Tipi ────────────────────────────────────────────────────────────────────
@@ -215,7 +217,41 @@ export function ChiediAllArchivio({
               <p className={`text-sm ${erroreVisivo.testo}`}>{risultato.risposta}</p>
             </div>
           ) : (
-            <p className="text-sm text-stone-700">{risultato.risposta}</p>
+            // Rendiamo il markdown di Gemini: bold, liste, tabelle GFM.
+            // I componenti custom applicano stili minimali inline senza un
+            // file CSS dedicato — le tabelle usano overflow-x per non
+            // rompere layout su mobile con molte colonne.
+            <div className="text-sm text-stone-700">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                  ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-0.5">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-0.5">{children}</ol>,
+                  li: ({ children }) => <li>{children}</li>,
+                  table: ({ children }) => (
+                    <div className="mt-2 overflow-x-auto rounded-lg border border-stone-200">
+                      <table className="w-full border-collapse text-xs">{children}</table>
+                    </div>
+                  ),
+                  thead: ({ children }) => <thead className="bg-stone-50">{children}</thead>,
+                  th: ({ children }) => (
+                    <th className="border-b border-stone-200 px-3 py-1.5 text-left font-semibold text-stone-600">
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="border-b border-stone-100 px-3 py-1.5 last:border-0">
+                      {children}
+                    </td>
+                  ),
+                  tr: ({ children }) => <tr className="even:bg-stone-50/50">{children}</tr>,
+                }}
+              >
+                {risultato.risposta}
+              </ReactMarkdown>
+            </div>
           )}
           {risultato.sql && (
             <div className="mt-2">
