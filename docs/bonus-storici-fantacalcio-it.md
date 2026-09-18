@@ -128,12 +128,12 @@ Non più necessario: il Percorso A copre tutte le stagioni con lo stesso URL pat
 |---|---|---|---|
 | 2020-21 | Derivate dal Campionato (`derive-coppa-lineups.ts`) | Già popolata (derivata) | Nessuna: import bonus di Campionato basta, la Coppa li eredita via join |
 | 2021-22 | Derivate dal Campionato (`derive-coppa-lineups.ts`) | Già popolata (derivata) | Nessuna, come sopra |
-| 2022-23 | Reali, da xlsx proprio | Mai popolata | Conferma manuale utente giornata Coppa ↔ giornata Campionato, poi popolare (sezione 7, fase 6) |
-| 2023-24 | Reali, da xlsx proprio | Mai popolata | Come sopra |
-| 2024-25 | Reali, da xlsx proprio | Mai popolata | Come sopra |
+| 2022-23 | Reali, da xlsx proprio | Popolata (`link-coppa-bonus-sources.ts`) | Nessuna (mappatura verificata al 100% sui voti giocatori) |
+| 2023-24 | Reali, da xlsx proprio | Popolata (`link-coppa-bonus-sources.ts`) | Nessuna (mappatura verificata al 100% sui voti giocatori) |
+| 2024-25 | Reali, da xlsx proprio | Popolata (`link-coppa-bonus-sources.ts`) | Nessuna (mappatura verificata al 100% sui voti giocatori) |
 
-La mappatura per 2022-23/2023-24/2024-25 è stata esplicitamente richiesta in scope per
-questo piano (non rimandata a un secondo momento).
+La mappatura per 2022-23/2023-24/2024-25 è stata ricavata e verificata con riscontro
+del 100% dei voti giocatori tra Coppa e Campionato, e popolata a DB via `link-coppa-bonus-sources.ts`.
 
 ## 6. Domande aperte / verifica in corso
 
@@ -174,16 +174,15 @@ questo piano (non rimandata a un secondo momento).
    delle pagine grezze su disco (stesso principio "i file grezzi restano la fonte di
    verità" già seguito per xlsx/HTML legacy), poi `upsertMatchdayBonuses` per giornata.
    Idempotenza già garantita dal delete+insert esistente.
-5. **Pilota + validazione**: una stagione prima delle altre 4 (proposta: 2024-25, la più
-   recente delle mancanti); conteggio giornate/giocatori/bonus comparabile a 2025-26
-   (~230/giornata) o 2017-18 (~144/giornata); spot-check qualitativo contro la pagina
-   reale; nuove fixture di test (`__fixtures__/`, stesso pattern del 2017-18).
-   Generalizzazione alle altre 4 stagioni dopo validazione.
-6. **Mappatura Coppa 2022-23/2023-24/2024-25** (indipendente dai punti 1-5): conferma
-   manuale utente giornata Coppa ↔ Campionato per ciascuna delle 3 stagioni (stesso
-   schema già usato per il 2025-26), popolare `matchday_bonus_sources` con uno script
-   one-off nello stile di `linkMatchdaySource` (mappatura è dato, non logica riusabile).
-   Nessuna modifica frontend necessaria.
+5. **Pilota + validazione (COMPLETATO)**: stagione pilota 2024-25 scaricata (38 giornate)
+   e importata con successo (10.038 bonus inseriti, ~275 giocatori/giornata). Spot-check
+   qualitativo superato (Retegui e Brescianini G1 con tutti i bonus/malus corretti).
+   Fixture di test (`__fixtures__/2024-25-01.html`) e test unitario (`bonus.test.ts`, 6/6 passati)
+   aggiunti.
+6. **Mappatura Coppa 2022-23/2023-24/2024-25 (COMPLETATO)**: ricavata programmaticamente
+   tramite confronto dei fantavoti effettivi dei giocatori schierati (100% di corrispondenza esatta
+   su tutte le giornate di ciascuna stagione). `matchday_bonus_sources` popolata via
+   [`link-coppa-bonus-sources.ts`](file:///Users/lscialpi/Downloads/Altro/fantatopa-archive/packages/ingestion/scripts/link-coppa-bonus-sources.ts).
 
 ## 8. File coinvolti
 
