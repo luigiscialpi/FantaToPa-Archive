@@ -1,15 +1,44 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, AlertCircle, ServerCrash } from 'lucide-react';
 
-type TipoErrore = 'fuori_tema' | 'identita_mancante' | 'non_generabile' | 'errore_temporaneo';
+type TipoErrore =
+  | 'fuori_tema'
+  | 'identita_mancante'
+  | 'non_generabile'
+  | 'errore_servizio_ia'
+  | 'errore_temporaneo';
 
 interface Risultato {
   risposta: string;
   sql?: string;
   righe?: unknown;
   tipoErrore?: TipoErrore;
+}
+
+/** Restituisce stili e icona in base alla natura dell'errore. */
+function useErroreVisivo(tipoErrore: TipoErrore | undefined) {
+  // errore_servizio_ia = problema infrastrutturale, non della domanda → tono
+  // giallo/warning (non rosso/critico) e icona ServerCrash per distinguerlo
+  // visivamente da errori della domanda (rosso).
+  if (tipoErrore === 'errore_servizio_ia') {
+    return {
+      bordo: 'border-amber-200 bg-amber-50',
+      testo: 'text-amber-800',
+      Icona: ServerCrash,
+      iconaClasse: 'text-amber-500 shrink-0',
+    };
+  }
+  if (tipoErrore) {
+    return {
+      bordo: 'border-red-200 bg-red-50',
+      testo: 'text-red-800',
+      Icona: AlertCircle,
+      iconaClasse: 'text-red-400 shrink-0',
+    };
+  }
+  return null;
 }
 
 export function ChiediAllArchivio({
@@ -49,7 +78,7 @@ export function ChiediAllArchivio({
     }
   }
 
-  const isErrore = Boolean(risultato?.tipoErrore);
+  const erroreVisivo = useErroreVisivo(risultato?.tipoErrore);
 
   return (
     <section className="rounded-xl border border-brand-200 bg-brand-50 p-5">
@@ -81,11 +110,18 @@ export function ChiediAllArchivio({
 
       {risultato && (
         <div
-          className={`mt-4 rounded-lg border bg-white p-3 ${
-            isErrore ? 'border-red-200' : 'border-brand-200'
+          className={`mt-4 rounded-lg border p-3 ${
+            erroreVisivo ? erroreVisivo.bordo : 'border-brand-200 bg-white'
           }`}
         >
-          <p className="text-sm text-stone-700">{risultato.risposta}</p>
+          {erroreVisivo ? (
+            <div className="flex items-start gap-2">
+              <erroreVisivo.Icona className={`mt-0.5 h-4 w-4 ${erroreVisivo.iconaClasse}`} />
+              <p className={`text-sm ${erroreVisivo.testo}`}>{risultato.risposta}</p>
+            </div>
+          ) : (
+            <p className="text-sm text-stone-700">{risultato.risposta}</p>
+          )}
           {risultato.sql && (
             <div className="mt-2">
               <button

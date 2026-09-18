@@ -7,16 +7,22 @@ import {
   componiRisposta,
   risolviIdentitaUtente,
   IdentitaUtenteMancanteError,
+  GeminiApiError,
 } from '../../../lib/ai-assistente/gemini-client';
 import { validaEWrappa, QueryNonValidaError } from '../../../lib/ai-assistente/sql-validator';
 
 const MASSIMO_TENTATIVI = 2;
 const LUNGHEZZA_MASSIMA_DOMANDA = 500;
 
-// Le uniche quattro stringhe che il browser vede in caso di mancata risposta.
+// Le uniche cinque stringhe che il browser vede in caso di mancata risposta.
 // Qualunque dettaglio tecnico (SQL generata, messaggio Postgres, stack trace)
-// resta nel log del Passo 3, mai nella risposta HTTP.
-type TipoErrore = 'fuori_tema' | 'identita_mancante' | 'non_generabile' | 'errore_temporaneo';
+// resta nel log, mai nella risposta HTTP.
+type TipoErrore =
+  | 'fuori_tema'
+  | 'identita_mancante'
+  | 'non_generabile'
+  | 'errore_servizio_ia'
+  | 'errore_temporaneo';
 
 const MESSAGGI_ERRORE: Record<TipoErrore, string> = {
   fuori_tema: 'Questa domanda non riguarda le statistiche della lega, quindi non posso rispondere.',
@@ -24,6 +30,10 @@ const MESSAGGI_ERRORE: Record<TipoErrore, string> = {
     'Il tuo profilo non ha una squadra associata: non posso rispondere a domande sulla "tua squadra".',
   non_generabile:
     'Non sono riuscito a generare una risposta valida per questa domanda. Prova a riformularla in modo più specifico.',
+  // Errore che non dipende dalla domanda (503 sovraccarico, 404 modello rimosso,
+  // rete): l'utente non deve riformulare nulla, deve solo riprovare più tardi.
+  errore_servizio_ia:
+    "Il servizio di intelligenza artificiale non è al momento disponibile. Non è un problema con la domanda: riprova tra qualche minuto.",
   errore_temporaneo: 'Si è verificato un problema temporaneo. Riprova tra poco.',
 };
 
@@ -119,6 +129,28 @@ export async function POST(request: Request): Promise<NextResponse> {
             tipoErrore: 'identita_mancante' as TipoErrore,
           });
         }
+
+        // GeminiApiError: 503, 404 modello rimosso, rete — non è colpa della
+        // domanda, non ha senso ritentare né dire all'utente di riformulare.
+        if (e instanceof GeminiApiError) {
+          await registraLog(
+            supabase,
+            richiestaId,
+            tentativo,
+            profile.userId,
+            domanda,
+            sqlGenerata,
+            'errore_interno',
+            `GeminiApiError [${e.statusCode ?? 'no-status'}]: ${e.message}`,
+            Date.now() - inizio,
+            null
+          );
+          return NextResponse.json({
+            risposta: MESSAGGI_ERRORE.errore_servizio_ia,
+            tipoErrore: 'errore_servizio_ia' as TipoErrore,
+          });
+        }
+
         ultimoErrore = e instanceof Error ? e.message : String(e);
         // Ogni tentativo va loggato, non solo l'ultimo: leggendo il log dopo
         // vuoi vedere se Gemini ha ripetuto lo stesso errore al secondo giro
